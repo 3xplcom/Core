@@ -34,8 +34,8 @@ abstract class EVMMainModule extends CoreModule
     // EVM-specific
 
     public ?EVMImplementation $evm_implementation = null;
+    public array $extra_features = [];
     public ?Closure $reward_function = null;
-    public ?bool $supports_uncles = null;
 
     //
 
@@ -49,7 +49,6 @@ abstract class EVMMainModule extends CoreModule
         if (is_null($this->currency)) throw new DeveloperError("`currency` is not set (developer error)");
         if (is_null($this->evm_implementation)) throw new DeveloperError("`evm_implementation` is not set (developer error)");
         if (is_null($this->reward_function)) throw new DeveloperError("`reward_function` is not set (developer error)");
-        if (is_null($this->supports_uncles)) throw new DeveloperError("`supports_uncles` is not set (developer error)");
     }
 
     final public function pre_process_block($block_id)
@@ -106,8 +105,12 @@ abstract class EVMMainModule extends CoreModule
                     $receipt_data = $r2;
                     $block_time = $r1['timestamp'];
                     $miner = $r1['miner'];
-                    $uncle_count = $this->supports_uncles ? count($r1['uncles']) : 0;
-                    $uncles = $r1['uncles'];
+
+                    if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
+                    {
+                        $uncle_count = count($r1['uncles']);
+                        $uncles = $r1['uncles'];
+                    }
                 }
                 else // $r2 is the response for eth_getBlockByNumber, $r1 is for eth_getBlockReceipts
                 {
@@ -116,8 +119,12 @@ abstract class EVMMainModule extends CoreModule
                     $receipt_data = $r1;
                     $block_time = $r2['timestamp'];
                     $miner = $r2['miner'];
-                    $uncle_count = $this->supports_uncles ? count($r2['uncles']) : 0;
-                    $uncles = $r2['uncles'];
+
+                    if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
+                    {
+                        $uncle_count = count($r2['uncles']);
+                        $uncles = $r2['uncles'];
+                    }
                 }
             }
             else // geth is slower as we have to do eth_getTransactionReceipt for every transaction separately
@@ -128,8 +135,13 @@ abstract class EVMMainModule extends CoreModule
 
                 $block_time = $r1['timestamp'];
                 $miner = $r1['miner'];
-                $uncle_count = $this->supports_uncles ? count($r1['uncles']) : 0;
-                $uncles = $this->supports_uncles ? $r1['uncles'] : [];
+
+                if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
+                {
+                    $uncle_count = count($r1['uncles']);
+                    $uncles = $r1['uncles'];
+                }
+
                 $general_data = $r1['transactions'];
                 $base_fee_per_gas = to_int256_from_0xhex($r1['baseFeePerGas'] ?? null);
                 $receipt_data = [];
@@ -352,7 +364,7 @@ abstract class EVMMainModule extends CoreModule
 
             // Uncles
 
-            if ($this->supports_uncles && $uncle_count)
+            if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features) && $uncle_count)
             {
                 $uncle_data = [];
                 $multi_curl = [];

@@ -21,7 +21,6 @@ final class BNBMainModule extends EVMMainModule implements Module
         $this->currency = 'bnb';
         $this->currency_details = ['name' => 'BNB', 'symbol' => 'BNB', 'decimals' => 18, 'description' => null];
         $this->evm_implementation = EVMImplementation::Erigon; // Change to geth if you're running geth, but this would be slower
-        $this->supports_uncles = false;
         $this->reward_function = function($block_id)
         {
             return '0';

@@ -23,6 +23,11 @@ enum EVMSpecialTransactions: string
     case ContractDestruction = 'd';
 }
 
+enum EVMSpecialFeatures
+{
+    case HasOrHadUncles;
+}
+
 trait EVMTraits
 {
     public function inquire_latest_block()

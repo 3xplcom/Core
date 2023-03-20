@@ -20,7 +20,7 @@ final class EthereumMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::Erigon; // Change to geth if you're running geth, but this would be slower
-        $this->supports_uncles = true;
+        $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles];
         $this->reward_function = function($block_id)
         {
             if ($block_id >= 0 && $block_id <= 4_369_999)
