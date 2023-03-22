@@ -151,7 +151,7 @@ elseif ($chosen_option === 'B')
 
         foreach ($events as $event)
         {
-            if ($event['transaction'] === $filter || $event['address'] === $filter)
+            if (str_contains($event['transaction'], $filter) || str_contains($event['address'], $filter))
                 $output_events[] = $event;
         }
 
