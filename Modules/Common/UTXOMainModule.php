@@ -73,7 +73,7 @@ abstract class UTXOMainModule extends CoreModule
                 if (!isset($this->processed_transactions[$tx_hash]))
                 {
                     $multi_curl[] = requester_multi_prepare($this->select_node(),
-                        params: ['method' => 'getrawtransaction', 'params' => [$tx_hash, true]],
+                        params: ['method' => 'getrawtransaction', 'params' => [$tx_hash, 1]],
                         timeout: $this->timeout);
 
                     $islice++;
@@ -169,6 +169,66 @@ abstract class UTXOMainModule extends CoreModule
             }
 
             $this_is_coinbase = false;
+
+            // Processing shielded pools (ZK)
+
+            if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features))
+            {
+                if (
+                    (
+                        count($transaction['vin']) +
+                        count($transaction['vout']) +
+                        (int)(isset($transaction['vjoinsplit']) && $transaction['vjoinsplit']) +
+                        (int)((isset($transaction['vShieldedSpend']) && $transaction['vShieldedSpend']) || (isset($transaction['vShieldedOutput']) && $transaction['vShieldedOutput'])) +
+                        (int)(isset($transaction['orchard']) && $transaction['orchard'] && $transaction['orchard']['actions'])
+                    ) === 0
+                )
+                    throw new ModuleError("No events for transaction {$transaction['txid']}");
+
+                // Sprout
+
+                if (isset($transaction['vjoinsplit']) && $transaction['vjoinsplit'])
+                {
+                    $total_split = '0';
+
+                    foreach ($transaction['vjoinsplit'] as $this_vjoinsplit)
+                        $total_split = bcadd($total_split, bcsub($this_vjoinsplit['vpub_oldZat'], $this_vjoinsplit['vpub_newZat']));
+
+                    $events[] = ['transaction' => $transaction['txid'],
+                                 'address'     => 'sprout-pool',
+                                 'effect'      => $total_split,
+                                 'sort_in_transaction' => PHP_INT_MAX - 3,
+                    ];
+
+                    $fees[($transaction['txid'])] = bcadd($fees[($transaction['txid'])], bcmul('-1', $total_split));
+                }
+
+                // Sapling
+
+                if ((isset($transaction['vShieldedSpend']) && $transaction['vShieldedSpend']) || (isset($transaction['vShieldedOutput']) && $transaction['vShieldedOutput']))
+                {
+                    $events[] = ['transaction' => $transaction['txid'],
+                                 'address'     => 'sapling-pool',
+                                 'effect'      => bcmul('-1', $transaction['valueBalanceZat']),
+                                 'sort_in_transaction' => PHP_INT_MAX - 2,
+                    ];
+
+                    $fees[($transaction['txid'])] = bcadd($fees[($transaction['txid'])], $transaction['valueBalanceZat']);
+                }
+
+                // Orchard
+
+                if (isset($transaction['orchard']) && $transaction['orchard'] && $transaction['orchard']['actions'])
+                {
+                    $events[] = ['transaction' => $transaction['txid'],
+                                 'address'     => 'orchard-pool',
+                                 'effect'      => bcmul('-1', $transaction['orchard']['valueBalanceZat']),
+                                 'sort_in_transaction' => PHP_INT_MAX - 1,
+                    ];
+
+                    $fees[($transaction['txid'])] = bcadd($fees[($transaction['txid'])], $transaction['orchard']['valueBalanceZat']);
+                }
+            }
 
             $sort_in_block_lib[($transaction['txid'])] = $block_n;
             $block_n++;
@@ -296,6 +356,54 @@ abstract class UTXOMainModule extends CoreModule
                              'effect'      => $fee_transfer,
                              'sort_in_transaction' => PHP_INT_MAX
                 ];
+            }
+        }
+
+        // Extra checks for the shielded pools
+
+        if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features) && $block_id !== MEMPOOL)
+        {
+            $delta_pools = [];
+            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0'];
+
+            foreach ($block['valuePools'] as $pool)
+                $delta_pools[($pool['id'])] = $pool['valueDeltaZat'];
+
+            foreach ($events as $event)
+            {
+                if ($event['address'] === 'the-void')
+                    $this_pools['transparent'] = bcsub($this_pools['transparent'], $event['effect']);
+                if ($event['address'] === 'sprout-pool')
+                    $this_pools['sprout'] = bcadd($this_pools['sprout'], $event['effect']);
+                if ($event['address'] === 'sapling-pool')
+                    $this_pools['sapling'] = bcadd($this_pools['sapling'], $event['effect']);
+                if ($event['address'] === 'orchard-pool')
+                    $this_pools['orchard'] = bcadd($this_pools['orchard'], $event['effect']);
+            }
+
+            $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sprout']);
+            $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sapling']);
+            $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['orchard']);
+
+            // Check if the coinbase value is correct
+
+            $check_coinbase_amount = bcmul('-1', $coinbase_transaction_output);
+
+            foreach ($fees as $fee)
+                $check_coinbase_amount = bcsub($check_coinbase_amount, $fee);
+
+            if ($check_coinbase_amount !== $block['chainSupply']['valueDeltaZat'])
+                throw new ModuleError("Wrong coinbase value: {$check_coinbase_amount} vs. {$block['chainSupply']['valueDeltaZat']}");
+
+            // Check if deltas for shielded pools are correct
+
+            foreach ($delta_pools as $pool => $value)
+            {
+                if (!isset($this_pools[$pool]))
+                    throw new ModuleError("Unknown shielded pool: {$pool}");
+
+                if ($delta_pools[$pool] !== $this_pools[$pool])
+                    throw new ModuleError("Pool delta mismatch for {$pool}: should be {$delta_pools[$pool]}, got {$this_pools[$pool]}");
             }
         }
 
