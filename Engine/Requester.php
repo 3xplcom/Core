@@ -84,7 +84,7 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     // Also it doesn't work with negative numbers, and doesn't process integer arrays (e.g. `[4359895000,2039280]`)
     // TODO: this should be rewritten to support all the aforementioned cases
     if (!isset($_ENV['__IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE']))
-        $output = preg_replace('/("\w+"):([\d\.]+)/', '\\1:"\\2"', $output);
+        $output = preg_replace('/("\w+"):(-?[\d\.]+)/', '\\1:"\\2"', $output);
 
     if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
     {
@@ -256,7 +256,7 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
 
     if (!isset($_ENV['__IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE']))
-        $output = preg_replace('/("\w+"):([\d\.]+)/', '\\1:"\\2"', $output);
+        $output = preg_replace('/("\w+"):(-?[\d\.]+)/', '\\1:"\\2"', $output);
 
     if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
     {

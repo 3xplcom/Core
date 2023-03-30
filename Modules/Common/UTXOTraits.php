@@ -67,6 +67,7 @@ enum UTXOSpecialFeatures
     case IgnorePubKeyConversion; // Bitcoin Cash node shows P2PK addresses correctly
     case HasAddressPrefixes; // Bitcoin Cash node uses `bitcoincash:` prefix for all standard addresses
     case HasMWEB; // Litecoin Core has some additional MWEB data
+    case HasShieldedPools; // Shielded pool processing in Zcash
 }
 
 // See https://stackoverflow.com/questions/19233053/hashing-from-a-public-key-to-a-bitcoin-address-in-php
