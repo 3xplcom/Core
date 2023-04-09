@@ -55,7 +55,7 @@ abstract class EVMTraceModule extends CoreModule
         }
 
         $trace = requester_single($this->select_node(),
-            params: ['method' => 'trace_block', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0],
+            params: ['jsonrpc'=> '2.0', 'method' => 'trace_block', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0],
             result_in: 'result', timeout: $this->timeout);
 
         $events = [];
