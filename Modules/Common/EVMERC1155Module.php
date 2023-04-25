@@ -53,7 +53,8 @@ abstract class EVMERC1155Module extends CoreModule
         // Get logs
 
         $logs_single = requester_single($this->select_node(),
-            params: ['method' => 'eth_getLogs',
+            params: ['jsonrpc'=> '2.0',
+                     'method' => 'eth_getLogs',
                      'params' =>
                          [['blockhash' => $this->block_hash,
                            'topics'    => ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'],
@@ -64,7 +65,7 @@ abstract class EVMERC1155Module extends CoreModule
             result_in: 'result', timeout: $this->timeout); // TransferSingle
 
         $logs_batch = requester_single($this->select_node(),
-            params: ['method' => 'eth_getLogs',
+            params: ['jsonrpc'=> '2.0', 'method' => 'eth_getLogs',
                      'params' =>
                          [['blockhash' => $this->block_hash,
                            'topics'    => ['0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'],
@@ -164,11 +165,11 @@ abstract class EVMERC1155Module extends CoreModule
             foreach ($currencies_to_process as $currency_id)
             {
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x06fdde03'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x06fdde03'], 'latest'], 'id' => $this_id++],
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x95d89b41'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x95d89b41'], 'latest'], 'id' => $this_id++],
                     timeout: $this->timeout); // Symbol
             }
 

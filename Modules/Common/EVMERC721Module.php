@@ -53,7 +53,8 @@ abstract class EVMERC721Module extends CoreModule
         // Get logs
 
         $logs = requester_single($this->select_node(),
-            params: ['method' => 'eth_getLogs',
+            params: ['jsonrpc'=> '2.0',
+                     'method' => 'eth_getLogs',
                      'params' =>
                          [['blockhash' => $this->block_hash,
                            'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
@@ -112,11 +113,11 @@ abstract class EVMERC721Module extends CoreModule
             foreach ($currencies_to_process as $currency_id)
             {
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x06fdde03'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x06fdde03'], 'latest'], 'id' => $this_id++],
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x95d89b41'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x95d89b41'], 'latest'], 'id' => $this_id++],
                     timeout: $this->timeout); // Symbol
             }
 

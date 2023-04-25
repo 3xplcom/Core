@@ -33,7 +33,7 @@ trait EVMTraits
     public function inquire_latest_block()
     {
         return to_int64_from_0xhex(requester_single($this->select_node(),
-            params: ['method' => 'eth_blockNumber', 'id' => 0], result_in: 'result', timeout: $this->timeout));
+            params: ['jsonrpc'=> '2.0', 'method' => 'eth_blockNumber', 'id' => 0], result_in: 'result', timeout: $this->timeout));
     }
 
     public function ensure_block($block_id, $break_on_first = false)
@@ -48,11 +48,11 @@ trait EVMTraits
 
         if ($this->evm_implementation === EVMImplementation::Erigon)
         {
-            $params = ['method' => 'erigon_getHeaderByNumber', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0];
+            $params = ['jsonrpc'=> '2.0', 'method' => 'erigon_getHeaderByNumber', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0];
         }
         else // geth
         {
-            $params = ['method' => 'eth_getBlockByNumber', 'params' => [to_0xhex_from_int64($block_id), false], 'id' => 0];
+            $params = ['jsonrpc'=> '2.0', 'method' => 'eth_getBlockByNumber', 'params' => [to_0xhex_from_int64($block_id), false], 'id' => 0];
         }
 
         $from_nodes = $this->fast_nodes ?? $this->nodes;

@@ -79,17 +79,19 @@ abstract class EVMMainModule extends CoreModule
                 $multi_curl = [];
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method' => 'eth_getBlockByNumber',
-                             'params' => [to_0xhex_from_int64($block_id),
+                    params: ['jsonrpc' => "2.0",
+                             'method'  => 'eth_getBlockByNumber',
+                             'params'  => [to_0xhex_from_int64($block_id),
                                           true,
                              ],
-                             'id'     => 0,
+                             'id'      => 0,
                     ], timeout: $this->timeout);
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method' => 'eth_getBlockReceipts',
-                             'params' => [to_0xhex_from_int64($block_id)],
-                             'id'     => 0,
+                    params: ['jsonrpc' => "2.0",
+                             'method'  => 'eth_getBlockReceipts',
+                             'params'  => [to_0xhex_from_int64($block_id)],
+                             'id'      => 0,
                     ], timeout: $this->timeout);
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
@@ -130,7 +132,7 @@ abstract class EVMMainModule extends CoreModule
             else // geth is slower as we have to do eth_getTransactionReceipt for every transaction separately
             {
                 $r1 = requester_single($this->select_node(),
-                    params: ['method' => 'eth_getBlockByNumber', 'params' => [to_0xhex_from_int64($block_id), true], 'id' => 0],
+                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_getBlockByNumber', 'params' => [to_0xhex_from_int64($block_id), true], 'id' => 0],
                     result_in: 'result', timeout: $this->timeout);
 
                 $block_time = $r1['timestamp'];
@@ -153,7 +155,7 @@ abstract class EVMMainModule extends CoreModule
                 foreach ($r1['transactions'] as $transaction)
                 {
                     $multi_curl[] = requester_multi_prepare($this->select_node(),
-                        params: ['method' => 'eth_getTransactionReceipt', 'params' => [$transaction['hash']], 'id' => $ij++], timeout: $this->timeout);
+                        params: ['jsonrpc'=> '2.0', 'method' => 'eth_getTransactionReceipt', 'params' => [$transaction['hash']], 'id' => $ij++], timeout: $this->timeout);
                 }
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'),
@@ -203,7 +205,7 @@ abstract class EVMMainModule extends CoreModule
         else // Mempool processing
         {
             $r = requester_single($this->select_node(),
-                params: ['method' => 'txpool_content', 'id' => 0],
+                params: ['jsonrpc'=> '2.0', 'method' => 'txpool_content', 'id' => 0],
                 result_in: 'result',
                 timeout: $this->timeout);
 
@@ -372,7 +374,7 @@ abstract class EVMMainModule extends CoreModule
 
                 foreach ($uncles as $uncle)
                     $multi_curl[] = requester_multi_prepare($this->select_node(),
-                        params: ['method' => 'eth_getUncleByBlockNumberAndIndex', 'params' => [to_0xhex_from_int64($block_id), to_0xhex_from_int64($ij)],
+                        params: ['jsonrpc'=> '2.0', 'method' => 'eth_getUncleByBlockNumberAndIndex', 'params' => [to_0xhex_from_int64($block_id), to_0xhex_from_int64($ij)],
                                  'id' => $ij++], timeout: $this->timeout);
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
@@ -527,7 +529,7 @@ abstract class EVMMainModule extends CoreModule
             return '0';
 
         return to_int256_from_0xhex(requester_single($this->select_node(),
-            params: ['method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
+            params: ['jsonrpc'=> '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
             result_in: 'result', timeout: $this->timeout));
     }
 }
