@@ -151,8 +151,9 @@ elseif ($chosen_option === 'B')
 
         foreach ($events as $event)
         {
-            if (str_contains($event['transaction'], $filter) || str_contains($event['address'], $filter))
-                $output_events[] = $event;
+            if ((!is_null($event['transaction']) && str_contains($event['transaction'], $filter)) ||
+                (!is_null($event['address']) && str_contains($event['address'], $filter)))
+                    $output_events[] = $event;
         }
 
         ddd($output_events);
