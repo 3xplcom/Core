@@ -179,7 +179,7 @@ abstract class EVMMainModule extends CoreModule
                 }
             }
 
-            if (in_array(EVMSpecialFeatures::ProcessValidatorSeparately, $this->extra_features))
+            if (in_array(EVMSpecialFeatures::BorValidator, $this->extra_features))
             {
                 $miner = ($block_id === 0) ? '0x0000000000000000000000000000000000000000' : requester_single($this->select_node(),
                     params: ['method'  => 'bor_getAuthor',

@@ -21,7 +21,7 @@ final class PolygonMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::Erigon;
-        $this->extra_features = [EVMSpecialFeatures::ProcessValidatorSeparately];
+        $this->extra_features = [EVMSpecialFeatures::BorValidator];
         $this->reward_function = function($block_id)
         {
             return '0';

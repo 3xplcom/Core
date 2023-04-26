@@ -26,7 +26,7 @@ enum EVMSpecialTransactions: string
 enum EVMSpecialFeatures
 {
     case HasOrHadUncles;
-    case ProcessValidatorSeparately;
+    case BorValidator;
 }
 
 trait EVMTraits
