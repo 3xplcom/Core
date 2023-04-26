@@ -174,6 +174,13 @@ abstract class EVMMainModule extends CoreModule
                 }
             }
 
+            if (in_array(EVMSpecialFeatures::ProcessValidatorSeparately, $this->extra_features))
+            {
+                $miner = ($block_id === 0) ? '0x0000000000000000000000000000000000000000' : requester_single($this->select_node(),
+                    params: ['method' => 'bor_getAuthor', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0],
+                    result_in: 'result', timeout: $this->timeout);
+            }
+
             // Data processing
 
             $this->block_time = date('Y-m-d H:i:s', to_int64_from_0xhex($block_time));
