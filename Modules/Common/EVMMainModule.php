@@ -79,19 +79,17 @@ abstract class EVMMainModule extends CoreModule
                 $multi_curl = [];
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc' => "2.0",
-                             'method'  => 'eth_getBlockByNumber',
-                             'params'  => [to_0xhex_from_int64($block_id),
-                                          true,
-                             ],
+                    params: ['method'  => 'eth_getBlockByNumber',
+                             'params'  => [to_0xhex_from_int64($block_id), true],
                              'id'      => 0,
+                             'jsonrpc' => '2.0',
                     ], timeout: $this->timeout);
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc' => "2.0",
-                             'method'  => 'eth_getBlockReceipts',
+                    params: ['method'  => 'eth_getBlockReceipts',
                              'params'  => [to_0xhex_from_int64($block_id)],
                              'id'      => 0,
+                             'jsonrpc' => '2.0',
                     ], timeout: $this->timeout);
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
@@ -132,8 +130,11 @@ abstract class EVMMainModule extends CoreModule
             else // geth is slower as we have to do eth_getTransactionReceipt for every transaction separately
             {
                 $r1 = requester_single($this->select_node(),
-                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_getBlockByNumber', 'params' => [to_0xhex_from_int64($block_id), true], 'id' => 0],
-                    result_in: 'result', timeout: $this->timeout);
+                    params: ['method'  => 'eth_getBlockByNumber',
+                             'params'  => [to_0xhex_from_int64($block_id), true],
+                             'id'      => 0,
+                             'jsonrpc' => '2.0',
+                    ], result_in: 'result', timeout: $this->timeout);
 
                 $block_time = $r1['timestamp'];
                 $miner = $r1['miner'];
@@ -155,7 +156,11 @@ abstract class EVMMainModule extends CoreModule
                 foreach ($r1['transactions'] as $transaction)
                 {
                     $multi_curl[] = requester_multi_prepare($this->select_node(),
-                        params: ['jsonrpc'=> '2.0', 'method' => 'eth_getTransactionReceipt', 'params' => [$transaction['hash']], 'id' => $ij++], timeout: $this->timeout);
+                        params: ['method'  => 'eth_getTransactionReceipt',
+                                 'params'  => [$transaction['hash']],
+                                 'id'      => $ij++,
+                                 'jsonrpc' => '2.0',
+                        ], timeout: $this->timeout);
                 }
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'),
@@ -172,6 +177,17 @@ abstract class EVMMainModule extends CoreModule
                 {
                     $receipt = $receipt['result'];
                 }
+            }
+
+            if (in_array(EVMSpecialFeatures::BorValidator, $this->extra_features))
+            {
+                $miner = ($block_id === 0) ? '0x0000000000000000000000000000000000000000' : requester_single($this->select_node(),
+                    params: ['method'  => 'bor_getAuthor',
+                             'params'  => [to_0xhex_from_int64($block_id)],
+                             'id'      => 0,
+                             'jsonrpc' => '2.0',
+                    ],
+                    result_in: 'result', timeout: $this->timeout);
             }
 
             // Data processing

@@ -544,7 +544,7 @@ abstract class CoreModule
 
             if (!$this->ignore_sum_of_all_effects)
                 foreach ($check_sums as $transaction => $sum)
-                    if ($sum !== '0')
+                    if (!($sum === '0' || $sum === '-0'))
                         throw new DeveloperError("Sum of all effects is not 0 for {$transaction}: {$sum}");
         }
 

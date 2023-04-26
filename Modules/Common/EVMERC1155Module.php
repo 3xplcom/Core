@@ -116,10 +116,8 @@ abstract class EVMERC1155Module extends CoreModule
 
             $n = (str_split(substr($log['data'], 2), 64));
 
-            if (((count($n) - 4) % 2) !== 0)
-            {
-                throw new ModuleError("`data` can't be split into even parts for `TransferBatch`: " . print_r($n, true));
-            }
+            if (((count($n) - 4) % 2) !== 0) // Some contract may yield invalid `data`, e.g. two token ids, but just one value
+                continue;
 
             $n_count = intdiv(count($n) - 4, 2);
             $first_5th = 4 + $n_count;
