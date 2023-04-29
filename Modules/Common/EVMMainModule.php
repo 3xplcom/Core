@@ -291,7 +291,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 0,
                     'effect' => '-' . $this_burned,
-                    'failed' => 'f',
+                    'failed' => false,
                     'extra' => EVMSpecialTransactions::Burning->value,
                 ];
 
@@ -301,7 +301,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 1,
                     'effect' => $this_burned,
-                    'failed' => 'f',
+                    'failed' => false,
                     'extra' => EVMSpecialTransactions::Burning->value,
                 ];
             }
@@ -315,7 +315,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 2,
                     'effect' => '-' . $this_to_miner,
-                    'failed' => 'f',
+                    'failed' => false,
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
 
@@ -325,7 +325,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 3,
                     'effect' => $this_to_miner,
-                    'failed' => 'f',
+                    'failed' => false,
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
             }
@@ -338,7 +338,7 @@ abstract class EVMMainModule extends CoreModule
                 'sort_in_block' => $ijk,
                 'sort_in_transaction' => 4,
                 'effect' => '-' . to_int256_from_0xhex($transaction['value']),
-                'failed' => ($transaction['status'] === '0x1') ? 'f' : 't',
+                'failed' => ($transaction['status'] === '0x1') ? false : true,
                 'extra' => null,
             ];
 
@@ -365,7 +365,7 @@ abstract class EVMMainModule extends CoreModule
                 'sort_in_block' => $ijk++,
                 'sort_in_transaction' => 5,
                 'effect' => to_int256_from_0xhex($transaction['value']),
-                'failed' => ($transaction['status'] === '0x1') ? 'f' : 't',
+                'failed' => ($transaction['status'] === '0x1') ? false : true,
                 'extra' => $extra_bit,
             ];
         }
@@ -421,7 +421,7 @@ abstract class EVMMainModule extends CoreModule
                         'sort_in_block' => $ijk,
                         'sort_in_transaction' => 0,
                         'effect' => '-' . $uncle_reward[1],
-                        'failed' => 'f',
+                        'failed' => false,
                         'extra' => EVMSpecialTransactions::UncleReward->value,
                     ];
 
@@ -431,7 +431,7 @@ abstract class EVMMainModule extends CoreModule
                         'sort_in_block' => $ijk++,
                         'sort_in_transaction' => 1,
                         'effect' => $uncle_reward[1],
-                        'failed' => 'f',
+                        'failed' => false,
                         'extra' => EVMSpecialTransactions::UncleReward->value,
                     ];
                 }
@@ -446,7 +446,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 0,
                     'effect' => '-' . $uncle_inclusion_reward,
-                    'failed' => 'f',
+                    'failed' => false,
                     'extra' => EVMSpecialTransactions::UncleInclusionReward->value,
                 ];
 
@@ -456,7 +456,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_block' => $ijk++,
                     'sort_in_transaction' => 1,
                     'effect' => $uncle_inclusion_reward,
-                    'failed' => 'f',
+                    'failed' => false,
                     'extra' => EVMSpecialTransactions::UncleInclusionReward->value,
                 ];
             }
@@ -469,7 +469,7 @@ abstract class EVMMainModule extends CoreModule
                 'sort_in_block' => $ijk,
                 'sort_in_transaction' => 0,
                 'effect' => '-' . $base_reward,
-                'failed' => 'f',
+                'failed' => false,
                 'extra' => EVMSpecialTransactions::BlockReward->value,
             ];
 
@@ -479,7 +479,7 @@ abstract class EVMMainModule extends CoreModule
                 'sort_in_block' => $ijk++,
                 'sort_in_transaction' => 1,
                 'effect' => $base_reward,
-                'failed' => 'f',
+                'failed' => false,
                 'extra' => EVMSpecialTransactions::BlockReward->value,
             ];
         }
