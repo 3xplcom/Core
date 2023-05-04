@@ -74,6 +74,12 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
+        if ($block_id === 0)
+        {
+            $this->set_return_events([]);
+            return;
+        }
+
         $extrinsics = $extrinsics_with_hashes = [];
 
         foreach ($this->block_data['extrinsics'] as $extrinsic)
