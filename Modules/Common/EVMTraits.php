@@ -47,7 +47,7 @@ trait EVMTraits
 
         $multi_curl = [];
 
-        if ($this->evm_implementation === EVMImplementation::Erigon)
+        if (isset($this->evm_implementation) && $this->evm_implementation === EVMImplementation::Erigon)
         {
             $params = ['jsonrpc'=> '2.0', 'method' => 'erigon_getHeaderByNumber', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0];
         }
@@ -123,5 +123,40 @@ trait EVMTraits
         }
 
         return $result;
+    }
+}
+
+function evm_trace($calls, &$this_calls)
+{
+    foreach ($calls as $call)
+    {
+        if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CREATE', 'SELFDESTRUCT', 'INVALID']))
+            throw new ModuleError("Unknown call type: {$call['type']}");
+
+        if ($call['type'] === 'INVALID')
+            if ($call['value'] !== '0x0' || isset($call['calls']))
+                throw new ModuleError('Invalid INVALID call');
+
+        if (!in_array($call['type'], ['STATICCALL', 'DELEGATECALL', 'CALLCODE']) && !isset($call['error']))
+        {
+            if ($call['type'] !== 'CALL' || $call['value'] !== '0x0')
+            {
+                $this_type = match ($call['type'])
+                {
+                    'CALL' => null,
+                    'CREATE' => EVMSpecialTransactions::ContractCreation->value,
+                    'SELFDESTRUCT' => EVMSpecialTransactions::ContractDestruction->value,
+                };
+
+                $this_calls[] = ['from'  => $call['from'],
+                                 'to'    => $call['to'],
+                                 'type'  => $this_type,
+                                 'value' => to_int256_from_0xhex($call['value']),
+                ];
+            }
+        }
+
+        if (isset($call['calls']))
+            evm_trace($call['calls'], $this_calls);
     }
 }
