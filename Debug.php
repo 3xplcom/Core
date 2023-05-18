@@ -172,16 +172,28 @@ elseif ($chosen_option === 'M')
         {
             for ($i = $best_known_block + 1; $i <= $current_block; $i++)
             {
+                back:
+                echo "\nNew block #{$i} ";
+
                 $t0 = microtime(true);
 
-                $module->process_block($i);
+                try
+                {
+                    $module->process_block($i);
+                }
+                catch (RequesterException)
+                {
+                    echo cli_format_error('Requested exception');
+                    usleep(250000);
+                    goto back;
+                }
 
                 $event_count = count($module->get_return_events() ?? []);
                 $currency_count = count($module->get_return_currencies() ?? []);
 
                 $time = number_format(microtime(true) - $t0, 4);
 
-                echo "\nNew block #{$i} with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+                echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
             }
 
             $best_known_block = $current_block;
