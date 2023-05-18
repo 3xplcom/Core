@@ -187,6 +187,9 @@ abstract class CoreModule
 
             if ($this->transaction_render_model !== $complemented->transaction_render_model)
                 throw new DeveloperError("`transaction_render_model` mismatch for complemented module `{$this->complements}`");
+
+            if ($this->should_return_currencies || $complemented->should_return_currencies)
+                throw new DeveloperError("Undefined behaviour for processing currencies in a complemented module");
         }
         else
         {
