@@ -97,6 +97,12 @@ abstract class CoreModule
     public ?bool $ignore_sum_of_all_effects = false; // By default, sum of all events returned for a block by a module should be 0.
     // If that's not the case, change this to true.
 
+    // Handles
+
+    public ?bool $handles_implemented = null; // Is there an API call to convert a handle into address?
+    public ?string $handles_regex = null; // Regular expression for the handles
+    public ?Closure $api_get_handle = null; // API function that performs conversion
+
     ///////////////////////
     // Runtime variables //
     ///////////////////////
@@ -152,8 +158,14 @@ abstract class CoreModule
 
     final public function post_initialize()
     {
+        if (is_null($this->is_main))
+            throw new DeveloperError("`is_main` is not set");
+
         if (!is_null($this->complements))
         {
+            if ($this->is_main)
+                throw new DeveloperError("Complementing module can't be main");
+
             if (isset($this->currency))
                 throw new DeveloperError("Can't set custom `currency` when complementing");
 
@@ -196,9 +208,6 @@ abstract class CoreModule
             if ($this->must_complement)
                 throw new DeveloperError("`complements` is not set, but `must_complement` is true");
         }
-
-        if (is_null($this->is_main))
-            throw new DeveloperError("`is_main` is not set");
 
         if (is_null($this->blockchain))
             throw new DeveloperError("`blockchain` is not set");
@@ -354,6 +363,17 @@ abstract class CoreModule
 
         if (is_null($this->first_block_date))
             throw new DeveloperError("`first_block_date` is not set");
+
+        if (!$this->is_main && !is_null($this->handles_implemented))
+            throw new DeveloperError("Handles can only be supported in the main module");
+
+        if (!is_null($this->handles_implemented) && $this->handles_implemented)
+        {
+            if (!isset($this->handles_regex))
+                throw new DeveloperError("`handles_regex` is not defined");
+            if (!isset($this->api_get_handle))
+                throw new DeveloperError("`api_get_handle` is not defined");
+        }
     }
 
     abstract function post_post_initialize(); // This is defined in parent classes

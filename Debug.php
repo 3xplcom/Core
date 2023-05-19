@@ -69,7 +69,9 @@ else
 echo cli_format_bold('Please select an action: ') . N;
 echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Process block ' . cli_format_reverse('<B>') .
-    ', Monitor blockchain ' . cli_format_reverse('<M>') . N;
+    ', Monitor blockchain ' . cli_format_reverse('<M>') .
+    ', Check handle ' . cli_format_reverse('<H>') .
+    N;
 
 if (isset($argv[2]))
 {
@@ -83,7 +85,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'M']))
+if (!in_array($chosen_option, ['L', 'B', 'M', 'H']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -205,4 +207,20 @@ elseif ($chosen_option === 'M')
 
         usleep(250000);
     }
+}
+elseif ($chosen_option === 'H') // Checking handles
+{
+    echo cli_format_bold('Handle please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $handle = $argv[3];
+        echo ":> {$handle}\n";
+    }
+    else
+    {
+        $handle = readline(':> ');
+    }
+
+    ddd(($module->api_get_handle)($handle));
 }
