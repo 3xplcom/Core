@@ -94,6 +94,12 @@ File structure
 - LICENSE.md
 - README.md
 
+Dependencies
+------------
+
+PHP 8.2:
+`apt-get install php8.2-cli php8.2-curl php8.2-pgsql php8.2-bcmath php8.2-mbstring php8.2-intl`
+
 License
 -------
 
