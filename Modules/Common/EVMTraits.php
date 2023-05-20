@@ -131,21 +131,21 @@ function evm_trace($calls, &$this_calls)
 {
     foreach ($calls as $call)
     {
-        if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CREATE', 'SELFDESTRUCT', 'INVALID']))
+        if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CREATE', 'CREATE2', 'SELFDESTRUCT', 'INVALID']))
             throw new ModuleError("Unknown call type: {$call['type']}");
 
-        if ($call['type'] === 'INVALID')
-            if ($call['value'] !== '0x0' || isset($call['calls']))
-                throw new ModuleError('Invalid INVALID call');
+        if ($call['type'] === 'INVALID' && isset($call['calls'])) // Check that INVALID calls don't have children
+            throw new ModuleError('Invalid INVALID call');
 
-        if (!in_array($call['type'], ['STATICCALL', 'DELEGATECALL', 'CALLCODE']) && !isset($call['error']))
-        {
-            if ($call['type'] !== 'CALL' || $call['value'] !== '0x0')
+        if (!in_array($call['type'], ['STATICCALL', 'DELEGATECALL', 'CALLCODE', 'INVALID']) && !isset($call['error']))
+        { // We're not processing calls that don't transfer value, thus we ignore all these 4 types and errored calls
+            if ($call['type'] !== 'CALL' || $call['value'] !== '0x0') // And we don't store CALLs with 0 value
             {
                 $this_type = match ($call['type'])
                 {
                     'CALL' => null,
                     'CREATE' => EVMSpecialTransactions::ContractCreation->value,
+                    'CREATE2' => EVMSpecialTransactions::ContractCreation->value,
                     'SELFDESTRUCT' => EVMSpecialTransactions::ContractDestruction->value,
                 };
 
