@@ -27,6 +27,7 @@ enum EVMSpecialFeatures
 {
     case HasOrHadUncles;
     case BorValidator;
+    case AllowEmptyRecipient;
 }
 
 trait EVMTraits

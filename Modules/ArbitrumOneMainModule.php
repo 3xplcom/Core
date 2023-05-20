@@ -21,6 +21,7 @@ final class ArbitrumOneMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
+        $this->extra_features = [EVMSpecialFeatures::AllowEmptyRecipient];
         $this->reward_function = function($block_id)
         {
             return '0';
