@@ -361,7 +361,7 @@ abstract class EVMMainModule extends CoreModule
 
             $events[] = [
                 'transaction' => $transaction_hash,
-                'address' => $transaction['to'] ?? $transaction['contractAddress'] ?? throw new DeveloperError('No address'),
+                'address' => $transaction['to'] ?? $transaction['contractAddress'] ?? '0x00',
                 'sort_in_block' => $ijk++,
                 'sort_in_transaction' => 5,
                 'effect' => to_int256_from_0xhex($transaction['value']),
