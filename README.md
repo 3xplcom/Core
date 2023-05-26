@@ -64,8 +64,9 @@ How to develop a new module?
 4. Implement `ensure_block()` to compare block hashes from different nodes (if you have only one node you can emulate that with duplicating the node in the `.env` file). Modules can work with several nodes simultaneously for faster speed and it's imperative that nodes agree on what blocks they have.
 5. Implement `pre_process_block()` to process blocks into event arrays (if there's mempool support, also add the mempool processing logic)
 6. Implement `api_get_balance()` if node allows to retrieve balances
-7. Set `CoreModule` variables
-8. Start debugging your module with `Debug.php`. The core module catches many errors (e.g. missing fields in the output).
+7. Implement `api_get_handle()` if node allows to retrieve handle data (see ENS in EthereumMainModule for example)
+8. Set `CoreModule` variables
+9. Start debugging your module with `Debug.php`. The core module catches many errors (e.g. missing fields in the output).
 
 File structure
 --------------
@@ -92,6 +93,12 @@ File structure
 - Init.php
 - LICENSE.md
 - README.md
+
+Dependencies
+------------
+
+PHP 8.2:
+`apt-get install php8.2-cli php8.2-curl php8.2-pgsql php8.2-bcmath php8.2-mbstring php8.2-intl`
 
 License
 -------

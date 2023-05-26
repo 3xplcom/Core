@@ -124,4 +124,83 @@ trait EVMTraits
 
         return $result;
     }
+
+    function ens_label_to_hash($label)
+    {
+        // All ENS names should conform to the IDNA standard UTS #46 including STD3 Rules, see
+        // http://unicode.org/reports/tr46/
+
+        $label = idn_to_ascii($label, IDNA_USE_STD3_RULES, INTL_IDNA_VARIANT_UTS46);
+
+        if (str_contains($label,'.'))
+            return null;
+
+        return Keccak9::hash($label, 256);
+    }
+
+    function ens_name_to_hash($name)
+    {
+        $node = '0000000000000000000000000000000000000000000000000000000000000000';
+
+        if (!is_null($name) && (strlen($name) > 0))
+        {
+            $labels = explode('.', $name);
+
+            foreach (array_reverse($labels) as $label)
+            {
+                $label_hash = $this->ens_label_to_hash($label);
+
+                if (is_null($label_hash))
+                    return null;
+
+                $node = $node . $label_hash;
+                $node = Keccak9::hash(hex2bin($node), 256);
+            }
+        }
+        else
+        {
+            return null;
+        }
+
+        return $node;
+    }
+
+    function ens_get_data($hash, $function, $registry_contract)
+    {
+        $output = requester_single($this->select_node(),
+            params: ['jsonrpc' => '2.0',
+                     'method'  => 'eth_call',
+                     'id'      => 0,
+                     'params'  => [['to'   => $registry_contract,
+                                    'data' => $function . $this->encode_abi('address', $hash),
+                                   ],
+                                   'latest',
+                     ],
+            ],
+            result_in: 'result',
+            timeout: $this->timeout);
+
+        return '0x' . substr($output, -40);
+    }
+
+    function ens_get_data_from_resolver($resolver, $hash, $function, $length = 0)
+    {
+        if ($resolver === '0x0000000000000000000000000000000000000000')
+            return null;
+
+        $output = requester_single($this->select_node(),
+            params: ['jsonrpc' => '2.0',
+                     'method'  => 'eth_call',
+                     'id'      => 0,
+                     'params'  => [['to'   => $resolver,
+                                    'data' => $function . $this->encode_abi('address', $hash),
+                                   ],
+                                   'latest',
+                     ],
+            ],
+            result_in: 'result',
+            timeout: $this->timeout);
+
+        return str_replace('0x', '', substr($output, $length));
+    }
 }

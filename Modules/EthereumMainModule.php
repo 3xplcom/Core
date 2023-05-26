@@ -42,5 +42,29 @@ final class EthereumMainModule extends EVMMainModule implements Module
 
             return $base_reward;
         };
+
+        // Handles
+        $this->handles_implemented = true;
+        $this->handles_regex = '/(.*)\.eth/';
+        $this->api_get_handle = function($handle)
+        {
+            if (!preg_match($this->handles_regex, $handle))
+                return null;
+
+            require_once __DIR__ . '/../Engine/Crypto/Keccak.php';
+
+            $hash = $this->ens_name_to_hash($handle);
+
+            if (is_null($hash) || $hash === '')
+                return null;
+
+            $resolver = $this->ens_get_data($hash, '0x0178b8bf', '0x00000000000c2e074ec69a0dfb2997ba6c7d2e1e');
+            $address = $this->ens_get_data_from_resolver($resolver, $hash, '0x3b3b57de', -40);
+
+            if ($address)
+                return '0x' . $address;
+            else
+                return null;
+        };
     }
 }
