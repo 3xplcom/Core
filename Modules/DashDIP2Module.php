@@ -17,6 +17,7 @@ final class DashDIP2Module extends UTXODIP2Module implements Module
         $this->is_main = false;
         $this->currency = 'dash';
         $this->currency_details = ['name' => 'Dash', 'symbol' => 'DASH', 'decimals' => 8, 'description' => null];
-        $this->first_block_date = '2014-01-19';
+        $this->first_block_id = 1028160;
+        $this->first_block_date = '2019-02-27';
     }
 }
