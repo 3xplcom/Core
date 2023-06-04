@@ -217,7 +217,7 @@ function requester_multi($single_set, $limit, $timeout = 600, $valid_codes = [20
     return $curl_results;
 }
 
-function requester_multi_prepare($daemon, $endpoint = '', $params = [], $timeout = 600)
+function requester_multi_prepare($daemon, $endpoint = '', $params = [], $timeout = 600, $no_json_encode = false)
 {
     $curl = curl_init();
 
@@ -231,14 +231,28 @@ function requester_multi_prepare($daemon, $endpoint = '', $params = [], $timeout
     }
     else // POST
     {
-        $options = [CURLOPT_URL            => $daemon . $endpoint,
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_FOLLOWLOCATION => false,
-                    CURLOPT_HTTPHEADER     => ['Content-type: application/json'],
-                    CURLOPT_POST           => true,
-                    CURLOPT_POSTFIELDS     => json_encode($params),
-                    CURLOPT_TIMEOUT        => $timeout,
-        ];
+        if (!$no_json_encode)
+        {
+            $options = [CURLOPT_URL            => $daemon . $endpoint,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_FOLLOWLOCATION => false,
+                        CURLOPT_HTTPHEADER     => ['Content-type: application/json'],
+                        CURLOPT_POST           => true,
+                        CURLOPT_POSTFIELDS     => json_encode($params),
+                        CURLOPT_TIMEOUT        => $timeout,
+            ];
+        }
+        else // Send params directly
+        {
+            $options = [CURLOPT_URL            => $daemon . $endpoint,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_FOLLOWLOCATION => false,
+                        CURLOPT_HTTPHEADER     => ['Content-type: application/json'],
+                        CURLOPT_POST           => true,
+                        CURLOPT_POSTFIELDS     => $params,
+                        CURLOPT_TIMEOUT        => $timeout,
+            ];
+        }
     }
 
     curl_setopt_array($curl, $options);
