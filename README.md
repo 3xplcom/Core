@@ -6,7 +6,7 @@ https://3xpl.com
 What is 3xpl?
 -------------
 
-3xpl (short for 3xplor3r) is a super-fast, universal explorer for most popular public blockchains.
+3xpl (pronounced `θriːksˈpl`, short for 3xplor3r) is a super-fast, universal explorer for most popular public blockchains.
 It offers an easy-to-understand block explorer interface for ordinary crypto users, as well as numerous professional features for developers and analysts.
 
 We release our core modules as open source software. Why?
@@ -27,6 +27,7 @@ Our modules work with three entities:
 * **Currencies** - every event is about sending money (or collectibles), and, for example, we treat sending ERC-20s the same as sending native ethers. For every event its corresponding currency id should be specified. Modules should gather additional information on currencies as they process blocks.
 
 For example, Bitcoin's genesis transaction generates two events:
+```
 * 0
 * * `transaction` => `4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b`
 * * `address` => `the-void` (special synthetic address)
@@ -43,8 +44,9 @@ For example, Bitcoin's genesis transaction generates two events:
 * * `block` => `0`
 * * `time` => `2009-01-03 18:15:05`
 * * `sort_key` => `1`
+```
 
-One of the principles we also follow is atomicity. By atomicity we mean that in order to process a block, we don't need to look into some custom database (i.e., for previous block data), only data from the node should be used.
+One of the principles we also follow is atomicity. By atomicity, we mean that in order to process a block, we don't need to look into some custom database (i.e., for previous block data), only data from the node should be used.
 
 3xpl's core is split into modules. Each module processes some specific transaction type. For example, for Ethereum we have 5 modules: `ethereum-main` which processes basic transactions, `ethereum-trace` which processes internal transfers, `ethereum-erc-20` which processes ERC-20 transfers and ERC-20 currencies, `ethereum-erc-721`, and `ethereum-erc-1155`.
 
@@ -53,7 +55,7 @@ Why PHP? Because it's fun! Why no Composer? Because it's not fun.
 How to run a module?
 --------------------
 
-First, you need to run a corresponding node. After the sync is complete, you need to add node credentials to the `.env` file. Afterwards you can start working with the module using `Debug.php`. For example, to track the newest ERC-20 transfers, you'd need to run `php Debug.php ethereum-erc-20 M`. You can write your own script that dumps the data into TSV files or whatever.
+First, you need to run a corresponding node. After the sync is complete, you need to add node credentials to the `.env` file. Afterwards you can start working with the module using `3xpl.php`. For example, to track the newest ERC-20 transfers, you'd need to run `php 3xpl.php ethereum-erc-20 M`. You can write your own script that dumps the data into TSV files or whatever.
 
 How to develop a new module?
 ----------------------------
@@ -66,12 +68,14 @@ How to develop a new module?
 6. Implement `api_get_balance()` if node allows to retrieve balances
 7. Implement `api_get_handle()` if node allows to retrieve handle data (see ENS in EthereumMainModule for example)
 8. Set `CoreModule` variables
-9. Start debugging your module with `Debug.php`. The core module catches many errors (e.g. missing fields in the output).
+9. Start debugging your module with `3xpl.php`. The core module catches many errors (e.g. missing fields in the output).
 
 File structure
 --------------
 
 - Engine
+- - Crypto
+- - - (Class*).php (for various cryptographic functions like SHA)
 - - Database.php
 - - DebugHelpers.php
 - - Enums.php
@@ -88,8 +92,9 @@ File structure
 - - - (Module*).json
 - - (Final*)Module.php ("Final" modules)
 - .env.example
+- .gitignore
+- 3xpl.php
 - CONTRIBUTING.md
-- Debug.php
 - Init.php
 - LICENSE.md
 - README.md

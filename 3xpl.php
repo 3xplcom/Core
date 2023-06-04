@@ -5,10 +5,10 @@
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This utility should be used to debug the modules.
- *  Usage: `php Debug.php`, or
- *         `php Debug.php <module> <action> <...params>`
+ *  Usage: `php 3xpl.php`, or
+ *         `php 3xpl.php <module> <action> <...params>`
  *  You can either input arguments as you go, or invoke the script with them.
- *  Example: `php Debug.php bnb-bep-20 M` to monitor for new BEP-20 transfers  */
+ *  Example: `php 3xpl.php bnb-bep-20 M` to monitor for new BEP-20 transfers  */
 
 require_once __DIR__ . '/Init.php';
 require_once __DIR__ . '/Engine/DebugHelpers.php';
@@ -51,7 +51,6 @@ if (is_numeric($chosen_module)) // Allow both selecting by number or by full mod
 {
     if (!isset($i_to_module[$chosen_module]))
         die(cli_format_error('Wrong choice for 1st param') . N);
-    echo 'Chosen module: ' . $i_to_module[$chosen_module] . N2;
 
     $module = new (module_name_to_class($i_to_module[$chosen_module]))();
 }
@@ -59,14 +58,13 @@ else
 {
     if (!in_array($chosen_module, $available_modules))
         die(cli_format_error('Wrong choice for 1st param') . N);
-    echo 'Chosen module: ' . $chosen_module . N2;
 
     $module = new (module_name_to_class($chosen_module))();
 }
 
 // Module actions
 
-echo cli_format_bold('Please select an action: ') . N;
+echo N . cli_format_bold('Please select an action: ') . N;
 echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Process block ' . cli_format_reverse('<B>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
@@ -123,11 +121,12 @@ elseif ($chosen_option === 'B')
     if (isset($argv[4]))
     {
         $filter = $argv[4];
-        echo ":> {$argv[4]}\n";
+        echo ":> {$argv[4]}\n\n";
     }
     else
     {
         $filter = readline(':> ');
+        echo N;
     }
 
     $input_argv[] = $filter;
@@ -145,6 +144,9 @@ elseif ($chosen_option === 'B')
     }
     elseif ($filter === 'T')
     {
+        if (!$events)
+            ddd($events);
+
         ddd(array_chunk($events, 10)[0]);
     }
     else
