@@ -23,6 +23,7 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
         $options = [CURLOPT_URL            => $daemon . $endpoint,
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_FOLLOWLOCATION => false,
+                    CURLOPT_HTTPGET        => true, // There's an issue: if previously we've used (static) $curl for POST, it doesn't go back to the default GET method
                     CURLOPT_TIMEOUT        => $timeout,
         ];
     }
@@ -67,7 +68,10 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
 
     if (!in_array($in['http_code'], $valid_codes))
     {
-        throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: wrong code: {$in['http_code']}");
+        if ($in['http_code'] === 0)
+            throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: code 0 (timeout?)");
+        else
+            throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: wrong code: {$in['http_code']}");
     }
 
     curl_close($curl);
@@ -226,6 +230,7 @@ function requester_multi_prepare($daemon, $endpoint = '', $params = [], $timeout
         $options = [CURLOPT_URL            => $daemon . $endpoint,
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_FOLLOWLOCATION => false,
+                    CURLOPT_HTTPGET        => true,
                     CURLOPT_TIMEOUT        => $timeout,
         ];
     }
