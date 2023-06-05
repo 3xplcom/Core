@@ -27,6 +27,7 @@ enum EVMSpecialFeatures
 {
     case HasOrHadUncles;
     case BorValidator;
+    case AllowEmptyRecipient;
 }
 
 trait EVMTraits
@@ -47,7 +48,7 @@ trait EVMTraits
 
         $multi_curl = [];
 
-        if ($this->evm_implementation === EVMImplementation::Erigon)
+        if (isset($this->evm_implementation) && $this->evm_implementation === EVMImplementation::Erigon)
         {
             $params = ['jsonrpc'=> '2.0', 'method' => 'erigon_getHeaderByNumber', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0];
         }
@@ -202,5 +203,40 @@ trait EVMTraits
             timeout: $this->timeout);
 
         return str_replace('0x', '', substr($output, $length));
+    }
+}
+
+function evm_trace($calls, &$this_calls)
+{
+    foreach ($calls as $call)
+    {
+        if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CREATE', 'CREATE2', 'SELFDESTRUCT', 'INVALID']))
+            throw new ModuleError("Unknown call type: {$call['type']}");
+
+        if ($call['type'] === 'INVALID' && isset($call['calls'])) // Check that INVALID calls don't have children
+            throw new ModuleError('Invalid INVALID call');
+
+        if (!in_array($call['type'], ['STATICCALL', 'DELEGATECALL', 'CALLCODE', 'INVALID']) && !isset($call['error']))
+        { // We're not processing calls that don't transfer value, thus we ignore all these 4 types and errored calls
+            if ($call['type'] !== 'CALL' || $call['value'] !== '0x0') // And we don't store CALLs with 0 value
+            {
+                $this_type = match ($call['type'])
+                {
+                    'CALL' => null,
+                    'CREATE' => EVMSpecialTransactions::ContractCreation->value,
+                    'CREATE2' => EVMSpecialTransactions::ContractCreation->value,
+                    'SELFDESTRUCT' => EVMSpecialTransactions::ContractDestruction->value,
+                };
+
+                $this_calls[] = ['from'  => $call['from'],
+                                 'to'    => $call['to'],
+                                 'type'  => $this_type,
+                                 'value' => to_int256_from_0xhex($call['value']),
+                ];
+            }
+        }
+
+        if (isset($call['calls']))
+            evm_trace($call['calls'], $this_calls);
     }
 }
