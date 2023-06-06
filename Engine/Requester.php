@@ -87,6 +87,10 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     // Note that this doesn't work good with values like `2.5e-8`, so there's the __IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE option
     // Also it doesn't work with negative numbers, and doesn't process integer arrays (e.g. `[4359895000,2039280]`)
     // TODO: this should be rewritten to support all the aforementioned cases
+
+    if (isset($_ENV['__TRIM_IN_JSON_DECODE'])) // Some nodes output something like `"type": 0` instead of `"type":0` ¯\_(ツ)_/¯
+        $output = preg_replace('/("\w+"):((\s?)(-?[\d\.]+))/', '\\1:"\\4"', $output);
+
     if (!isset($_ENV['__IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE']))
         $output = preg_replace('/("\w+"):(-?[\d\.]+)/', '\\1:"\\2"', $output);
 
@@ -273,6 +277,9 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
         throw new RequesterException("requester_multi_process(result_in:({$result_in})) failed: output is an empty string");
 
     $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
+
+    if (isset($_ENV['__TRIM_IN_JSON_DECODE']))
+        $output = preg_replace('/("\w+"):((\s?)(-?[\d\.]+))/', '\\1:"\\4"', $output);
 
     if (!isset($_ENV['__IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE']))
         $output = preg_replace('/("\w+"):(-?[\d\.]+)/', '\\1:"\\2"', $output);
