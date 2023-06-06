@@ -108,7 +108,7 @@ abstract class HandshakeLikeMainModule extends CoreModule
                 $events[] = ['transaction'         => $transaction['hash'],
                              'address'             => $output['address'],
                              'effect'              => ($output['value']),
-                             'sort_in_transaction' => ((int)$i + 1),
+                             'sort_in_transaction' => ($i + 1),
                              'extra'               => ($output['covenant']['action'] !== 'NONE') ? $output['covenant']['action'] : null,
                              'extra_indexed'       => ($output['covenant']['action'] !== 'NONE') ? $output['covenant']['items'][0] : null,
                 ];
@@ -137,13 +137,16 @@ abstract class HandshakeLikeMainModule extends CoreModule
                 {
                     if ($coinbase_transaction_output === '0') $coinbase_transaction_output = '-0'; // E.g. block #501726 in Bitcoin
 
-                    $events[] = ['transaction'         => $transaction['hash'],
-                                 'address'             => 'the-void',
-                                 'effect'              => $coinbase_transaction_output,
-                                 'sort_in_transaction' => ((int)$i + 1),
-                                 'extra'               => null,
-                                 'extra_indexed'       => null,
-                    ];
+                    if ($i === 0) // The rest are airdrops which are already included in $coinbase_transaction_output,
+                    {             // example: coinbase transaction in block #2730
+                        $events[] = ['transaction'         => $transaction['hash'],
+                                     'address'             => 'the-void',
+                                     'effect'              => $coinbase_transaction_output,
+                                     'sort_in_transaction' => ($i + 1),
+                                     'extra'               => null,
+                                     'extra_indexed'       => null,
+                        ];
+                    }
 
                     if (isset($input['coin']))
                         throw new ModuleError('Suspicious coinbase transaction');
