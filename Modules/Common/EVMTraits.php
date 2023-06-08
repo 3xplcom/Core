@@ -21,6 +21,7 @@ enum EVMSpecialTransactions: string
     case UncleReward = 'u';
     case ContractCreation = 'c';
     case ContractDestruction = 'd';
+    case Withdrawal = 'w';
 }
 
 enum EVMSpecialFeatures
@@ -28,6 +29,7 @@ enum EVMSpecialFeatures
     case HasOrHadUncles;
     case BorValidator;
     case AllowEmptyRecipient;
+    case PoSWithdrawals;
 }
 
 trait EVMTraits
