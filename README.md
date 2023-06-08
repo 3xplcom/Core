@@ -28,22 +28,22 @@ Our modules work with three entities:
 
 For example, Bitcoin's genesis transaction generates two events:
 ```
-* 0
-* * `transaction` => `4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b`
-* * `address` => `the-void` (special synthetic address)
-* * `effect` => `-5000000000` (50 BTC are being generated out of thin air)
-* * `currency` => `bitcoin`
-* * `block` => `0`
-* * `time` => `2009-01-03 18:15:05`
-* * `sort_key` => `0`
-* 1
-* * `transaction` => `4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b`
-* * `address` => `1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa` (miner address)
-* * `effect` => `5000000000` (50 BTC are being sent to the miner)
-* * `currency` => `bitcoin`
-* * `block` => `0`
-* * `time` => `2009-01-03 18:15:05`
-* * `sort_key` => `1`
+0
+* transaction => 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+* address => the-void (special synthetic address)
+* effect => -5000000000 (50 BTC are being generated out of thin air)
+* currency => bitcoin
+* block => 0
+* time => 2009-01-03 18:15:05
+* sort_key => 0
+1
+* transaction => 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+* address => 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa (miner address)
+* effect => 5000000000 (50 BTC are being sent to the miner)
+* currency => bitcoin
+* block => 0
+* time => 2009-01-03 18:15:05
+* sort_key => 1
 ```
 
 One of the principles we also follow is atomicity. By atomicity, we mean that in order to process a block, we don't need to look into some custom database (i.e., for previous block data), only data from the node should be used.
@@ -56,6 +56,14 @@ How to run a module?
 --------------------
 
 First, you need to run a corresponding node. After the sync is complete, you need to add node credentials to the `.env` file. Afterwards you can start working with the module using `3xpl.php`. For example, to track the newest ERC-20 transfers, you'd need to run `php 3xpl.php ethereum-erc-20 M`. You can write your own script that dumps the data into TSV files or whatever.
+
+How to make my own data dump in the same format you offer on https://3xpl.com/data/dumps?
+-----------------------------------------------------------------------------------------
+
+1. Run your own node
+2. Add the node credentials to the `.env` file, e.g. `MODULE_bitcoin-main_NODES[]=http://login:password@127.0.0.1:1234/`
+3. Run `php 3xpl.php <module> B <block_number> T`, e.g. `php 3xpl.php bitcoin-main B 0 T`
+4. Find your TSV file in the `Dumps` folder
 
 How to develop a new module?
 ----------------------------

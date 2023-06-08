@@ -116,7 +116,7 @@ elseif ($chosen_option === 'B')
 
     echo N;
 
-    echo cli_format_bold("What's next? <D> to show all events, <{:transaction}>|<{:address}> to filter, <T> for 10 first events, or <C> for currencies") . N;
+    echo cli_format_bold("What's next? <E> to show all events, <{:transaction}>|<{:address}> to filter events, <10> for 10 first events, <C> for currencies, or <D> to dump events into a TSV file]") . N;
 
     if (isset($argv[4]))
     {
@@ -138,11 +138,69 @@ elseif ($chosen_option === 'B')
 
     $events = $module->get_return_events();
 
-    if ($filter === 'D')
+    if ($filter === 'E')
     {
         ddd($events);
     }
     elseif ($filter === 'T')
+    {
+        // TSV format: blockchain <tab> module <tab> block <tab> transaction <tab> sort_key <tab> time <tab>
+        //             address <tab> currency <tab> sign <tab> effect <tab> valid <tab> extra <?tab> ?extra_indexed
+
+        $tsv_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'currency', 'sign', 'effect', 'valid', 'extra'];
+        $tsv = '';
+
+        foreach ($events as $event)
+        {
+            $this_tsv = [];
+
+            if ($event['address'] === '0x00')
+                $event['address'] = 'the-void';
+
+            if ($module->currency_format === CurrencyFormat::Static)
+                $event['currency'] = $module->currency;
+            else
+                $event['currency'] = ($module->complements ?? $module->module) . '/' . $event['currency'];
+
+            $event['sign'] = (str_contains($event['effect'], '-')) ? '-1' : '1';
+
+            if ($module->hidden_values_only)
+                $event['effect'] = null;
+            else
+                $event['effect'] = str_replace('-', '', $event['effect']);
+
+            if (isset($event['failed']))
+                $event['valid'] = ($event['failed'] === true || $event['failed'] === 't') ? '-1' : '1';
+            else
+                $event['valid'] = '1';
+
+            if (isset($event['extra']))
+                $event['extra'] = '\\\\x' . bin2hex($event['extra']);
+
+            $this_tsv[] = $module->blockchain;
+            $this_tsv[] = $module->module;
+
+            foreach ($tsv_fields as $f)
+                $this_tsv[] = (isset($event[$f])) ? $event[$f] : '\N';
+
+            if (in_array('extra_indexed', $module->events_table_fields))
+                $this_tsv[] = (!is_null($event['extra_indexed'])) ? '\\\\x' . bin2hex($event['extra_indexed']) : '\N';
+
+            $tsv .= join(T, $this_tsv) . N;
+        }
+
+        $fname = "Dumps/3xplor3r_{$module->blockchain}_{$module->module}_events_{$chosen_block_id}.tsv";
+
+        if (!file_exists('Dumps'))
+            mkdir('Dumps', 0777);
+
+        $f = fopen($fname, 'w');
+        fwrite($f, $tsv);
+        fclose($f);
+
+        ddd("Dumped to {$fname}");
+    }
+    elseif ($filter === '10')
     {
         if (!$events)
             ddd($events);
