@@ -48,12 +48,14 @@ else
 if ($chosen_module === 'T')
 {
     $input_argv[] = 'T';
+    echo N;
 
     $wins = [];
     $errors = [];
 
     foreach ($available_modules as $module_name)
     {
+        echo "Running tests for {$module_name}...\n";
         $module = new (module_name_to_class($module_name))();
 
         try
@@ -66,6 +68,8 @@ if ($chosen_module === 'T')
             $errors[] = "Module {$module_name}: {$e->getMessage()}";
         }
     }
+
+    echo N;
 
     ddd($wins, $errors);
 }
@@ -181,7 +185,38 @@ elseif ($chosen_option === 'B')
     }
     if ($filter === 'T')
     {
-        ddd(serialize(['events' => $events, 'currencies' => $module->get_return_currencies()]));
+        echo cli_format_bold(
+                cli_format_reverse('<A>') . ' for all events and currencies, ' .
+                cli_format_reverse('<{:transaction}>') . ' for a single transaction\'s events') . N;
+
+        if (isset($argv[5]))
+        {
+            $transaction = $argv[5];
+            echo ":> {$transaction}\n";
+        }
+        else
+        {
+            $transaction = readline(':> ');
+        }
+
+        $input_argv[] = $transaction;
+
+        if ($transaction === 'A')
+        {
+            ddd(serialize(['events' => $events, 'currencies' => $module->get_return_currencies()]));
+        }
+        else
+        {
+            $filtered_events = [];
+
+            foreach ($events as $event)
+            {
+                if (!is_null($event['transaction']) && str_contains($event['transaction'], $transaction))
+                    $filtered_events[] = $event;
+            }
+
+            ddd(serialize(['events' => $filtered_events]));
+        }
     }
     elseif ($filter === 'D')
     {

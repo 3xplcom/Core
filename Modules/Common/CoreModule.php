@@ -614,7 +614,24 @@ abstract class CoreModule
             $expected_result = $test['result'];
 
             $this->process_block($block);
-            $got_result = serialize(['events' => $this->get_return_events(), 'currencies' => $this->get_return_currencies()]);
+            $events = $this->get_return_events();
+
+            if (!isset($test['transaction']))
+            {
+                $got_result = serialize(['events' => $events, 'currencies' => $this->get_return_currencies()]);
+            }
+            else
+            {
+                $filtered_events = [];
+
+                foreach ($events as $event)
+                {
+                    if (!is_null($event['transaction']) && str_contains($event['transaction'], $test['transaction']))
+                        $filtered_events[] = $event;
+                }
+
+                $got_result = serialize(['events' => $filtered_events]);
+            }
 
             if ($expected_result !== $got_result)
                 $errors[] = $block;
