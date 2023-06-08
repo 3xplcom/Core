@@ -21,7 +21,7 @@ echo cli_format_blue_reverse('  HELLO  ') . N;
 
 // Selecting the module
 
-echo cli_format_bold('Please select a module (number or name): ') . N;
+echo cli_format_bold('Please select a module (number or name) or ' . cli_format_reverse('<T>') . ' for tests: ') . N;
 
 $available_modules = env('MODULES');
 $i_to_module = $to_echo = [];
@@ -43,6 +43,31 @@ if (isset($argv[1]))
 else
 {
     $chosen_module = (string)readline(':> ');
+}
+
+if ($chosen_module === 'T')
+{
+    $input_argv[] = 'T';
+
+    $wins = [];
+    $errors = [];
+
+    foreach ($available_modules as $module_name)
+    {
+        $module = new (module_name_to_class($module_name))();
+
+        try
+        {
+            $module->test();
+            $wins[] = "Module {$module_name} is ok";
+        }
+        catch (Throwable $e)
+        {
+            $errors[] = "Module {$module_name}: {$e->getMessage()}";
+        }
+    }
+
+    ddd($wins, $errors);
 }
 
 $input_argv[] = $chosen_module;
@@ -69,6 +94,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Process block ' . cli_format_reverse('<B>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
     ', Check handle ' . cli_format_reverse('<H>') .
+    ', Run tests ' . cli_format_reverse('<T>') .
     N;
 
 if (isset($argv[2]))
@@ -83,7 +109,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'M', 'H']))
+if (!in_array($chosen_option, ['L', 'B', 'M', 'H', 'T']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -92,6 +118,11 @@ if ($chosen_option === 'L')
 {
     $best_block = $module->inquire_latest_block();
     ddd($best_block);
+}
+elseif ($chosen_option === 'T')
+{
+    $module->test();
+    ddd('Tests have completed successfully');
 }
 elseif ($chosen_option === 'B')
 {
@@ -116,7 +147,13 @@ elseif ($chosen_option === 'B')
 
     echo N;
 
-    echo cli_format_bold("What's next? <E> to show all events, <{:transaction}>|<{:address}> to filter events, <10> for 10 first events, <C> for currencies, or <D> to dump events into a TSV file]") . N;
+    echo cli_format_bold("What's next?\n" .
+            cli_format_reverse('<E>') . ' to show all events, ' .
+            cli_format_reverse('<{:transaction}>|<{:address}>') . ' to filter events, ' .
+            cli_format_reverse('<10>') . ' for 10 first events, ' .
+            cli_format_reverse('<C>') . ' for currencies, ' .
+            cli_format_reverse('<D>') . ' to dump events into a TSV file, or ' .
+            cli_format_reverse('<T>') . ' to generate a test') . N;
 
     if (isset($argv[4]))
     {
@@ -141,6 +178,10 @@ elseif ($chosen_option === 'B')
     if ($filter === 'E')
     {
         ddd($events);
+    }
+    if ($filter === 'T')
+    {
+        ddd(serialize(['events' => $events, 'currencies' => $module->get_return_currencies()]));
     }
     elseif ($filter === 'D')
     {
@@ -215,7 +256,7 @@ elseif ($chosen_option === 'B')
         {
             if ((!is_null($event['transaction']) && str_contains($event['transaction'], $filter)) ||
                 (!is_null($event['address']) && str_contains($event['address'], $filter)))
-                    $output_events[] = $event;
+                $output_events[] = $event;
         }
 
         ddd($output_events);
