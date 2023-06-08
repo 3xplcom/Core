@@ -142,7 +142,7 @@ elseif ($chosen_option === 'B')
     {
         ddd($events);
     }
-    elseif ($filter === 'T')
+    elseif ($filter === 'D')
     {
         // TSV format: blockchain <tab> module <tab> block <tab> transaction <tab> sort_key <tab> time <tab>
         //             address <tab> currency <tab> sign <tab> effect <tab> valid <tab> extra <?tab> ?extra_indexed
