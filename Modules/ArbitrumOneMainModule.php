@@ -18,6 +18,7 @@ final class ArbitrumOneMainModule extends EVMMainModule implements Module
         $this->first_block_id = 0;
         $this->currency = 'ethereum';
         $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 18, 'description' => null];
+        $this->mempool_implemented = false; // Unlike other EVMMainModule heirs, Arbitrum One doesn't implement mempool
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
