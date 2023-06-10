@@ -103,6 +103,9 @@ abstract class CoreModule
     public ?string $handles_regex = null; // Regular expression for the handles
     public ?Closure $api_get_handle = null; // API function that performs conversion
 
+    // Tests
+    public ?array $tests = null; // Array for test cases
+
     ///////////////////////
     // Runtime variables //
     ///////////////////////
@@ -592,5 +595,49 @@ abstract class CoreModule
                     throw new DeveloperError("Currency ids can't contain slashes");
             }
         }
+    }
+
+    ///////////
+    // Tests //
+    ///////////
+
+    final public function test()
+    {
+        if (!isset($this->tests))
+            throw new DeveloperError('No tests defined for this module');
+
+        $errors = [];
+
+        foreach ($this->tests as $test)
+        {
+            $block = $test['block'];
+            $expected_result = $test['result'];
+
+            $this->process_block($block);
+            $events = $this->get_return_events();
+
+            if (!isset($test['transaction']))
+            {
+                $got_result = serialize(['events' => $events, 'currencies' => $this->get_return_currencies()]);
+            }
+            else
+            {
+                $filtered_events = [];
+
+                foreach ($events as $event)
+                {
+                    if (!is_null($event['transaction']) && str_contains($event['transaction'], $test['transaction']))
+                        $filtered_events[] = $event;
+                }
+
+                $got_result = serialize(['events' => $filtered_events]);
+            }
+
+            if ($expected_result !== $got_result)
+                $errors[] = $block;
+        }
+
+        if ($errors)
+            throw new DeveloperError('Failed tests for blocks: ' . implode(', ', $errors) . ' ¯\_(ツ)_/¯');
     }
 }
