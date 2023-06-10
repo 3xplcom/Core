@@ -91,7 +91,7 @@ Once you're done with a module, consider adding tests. The process is the follow
 $this->tests = [
     ['block' => ..., 'result' => '...'],
     ['block' => ..., 'result' => '...'],
-    ['block' => ..., 'transaction' => ..., 'result' => '...'],
+    ['block' => ..., 'transaction' => '...', 'result' => '...'],
 ];
 ```
 5. Test the module by running `php 3xpl.php <module> T`
