@@ -16,7 +16,7 @@ final class HandshakeMainModule extends HandshakeLikeMainModule implements Modul
         $this->module = 'handshake-main';
         $this->is_main = true;
         $this->currency = 'handshake';
-        $this->currency_details = ['name' => 'Handshake', 'symbol' => 'HNS', 'decimals' => 8, 'description' => null];
+        $this->currency_details = ['name' => 'Handshake', 'symbol' => 'HNS', 'decimals' => 6, 'description' => null];
         $this->first_block_date = '2020-02-03';
 
         // Handles
