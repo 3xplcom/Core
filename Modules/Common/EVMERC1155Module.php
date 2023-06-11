@@ -103,20 +103,20 @@ abstract class EVMERC1155Module extends CoreModule
 
             $events[] = [
                 'transaction' => $log['transactionHash'],
-                'currency' => $log['address'],
-                'address' => '0x' . substr($log['topics'][2], 26),
-                'sort_key' => $sort_key++,
-                'effect' => '-' . to_int256_from_0xhex('0x' . substr($log['data'], 66, 64)),
-                'extra' => to_int256_from_0xhex('0x' . substr($log['data'], 2, 64)),
+                'currency'    => $log['address'],
+                'address'     => '0x' . substr($log['topics'][2], 26),
+                'sort_key'    => $sort_key++,
+                'effect'      => '-' . to_int256_from_0xhex('0x' . substr($log['data'], 66, 64)),
+                'extra'       => to_int256_from_0xhex('0x' . substr($log['data'], 2, 64)),
             ];
 
             $events[] = [
                 'transaction' => $log['transactionHash'],
-                'currency' => $log['address'],
-                'address' => '0x' . substr($log['topics'][3], 26),
-                'sort_key' => $sort_key++,
-                'effect' => to_int256_from_0xhex('0x' . substr($log['data'], 66, 64)),
-                'extra' => to_int256_from_0xhex('0x' . substr($log['data'], 2, 64)),
+                'currency'    => $log['address'],
+                'address'     => '0x' . substr($log['topics'][3], 26),
+                'sort_key'    => $sort_key++,
+                'effect'      => to_int256_from_0xhex('0x' . substr($log['data'], 66, 64)),
+                'extra'       => to_int256_from_0xhex('0x' . substr($log['data'], 2, 64)),
             ];
 
             $currencies_to_process[] = $log['address'];
@@ -127,7 +127,7 @@ abstract class EVMERC1155Module extends CoreModule
             if (count($log['topics']) !== 4)
                 continue; // This is ERC-20
 
-            $n = (str_split(substr($log['data'], 2), 64));
+            $n = str_split(substr($log['data'], 2), 64);
 
             if (((count($n) - 4) % 2) !== 0) // Some contract may yield invalid `data`, e.g. two token ids, but just one value
                 continue;
@@ -143,20 +143,20 @@ abstract class EVMERC1155Module extends CoreModule
             {
                 $events[] = [
                     'transaction' => $log['transactionHash'],
-                    'currency' => $log['address'],
-                    'address' => '0x' . substr($log['topics'][2], 26),
-                    'sort_key' => $sort_key++,
-                    'effect' => '-' . to_int256_from_0xhex('0x' . $n[$first_5th + $this_n]),
-                    'extra' => to_int256_from_0xhex('0x' . $n[3 + $this_n]),
+                    'currency'    => $log['address'],
+                    'address'     => '0x' . substr($log['topics'][2], 26),
+                    'sort_key'    => $sort_key++,
+                    'effect'      => '-' . to_int256_from_0xhex('0x' . $n[$first_5th + $this_n]),
+                    'extra'       => to_int256_from_0xhex('0x' . $n[3 + $this_n]),
                 ];
 
                 $events[] = [
                     'transaction' => $log['transactionHash'],
-                    'currency' => $log['address'],
-                    'address' => '0x' . substr($log['topics'][3], 26),
-                    'sort_key' => $sort_key++,
-                    'effect' => to_int256_from_0xhex('0x' . $n[$first_5th + $this_n]),
-                    'extra' => to_int256_from_0xhex('0x' . $n[3 + $this_n]),
+                    'currency'    => $log['address'],
+                    'address'     => '0x' . substr($log['topics'][3], 26),
+                    'sort_key'    => $sort_key++,
+                    'effect'      => to_int256_from_0xhex('0x' . $n[$first_5th + $this_n]),
+                    'extra'       => to_int256_from_0xhex('0x' . $n[3 + $this_n]),
                 ];
             }
 
@@ -172,31 +172,42 @@ abstract class EVMERC1155Module extends CoreModule
 
         if ($currencies_to_process)
         {
-            $multi_curl = [];
-            $lib = [];
-
+            $multi_curl = $lib = [];
             $this_id = 0;
 
             foreach ($currencies_to_process as $currency_id)
             {
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x06fdde03'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_call',
+                             'params'  => [['to'   => $currency_id,
+                                            'data' => '0x06fdde03',
+                                           ],
+                                           'latest',
+                             ],
+                             'id'      => $this_id++,
+                    ],
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x95d89b41'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_call',
+                             'params'  => [['to'   => $currency_id,
+                                            'data' => '0x95d89b41',
+                                           ],
+                                           'latest',
+                             ],
+                             'id'      => $this_id++,
+                    ],
                     timeout: $this->timeout); // Symbol
             }
 
             $curl_results = requester_multi($multi_curl,
                 limit: envm($this->module, 'REQUESTER_THREADS'),
-                timeout: $this->timeout,
-                valid_codes: [200]);
+                timeout: $this->timeout);
 
             foreach ($curl_results as $v)
-            {
                 $currency_data[] = requester_multi_process($v, ignore_errors: true);
-            }
 
             reorder_by_id($currency_data);
 
@@ -217,7 +228,7 @@ abstract class EVMERC1155Module extends CoreModule
                     elseif (str_contains($bit['error']['message'], 'Function does not exist'))
                         $bit['result'] = '0x';
                     else
-                        throw new RequesterException("Request to the node errored with `{$bit['error']['message']}`: " . print_r($bit['error']));
+                        throw new RequesterException("Request to the node errored with `{$bit['error']['message']}`: " . print_r($bit['error'], true));
                 }
 
                 if ((int)$bit['id'] % 2 === 0)
@@ -233,8 +244,8 @@ abstract class EVMERC1155Module extends CoreModule
                 $l['symbol'] = mb_convert_encoding($l['symbol'], 'UTF-8', 'UTF-8');
 
                 $currencies[] = [
-                    'id' => $id,
-                    'name' => $l['name'],
+                    'id'     => $id,
+                    'name'   => $l['name'],
                     'symbol' => $l['symbol'],
                 ];
             }
@@ -264,7 +275,7 @@ abstract class EVMERC1155Module extends CoreModule
         {
             $return = [];
 
-            foreach ($currencies as $c)
+            foreach ($currencies as $ignored)
                 $return[] = '0';
 
             return $return;
@@ -278,7 +289,7 @@ abstract class EVMERC1155Module extends CoreModule
 
         $encoded_address = $this->encode_abi("address", substr($address, 2));
 
-        $data = [];
+        $data = $return = [];
 
         for ($i = 0, $ids = count($real_currencies); $i < $ids; $i++)
         {
@@ -293,7 +304,6 @@ abstract class EVMERC1155Module extends CoreModule
             ];
         }
 
-        $return = [];
         $data_chunks = array_chunk($data, 100);
 
         foreach ($data_chunks as $datai)
