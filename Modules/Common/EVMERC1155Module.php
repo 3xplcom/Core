@@ -52,30 +52,43 @@ abstract class EVMERC1155Module extends CoreModule
     {
         // Get logs
 
-        $logs_single = requester_single($this->select_node(),
-            params: ['jsonrpc'=> '2.0',
-                     'method' => 'eth_getLogs',
-                     'params' =>
+        $multi_curl = $log_data = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['jsonrpc' => '2.0',
+                     'method'  => 'eth_getLogs',
+                     'params'  =>
                          [['blockhash' => $this->block_hash,
                            'topics'    => ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'],
                           ],
                          ],
-                     'id' => 0,
+                     'id'      => 0,
             ],
-            result_in: 'result', timeout: $this->timeout); // TransferSingle
+            timeout: $this->timeout); // TransferSingle
 
-        $logs_batch = requester_single($this->select_node(),
-            params: ['jsonrpc'=> '2.0', 'method' => 'eth_getLogs',
-                     'params' =>
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['jsonrpc' => '2.0',
+                     'method'  => 'eth_getLogs',
+                     'params'  =>
                          [['blockhash' => $this->block_hash,
                            'topics'    => ['0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'],
                           ],
                          ],
-                     'id' => 0,
+                     'id'      => 1,
             ],
-            result_in: 'result', timeout: $this->timeout); // TransferBatch
+            timeout: $this->timeout); // TransferBatch
 
-        // TODO: this shoud be done using requester_multi() to save time
+        $curl_results = requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout);
+
+        foreach ($curl_results as $v)
+            $log_data[] = requester_multi_process($v);
+
+        reorder_by_id($log_data);
+
+        $logs_single = $log_data[0]['result'];
+        $logs_batch = $log_data[1]['result'];
 
         // Process logs
 
