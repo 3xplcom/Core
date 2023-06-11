@@ -120,6 +120,10 @@ abstract class EVMERC1155Module extends CoreModule
                 continue;
 
             $n_count = intdiv(count($n) - 4, 2);
+
+            if (!$n_count) // Example: Avalanche C-Chain transaction 0x9facbf18cf0be5525459383dcce0b523dc6b62272318d220688c60d2019ee736
+                continue;
+
             $first_5th = 4 + $n_count;
 
             for ($this_n = 0; $this_n < $n_count; $this_n++)
