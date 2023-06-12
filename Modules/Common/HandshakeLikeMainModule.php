@@ -58,13 +58,10 @@ abstract class HandshakeLikeMainModule extends CoreModule
         }
         else // Processing mempool
         {
-            $block = [];
-            $block['txs'] = [];
-            $multi_curl = [];
+            $block = $block['txs'] = $multi_curl = [];
+            $islice = 0;
 
             $mempool = requester_single($this->select_node(), params: ['method' => 'getrawmempool', 'params' => [false]], result_in: 'result', timeout: $this->timeout);
-
-            $islice = 0;
 
             foreach ($mempool as $tx_hash)
             {
@@ -74,28 +71,19 @@ abstract class HandshakeLikeMainModule extends CoreModule
                         endpoint: "tx/{$tx_hash}",
                         timeout: $this->timeout);
 
-                    $islice++;
-                    if ($islice >= 100) break; // For debug purposes, we limit the number of mempool transactions to process
+                    if ($islice++ >= 100) break; // For debug purposes, we limit the number of mempool transactions to process
                 }
             }
 
             $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
 
             foreach ($curl_results as $v)
-            {
                 $block['txs'][] = requester_multi_process($v);
-            }
         }
 
-        $events = []; // This is an array for the results
-
-        $sort_in_block_lib = [];
-        $fees = [];
-
+        $events = $sort_in_block_lib = $fees = [];
         $block_n = 0;
-
         $coinbase_transaction_output = '0';
-
         $this_is_coinbase = true; // Coinbase transaction is always the first one
         if ($this->block_id === MEMPOOL) $this_is_coinbase = false;
 
@@ -138,7 +126,7 @@ abstract class HandshakeLikeMainModule extends CoreModule
                     if ($coinbase_transaction_output === '0') $coinbase_transaction_output = '-0'; // E.g. block #501726 in Bitcoin
 
                     if ($i === 0) // The rest are airdrops which are already included in $coinbase_transaction_output,
-                    {             // example: coinbase transaction in block #2730
+                    {             // example: coinbase transaction in block #2730 in Handshake
                         $events[] = ['transaction'         => $transaction['hash'],
                                      'address'             => 'the-void',
                                      'effect'              => $coinbase_transaction_output,
@@ -183,10 +171,8 @@ abstract class HandshakeLikeMainModule extends CoreModule
         $hashes = [];
 
         foreach ($events as $event)
-        {
             if (!is_null($event['extra_indexed']))
                 $hashes[] = $event['extra_indexed'];
-        }
 
         if ($hashes)
         {
@@ -196,11 +182,9 @@ abstract class HandshakeLikeMainModule extends CoreModule
             $multi_curl = [];
 
             foreach ($hashes as $hash)
-            {
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
                     params: ['method' => 'getnamebyhash', 'params' => [$hash], 'id' => $hash],
                     timeout: $this->timeout);
-            }
 
             $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
 
@@ -211,10 +195,8 @@ abstract class HandshakeLikeMainModule extends CoreModule
             }
 
             foreach ($events as &$event)
-            {
                 if (!is_null($event['extra_indexed']))
-                    $event['extra_indexed'] = $names[$event['extra_indexed']] . '.'; // Adding an extra dot
-            }
+                    $event['extra_indexed'] = $names[$event['extra_indexed']] . '/'; // Adding a trailing slash
         }
 
         foreach ($events as &$event)
@@ -227,15 +209,15 @@ abstract class HandshakeLikeMainModule extends CoreModule
         // Resort
 
         usort($events, function($a, $b) {
-            return  [$a['sort_in_block'],
-                     !str_starts_with($a['effect'], '-'),
-                     abs($a['sort_in_transaction']),
-                ]
-                <=>
-                [$b['sort_in_block'],
-                 !str_starts_with($b['effect'], '-'),
-                 abs($b['sort_in_transaction']),
-                ];
+            return [$a['sort_in_block'],
+                    !str_starts_with($a['effect'], '-'),
+                    abs($a['sort_in_transaction']),
+                   ]
+                   <=>
+                   [$b['sort_in_block'],
+                    !str_starts_with($b['effect'], '-'),
+                    abs($b['sort_in_transaction']),
+                   ];
         });
 
         $sort_key = 0;

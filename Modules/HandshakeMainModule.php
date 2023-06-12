@@ -21,13 +21,13 @@ final class HandshakeMainModule extends HandshakeLikeMainModule implements Modul
 
         // Handles
         $this->handles_implemented = true;
-        $this->handles_regex = '/(.*)\./';
+        $this->handles_regex = '/(.*)\//';
         $this->api_get_handle = function($handle)
         {
             if (!preg_match($this->handles_regex, $handle))
                 return null;
 
-            $handle = substr($handle, 0, -1); // Removes the dot
+            $handle = substr($handle, 0, -1); // Removes the trailing slash
 
             try
             {
