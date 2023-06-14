@@ -106,6 +106,12 @@ abstract class CoreModule
     // Tests
     public ?array $tests = null; // Array for test cases
 
+    // Entity names
+    public string $block_entity_name = 'block';
+    public string $transaction_entity_name = 'transaction';
+    public string $address_entity_name = 'address';
+    public string $mempool_entity_name = 'mempool';
+
     ///////////////////////
     // Runtime variables //
     ///////////////////////
