@@ -48,7 +48,12 @@ abstract class EVMERC1155Module extends CoreModule
 
     final public function post_post_initialize()
     {
-        //
+        if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+        {
+            $this->forking_implemented = false; // We only process finalized batches
+            $this->block_entity_name = 'batch'; // We process batches instead of blocks
+            $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
+        }
     }
 
     final public function pre_process_block($block_id)
