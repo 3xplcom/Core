@@ -55,17 +55,58 @@ abstract class EVMERC721Module extends CoreModule
     {
         // Get logs
 
-        $logs = requester_single($this->select_node(),
-            params: ['jsonrpc' => '2.0',
-                     'method'  => 'eth_getLogs',
-                     'params'  =>
-                         [['blockhash' => $this->block_hash,
-                           'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
-                          ],
-                         ],
-                     'id'      => 0,
-            ],
-            result_in: 'result', timeout: $this->timeout);
+        if ((!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features)))
+        {
+            $logs = requester_single($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'eth_getLogs',
+                         'params'  =>
+                             [['blockhash' => $this->block_hash,
+                               'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+                              ],
+                             ],
+                         'id'      => 0,
+                ],
+                result_in: 'result',
+                timeout: $this->timeout);
+        }
+        else//if (zkEVM)
+        {
+            // We need to get the block range for the batch
+
+            $blocks = requester_single($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'zkevm_getBatchByNumber',
+                         'params'  => [to_0xhex_from_int64($block_id), true],
+                         'id'      => 0,
+                ],
+                result_in: 'result',
+                timeout: $this->timeout);
+
+            if (!$blocks['transactions'])
+            {
+                $logs = [];
+            }
+            else
+            {
+                $first_block = $blocks['transactions'][0]['blockNumber'];
+                $last_block = end($blocks['transactions'])['blockNumber'];
+
+                $logs = requester_single($this->select_node(),
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_getLogs',
+                             'params'  =>
+                                 [['fromBlock' => $first_block,
+                                   'toBlock'   => $last_block,
+                                   'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+                                  ],
+                                 ],
+                             'id'      => 0,
+                    ],
+                    result_in: 'result',
+                    timeout: $this->timeout);
+            }
+        }
 
         // Process logs
 
