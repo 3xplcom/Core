@@ -34,6 +34,7 @@ abstract class EVMTraceModule extends CoreModule
     // EVM-specific
 
     public ?EVMImplementation $evm_implementation = null;
+    public array $extra_features = [];
 
     //
 

@@ -36,6 +36,9 @@ abstract class EVMERC1155Module extends CoreModule
     public ?bool $mempool_implemented = false; // Technically, this is possible
     public ?bool $forking_implemented = true;
 
+    // EVM-specific
+    public array $extra_features = [];
+
     //
 
     final public function pre_initialize()
