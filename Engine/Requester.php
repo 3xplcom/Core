@@ -113,7 +113,7 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
         {
             throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: no result key");
         }
-        if (!isset($output[$result_in]))
+        elseif (!isset($output[$result_in]))
         {
             throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: result is null");
         }
@@ -300,7 +300,7 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
         {
             throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: no result key");
         }
-        if (!isset($output[$result_in]))
+        elseif (!isset($output[$result_in]))
         {
             throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: result is null");
         }
@@ -311,6 +311,42 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     }
     else
     {
+        return $output;
+    }
+}
+
+// Processes results from requester_multi()
+function requester_multi_process_all(array $multi_results, string $result_in = '', bool $reorder = true, false|string|Callable $post_process = false): array
+{
+    $output = [];
+
+    foreach ($multi_results as $v)
+        $output[] = requester_multi_process($v);
+
+    if ($reorder)
+        reorder_by_id($output);
+
+    if ($result_in)
+    {
+        $result_output = [];
+        $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
+
+        foreach ($output as $o)
+            if (!array_key_exists($result_in, $o))
+                throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: no result key");
+            elseif (!isset($o[$result_in]))
+                throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: result is null");
+            else
+                $result_output[] = (!$post_process) ? $o[$result_in] : $post_process($o[$result_in]);
+
+        return $result_output;
+    }
+    else
+    {
+        if ($post_process)
+            foreach ($output as &$o)
+                $o = $post_process($o);
+
         return $output;
     }
 }
