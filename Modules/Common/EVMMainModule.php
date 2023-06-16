@@ -209,17 +209,7 @@ abstract class EVMMainModule extends CoreModule
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'),
                     timeout: $this->timeout);
 
-                foreach ($curl_results as $result)
-                {
-                    $receipt_data[] = requester_multi_process($result);
-                }
-
-                reorder_by_id($receipt_data);
-
-                foreach ($receipt_data as &$receipt)
-                {
-                    $receipt = $receipt['result'];
-                }
+                $receipt_data = requester_multi_process_all($curl_results, result_in: 'result');
             }
 
             if (in_array(EVMSpecialFeatures::BorValidator, $this->extra_features))

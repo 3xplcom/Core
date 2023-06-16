@@ -333,9 +333,9 @@ function requester_multi_process_all(array $multi_results, string $result_in = '
 
         foreach ($output as $o)
             if (!array_key_exists($result_in, $o))
-                throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: no result key");
+                throw new RequesterException("requester_multi_process_all(output:({$output_log}), result_in:({$result_in})) failed: no result key");
             elseif (!isset($o[$result_in]))
-                throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: result is null");
+                throw new RequesterException("requester_multi_process_all(output:({$output_log}), result_in:({$result_in})) failed: result is null");
             else
                 $result_output[] = (!$post_process) ? $o[$result_in] : $post_process($o[$result_in]);
 
