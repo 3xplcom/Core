@@ -36,6 +36,9 @@ abstract class EVMERC1155Module extends CoreModule
     public ?bool $mempool_implemented = false; // Technically, this is possible
     public ?bool $forking_implemented = true;
 
+    // EVM-specific
+    public array $extra_features = [];
+
     //
 
     final public function pre_initialize()
@@ -45,7 +48,12 @@ abstract class EVMERC1155Module extends CoreModule
 
     final public function post_post_initialize()
     {
-        //
+        if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+        {
+            $this->forking_implemented = false; // We only process finalized batches
+            $this->block_entity_name = 'batch'; // We process batches instead of blocks
+            $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
+        }
     }
 
     final public function pre_process_block($block_id)
@@ -54,29 +62,83 @@ abstract class EVMERC1155Module extends CoreModule
 
         $multi_curl = $log_data = [];
 
-        $multi_curl[] = requester_multi_prepare($this->select_node(),
-            params: ['jsonrpc' => '2.0',
-                     'method'  => 'eth_getLogs',
-                     'params'  =>
-                         [['blockhash' => $this->block_hash,
-                           'topics'    => ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'],
-                          ],
-                         ],
-                     'id'      => 0,
-            ],
-            timeout: $this->timeout); // TransferSingle
+        if ((!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features)))
+        {
+            $multi_curl[] = requester_multi_prepare($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'eth_getLogs',
+                         'params'  =>
+                             [['blockhash' => $this->block_hash,
+                               'topics'    => ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'],
+                              ],
+                             ],
+                         'id'      => 0,
+                ],
+                timeout: $this->timeout); // TransferSingle
 
-        $multi_curl[] = requester_multi_prepare($this->select_node(),
-            params: ['jsonrpc' => '2.0',
-                     'method'  => 'eth_getLogs',
-                     'params'  =>
-                         [['blockhash' => $this->block_hash,
-                           'topics'    => ['0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'],
-                          ],
-                         ],
-                     'id'      => 1,
-            ],
-            timeout: $this->timeout); // TransferBatch
+            $multi_curl[] = requester_multi_prepare($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'eth_getLogs',
+                         'params'  =>
+                             [['blockhash' => $this->block_hash,
+                               'topics'    => ['0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'],
+                              ],
+                             ],
+                         'id'      => 1,
+                ],
+                timeout: $this->timeout); // TransferBatch
+        }
+        else//if (zkEVM)
+        {
+            // We need to get the block range for the batch
+
+            $blocks = requester_single($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'zkevm_getBatchByNumber',
+                         'params'  => [to_0xhex_from_int64($block_id), true],
+                         'id'      => 0,
+                ],
+                result_in: 'result',
+                timeout: $this->timeout);
+
+            if (!$blocks['transactions'])
+            {
+                $this->set_return_events([]);
+                $this->set_return_currencies([]);
+                return;
+            }
+            else
+            {
+                $first_block = $blocks['transactions'][0]['blockNumber'];
+                $last_block = end($blocks['transactions'])['blockNumber'];
+
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_getLogs',
+                             'params'  =>
+                                 [['fromBlock' => $first_block,
+                                   'toBlock'   => $last_block,
+                                   'topics'    => ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'],
+                                  ],
+                                 ],
+                             'id'      => 0,
+                    ],
+                    timeout: $this->timeout); // TransferSingle
+
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_getLogs',
+                             'params'  =>
+                                 [['fromBlock' => $first_block,
+                                   'toBlock'   => $last_block,
+                                   'topics'    => ['0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'],
+                                  ],
+                                 ],
+                             'id'      => 1,
+                    ],
+                    timeout: $this->timeout); // TransferBatch
+            }
+        }
 
         $curl_results = requester_multi($multi_curl,
             limit: envm($this->module, 'REQUESTER_THREADS'),
