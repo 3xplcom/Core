@@ -274,7 +274,7 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     if (is_null($output))
         throw new RequesterException("requester_multi_process(result_in:({$result_in})) failed: output is `null`");
     if ($output === '')
-        throw new RequesterException("requester_multi_process(result_in:({$result_in})) failed: output is an empty string");
+        throw new RequesterEmptyResponseException("requester_multi_process(result_in:({$result_in})) failed: output is an empty string");
 
     $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
 
