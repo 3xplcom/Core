@@ -36,6 +36,7 @@ abstract class UTXONFCTModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::HexWithout0x;
     public ?CurrencyType $currency_type = CurrencyType::NFT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
+    public ?array $special_addresses = ['the-void'];
     public ?bool $hidden_values_only = false;
 
     //

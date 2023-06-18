@@ -68,6 +68,10 @@ abstract class CoreModule
                                    'n' => 'Nothing',
                                    // Note that null should be used for ordinary events
     ];
+    public ?array $special_addresses = []; // An array of special addresses which technically can't be found on blockchains,
+    // but are used in the modules. Examples: `the-void` is used for sending fees to and in coinbase transactions in UTXO chains;
+    // `sprout-pool`, `sapling-pool`, and `orchard-pool` are used in Zcash for interacting with shielded pools. In case of Zcash,
+    // a wildcard can be used like this: `*-pool`. These addresses are only available on 3xpl, but not on other block explorers.
 
     // What module returns
     // 1. Does it return events?
