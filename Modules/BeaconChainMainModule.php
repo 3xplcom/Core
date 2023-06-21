@@ -14,10 +14,11 @@ final class BeaconChainMainModule extends BeaconChainLikeMainModule implements M
         $this->blockchain = 'beacon-chain';
         $this->module = 'beacon-chain-main';
         $this->is_main = true;
-        $this->currency = 'ethereum';
-        $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 9, 'description' => null];
-        // TODO: is it really 9 decimals? Ethereum has 18.
         $this->first_block_date = '2020-12-01';
         $this->first_block_id = 0;
+
+        // EVMMainModule
+        $this->currency = 'ethereum';
+        $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 9, 'description' => null];
     }
 }
