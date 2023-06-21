@@ -37,7 +37,7 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
 
     //
 
-    public ?array $block_data = null;
+    private ?array $block_data = null;
 
     //
 
@@ -139,6 +139,10 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
                            // which is present in 12857725, 12856380, 12855736, and many more, but not in 12831012 ¯\_(ツ)_/¯
 
             $initiating_address = $i[$this_i]['account_id'];
+
+            if ($initiating_address === '') // This is a bit strange
+                $initiating_address = $i[$this_i]['transfers'][0]['from'];
+
             $fee_found = false;
             $extrinsic_failed = $i[$this_i]['failed'];
 
@@ -214,7 +218,7 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
                 'address' => $transfer['from'],
                 'sort_key' => $sort_key++,
                 'effect' => '-' . $transfer['amount'],
-                'failed' => ($transfer['failed']) ? 't' : 'f',
+                'failed' => $transfer['failed'],
                 'extra' => ($transfer['type'] === 'fee') ? 'f' : null,
             ];
 
@@ -223,17 +227,16 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
                 'address' => $transfer['to'],
                 'sort_key' => $sort_key++,
                 'effect' => $transfer['amount'],
-                'failed' => ($transfer['failed']) ? 't' : 'f',
+                'failed' => $transfer['failed'],
                 'extra' => ($transfer['type'] === 'fee') ? 'f' : null,
             ];
         }
 
-        if ($events)
-            foreach ($events as &$event)
-            {
-                $event['block'] = $block_id;
-                $event['time'] = $this->block_time;
-            }
+        foreach ($events as &$event)
+        {
+            $event['block'] = $block_id;
+            $event['time'] = $this->block_time;
+        }
 
         $this->set_return_events($events);
     }
