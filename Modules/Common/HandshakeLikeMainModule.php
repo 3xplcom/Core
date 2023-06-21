@@ -46,13 +46,14 @@ abstract class HandshakeLikeMainModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        $_ENV['__TRIM_IN_JSON_DECODE'] = true; /// TODO: it's much better to have `options` for requester_single()
-
         if ($block_id !== MEMPOOL)
         {
             $block_hash = $this->block_hash;
 
-            $block = requester_single($this->select_node(), endpoint: "block/{$block_hash}", timeout: $this->timeout);
+            $block = requester_single($this->select_node(),
+                endpoint: "block/{$block_hash}",
+                timeout: $this->timeout,
+                flags: [RequesterOption::TrimJSON]);
 
             $this->block_time = date('Y-m-d H:i:s', (int)$block['time']);
         }
@@ -61,7 +62,10 @@ abstract class HandshakeLikeMainModule extends CoreModule
             $block = $block['txs'] = $multi_curl = [];
             $islice = 0;
 
-            $mempool = requester_single($this->select_node(), params: ['method' => 'getrawmempool', 'params' => [false]], result_in: 'result', timeout: $this->timeout);
+            $mempool = requester_single($this->select_node(),
+                params: ['method' => 'getrawmempool', 'params' => [false]],
+                result_in: 'result',
+                timeout: $this->timeout);
 
             foreach ($mempool as $tx_hash)
             {
@@ -78,7 +82,7 @@ abstract class HandshakeLikeMainModule extends CoreModule
             $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
 
             foreach ($curl_results as $v)
-                $block['txs'][] = requester_multi_process($v);
+                $block['txs'][] = requester_multi_process($v, flags: [RequesterOption::TrimJSON]);
         }
 
         $events = $sort_in_block_lib = $fees = [];

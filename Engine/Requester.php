@@ -7,7 +7,7 @@
 /*  Various curl functions for requesting data from nodes  */
 
 // Just a single curl request
-function requester_single($daemon, $endpoint = '', $params = [], $result_in = '', $timeout = 600, $valid_codes = [200], $no_json_encode = false)
+function requester_single($daemon, $endpoint = '', $params = [], $result_in = '', $timeout = 600, $valid_codes = [200], $no_json_encode = false, $flags = [])
 {
     static $curl = null;
 
@@ -84,15 +84,18 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is false (timeout?)");
 
     // Here we add quotes to all numeric values not to lose precision if some are larger than int64.
-    // Note that this doesn't work good with values like `2.5e-8`, so there's the __IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE option
+    // Note that this doesn't work good with values like `2.5e-8`, so there's the IgnoreAddingQuotesToNumbers option
     // Also it doesn't work with negative numbers, and doesn't process integer arrays (e.g. `[4359895000,2039280]`)
     // TODO: this should be rewritten to support all the aforementioned cases
 
-    if (isset($_ENV['__TRIM_IN_JSON_DECODE'])) // Some nodes output something like `"type": 0` instead of `"type":0` ¯\_(ツ)_/¯
-        $output = preg_replace('/("\w+"):((\s?)(-?[\d\.]+))/', '\\1:"\\4"', $output);
+    if (in_array(RequesterOption::RecheckUTF8, $flags)) // Some nodes may return invalid UTF-8 sequences which lead to invalid JSON
+        $output = mb_convert_encoding($output, 'UTF-8', 'UTF-8'); // Technically, this is invalid JSON, but ¯\_(ツ)_/¯
 
-    if (!isset($_ENV['__IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE']))
-        $output = preg_replace('/("\w+"):(-?[\d\.]+)/', '\\1:"\\2"', $output);
+    if (in_array(RequesterOption::TrimJSON, $flags)) // Some nodes output something like `"type": 0` instead of `"type":0` ¯\_(ツ)_/¯
+        $output = preg_replace('/("\w+"):((\s?)(-?[\d.]+))/', '\\1:"\\4"', $output);
+
+    if (!in_array(RequesterOption::IgnoreAddingQuotesToNumbers, $flags))
+        $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
     if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
     {
@@ -108,24 +111,14 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     }
 
     if ($result_in)
-    {
         if (!array_key_exists($result_in, $output))
-        {
             throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: no result key");
-        }
         elseif (!isset($output[$result_in]))
-        {
             throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: result is null");
-        }
         else
-        {
             return $output[$result_in];
-        }
-    }
     else
-    {
         return $output;
-    }
 }
 
 // Multiple curl requests
@@ -269,7 +262,7 @@ function requester_multi_prepare($daemon, $endpoint = '', $params = [], $timeout
     return $curl;
 }
 
-function requester_multi_process($output, $result_in = '', $ignore_errors = false)
+function requester_multi_process($output, $result_in = '', $ignore_errors = false, $flags = [])
 {
     if (is_null($output))
         throw new RequesterException("requester_multi_process(result_in:({$result_in})) failed: output is `null`");
@@ -278,50 +271,39 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
 
     $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
 
-    if (isset($_ENV['__TRIM_IN_JSON_DECODE']))
-        $output = preg_replace('/("\w+"):((\s?)(-?[\d\.]+))/', '\\1:"\\4"', $output);
+    if (in_array(RequesterOption::RecheckUTF8, $flags)) // Some nodes may return invalid UTF-8 sequences which lead to invalid JSON
+        $output = mb_convert_encoding($output, 'UTF-8', 'UTF-8');
 
-    if (!isset($_ENV['__IGNORE_REPLACING_NUMBERS_IN_JSON_DECODE']))
-        $output = preg_replace('/("\w+"):(-?[\d\.]+)/', '\\1:"\\2"', $output);
+    if (in_array(RequesterOption::TrimJSON, $flags))
+        $output = preg_replace('/("\w+"):((\s?)(-?[\d.]+))/', '\\1:"\\4"', $output);
+
+    if (!in_array(RequesterOption::IgnoreAddingQuotesToNumbers, $flags))
+        $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
     if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
-    {
         throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: bad JSON");
-    }
 
     if (isset($output['error']) && !$ignore_errors)
-    {
         throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) errored: " . print_r($output['error'], true));
-    }
 
     if ($result_in)
-    {
         if (!array_key_exists($result_in, $output))
-        {
             throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: no result key");
-        }
         elseif (!isset($output[$result_in]))
-        {
             throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: result is null");
-        }
         else
-        {
             return $output[$result_in];
-        }
-    }
     else
-    {
         return $output;
-    }
 }
 
 // Processes results from requester_multi()
-function requester_multi_process_all(array $multi_results, string $result_in = '', bool $reorder = true, false|string|Callable $post_process = false): array
+function requester_multi_process_all(array $multi_results, string $result_in = '', bool $reorder = true, false|string|Callable $post_process = false, $flags = []): array
 {
     $output = [];
 
     foreach ($multi_results as $v)
-        $output[] = requester_multi_process($v);
+        $output[] = requester_multi_process($v, flags: $flags);
 
     if ($reorder)
         reorder_by_id($output);
@@ -349,4 +331,11 @@ function requester_multi_process_all(array $multi_results, string $result_in = '
 
         return $output;
     }
+}
+
+enum RequesterOption
+{
+    case IgnoreAddingQuotesToNumbers;
+    case TrimJSON;
+    case RecheckUTF8;
 }
