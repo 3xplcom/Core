@@ -112,6 +112,7 @@ abstract class UTXOOmniModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Numeric; // Currency ids are numbers in Omni
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
+    public ?array $special_addresses = ['the-void'];
     public ?bool $hidden_values_only = false;
 
     public ?int $genesis_block = null;

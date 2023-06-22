@@ -4,23 +4,25 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
-/*  This is the main BNB module. It requires either a geth or an Erigon node to run (but the latter is much faster).  */
+/*  This is the main Arbitrum One module. It requires a geth node to run.  */
 
-final class BNBMainModule extends EVMMainModule implements Module
+final class ArbitrumOneMainModule extends EVMMainModule implements Module
 {
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'bnb';
-        $this->module = 'bnb-main';
+        $this->blockchain = 'arbitrum-one';
+        $this->module = 'arbitrum-one-main';
         $this->is_main = true;
-        $this->first_block_date = '2020-08-29';
+        $this->first_block_date = '2021-05-28';
         $this->first_block_id = 0;
+        $this->currency = 'ethereum';
+        $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 18, 'description' => null];
+        $this->mempool_implemented = false; // Unlike other EVMMainModule heirs, Arbitrum One doesn't implement mempool
 
         // EVMMainModule
-        $this->currency = 'bnb';
-        $this->currency_details = ['name' => 'BNB', 'symbol' => 'BNB', 'decimals' => 18, 'description' => null];
-        $this->evm_implementation = EVMImplementation::Erigon; // Change to geth if you're running geth, but this would be slower
+        $this->evm_implementation = EVMImplementation::geth;
+        $this->extra_features = [EVMSpecialFeatures::AllowEmptyRecipient];
         $this->reward_function = function($block_id)
         {
             return '0';
@@ -28,7 +30,7 @@ final class BNBMainModule extends EVMMainModule implements Module
 
         // Handles
         $this->handles_implemented = true;
-        $this->handles_regex = '/(.*)\.bnb/';
+        $this->handles_regex = '/(.*)\.arb/';
         $this->api_get_handle = function($handle)
         {
             if (!preg_match($this->handles_regex, $handle))
@@ -41,7 +43,7 @@ final class BNBMainModule extends EVMMainModule implements Module
             if (is_null($hash) || $hash === '')
                 return null;
 
-            $resolver = $this->ens_get_data($hash, '0x0178b8bf', '0x08ced32a7f3eec915ba84415e9c07a7286977956');
+            $resolver = $this->ens_get_data($hash, '0x0178b8bf', '0x4a067ee58e73ac5e4a43722e008dfdf65b2bf348');
             $address = $this->ens_get_data_from_resolver($resolver, $hash, '0x3b3b57de', -40);
 
             if ($address)

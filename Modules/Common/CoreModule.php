@@ -68,6 +68,10 @@ abstract class CoreModule
                                    'n' => 'Nothing',
                                    // Note that null should be used for ordinary events
     ];
+    public ?array $special_addresses = []; // An array of special addresses which technically can't be found on blockchains,
+    // but are used in the modules. Examples: `the-void` is used for sending fees to and in coinbase transactions in UTXO chains;
+    // `sprout-pool`, `sapling-pool`, and `orchard-pool` are used in Zcash for interacting with shielded pools. In case of Zcash,
+    // a wildcard can be used like this: `*-pool`. These addresses are only available on 3xpl, but not on other block explorers.
 
     // What module returns
     // 1. Does it return events?
@@ -96,6 +100,21 @@ abstract class CoreModule
 
     public ?bool $ignore_sum_of_all_effects = false; // By default, sum of all events returned for a block by a module should be 0.
     // If that's not the case, change this to true.
+
+    // Handles
+
+    public ?bool $handles_implemented = null; // Is there an API call to convert a handle into address?
+    public ?string $handles_regex = null; // Regular expression for the handles
+    public ?Closure $api_get_handle = null; // API function that performs conversion
+
+    // Tests
+    public ?array $tests = null; // Array for test cases
+
+    // Entity names
+    public string $block_entity_name = 'block';
+    public string $transaction_entity_name = 'transaction';
+    public string $address_entity_name = 'address';
+    public string $mempool_entity_name = 'mempool';
 
     ///////////////////////
     // Runtime variables //
@@ -152,8 +171,14 @@ abstract class CoreModule
 
     final public function post_initialize()
     {
+        if (is_null($this->is_main))
+            throw new DeveloperError("`is_main` is not set");
+
         if (!is_null($this->complements))
         {
+            if ($this->is_main)
+                throw new DeveloperError("Complementing module can't be main");
+
             if (isset($this->currency))
                 throw new DeveloperError("Can't set custom `currency` when complementing");
 
@@ -187,15 +212,15 @@ abstract class CoreModule
 
             if ($this->transaction_render_model !== $complemented->transaction_render_model)
                 throw new DeveloperError("`transaction_render_model` mismatch for complemented module `{$this->complements}`");
+
+            if ($this->should_return_currencies || $complemented->should_return_currencies)
+                throw new DeveloperError("Undefined behaviour for processing currencies in a complemented module");
         }
         else
         {
             if ($this->must_complement)
                 throw new DeveloperError("`complements` is not set, but `must_complement` is true");
         }
-
-        if (is_null($this->is_main))
-            throw new DeveloperError("`is_main` is not set");
 
         if (is_null($this->blockchain))
             throw new DeveloperError("`blockchain` is not set");
@@ -351,6 +376,17 @@ abstract class CoreModule
 
         if (is_null($this->first_block_date))
             throw new DeveloperError("`first_block_date` is not set");
+
+        if (!$this->is_main && !is_null($this->handles_implemented))
+            throw new DeveloperError("Handles can only be supported in the main module");
+
+        if (!is_null($this->handles_implemented) && $this->handles_implemented)
+        {
+            if (!isset($this->handles_regex))
+                throw new DeveloperError("`handles_regex` is not defined");
+            if (!isset($this->api_get_handle))
+                throw new DeveloperError("`api_get_handle` is not defined");
+        }
     }
 
     abstract function post_post_initialize(); // This is defined in parent classes
@@ -569,5 +605,49 @@ abstract class CoreModule
                     throw new DeveloperError("Currency ids can't contain slashes");
             }
         }
+    }
+
+    ///////////
+    // Tests //
+    ///////////
+
+    final public function test()
+    {
+        if (!isset($this->tests))
+            throw new DeveloperError('No tests defined for this module');
+
+        $errors = [];
+
+        foreach ($this->tests as $test)
+        {
+            $block = $test['block'];
+            $expected_result = $test['result'];
+
+            $this->process_block($block);
+            $events = $this->get_return_events();
+
+            if (!isset($test['transaction']))
+            {
+                $got_result = serialize(['events' => $events, 'currencies' => $this->get_return_currencies()]);
+            }
+            else
+            {
+                $filtered_events = [];
+
+                foreach ($events as $event)
+                {
+                    if (!is_null($event['transaction']) && str_contains($event['transaction'], $test['transaction']))
+                        $filtered_events[] = $event;
+                }
+
+                $got_result = serialize(['events' => $filtered_events]);
+            }
+
+            if ($expected_result !== $got_result)
+                $errors[] = $block;
+        }
+
+        if ($errors)
+            throw new DeveloperError('Failed tests for blocks: ' . implode(', ', $errors) . ' ¯\_(ツ)_/¯');
     }
 }

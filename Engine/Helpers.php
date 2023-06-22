@@ -151,6 +151,14 @@ function to_int256_from_0xhex(?string $value): ?string
     return hex2dec(substr($value, 2));
 }
 
+function to_int256_from_hex(?string $value): ?string
+{
+    if (is_null($value)) return null;
+    if ($value === '-1') return '-1'; // Special case
+
+    return hex2dec($value);
+}
+
 // Reordering JSON-RPC 2.0 response by id
 function reorder_by_id(&$curl_results_prepared)
 {

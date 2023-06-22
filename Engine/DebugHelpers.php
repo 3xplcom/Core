@@ -4,10 +4,10 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
-/*  These are some functions for Debug.php, and a prettier version of var_dump() by ghostff (with some colors changed :)  */
+/*  These are some functions for 3xpl.php, and a prettier version of var_dump() by ghostff (with some colors changed :)  */
 
 const N = "\n";
-const N2 = "\n\n";
+const T = "\t";
 
 function ddd(...$input)
 {
@@ -15,7 +15,7 @@ function ddd(...$input)
     new Dump(...$input);
     global $input_argv;
     echo N. cli_format_bold('Command: ') . N;
-    echo "php Debug.php " . implode(' ', $input_argv) . N;
+    echo "php 3xpl.php " . implode(' ', $input_argv) . N;
     echo cli_format_blue_reverse('   BYE   ') . N;
     die();
 }

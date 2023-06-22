@@ -15,6 +15,7 @@ abstract class TONLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
+    public ?array $special_addresses = ['the-void'];
     public ?bool $hidden_values_only = false;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
@@ -135,8 +136,8 @@ abstract class TONLikeMainModule extends CoreModule
 
             $block = requester_single($this->select_node(),
                 endpoint: "blockLite?workchain={$this->workchain}&shard={$shard}&seqno={$block_id}&roothash={$this_root_hash}&filehash={$this_block_hash}",
-                timeout: $this->timeout);
-            // TODO: this should be rewritten with requester_multi()
+                timeout: $this->timeout,
+                flags: [RequesterOption::RecheckUTF8]); // TODO: requester_multi for shards
 
             $block_times[] = (int)$block['header']['time'];
 
