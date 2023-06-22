@@ -28,22 +28,22 @@ Our modules work with three entities:
 
 For example, Bitcoin's genesis transaction generates two events:
 ```
-* 0
-* * `transaction` => `4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b`
-* * `address` => `the-void` (special synthetic address)
-* * `effect` => `-5000000000` (50 BTC are being generated out of thin air)
-* * `currency` => `bitcoin`
-* * `block` => `0`
-* * `time` => `2009-01-03 18:15:05`
-* * `sort_key` => `0`
-* 1
-* * `transaction` => `4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b`
-* * `address` => `1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa` (miner address)
-* * `effect` => `5000000000` (50 BTC are being sent to the miner)
-* * `currency` => `bitcoin`
-* * `block` => `0`
-* * `time` => `2009-01-03 18:15:05`
-* * `sort_key` => `1`
+0
+* transaction => 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+* address => the-void (special synthetic address)
+* effect => -5000000000 (50 BTC are being generated out of thin air)
+* currency => bitcoin
+* block => 0
+* time => 2009-01-03 18:15:05
+* sort_key => 0
+1
+* transaction => 4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b
+* address => 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa (miner address)
+* effect => 5000000000 (50 BTC are being sent to the miner)
+* currency => bitcoin
+* block => 0
+* time => 2009-01-03 18:15:05
+* sort_key => 1
 ```
 
 One of the principles we also follow is atomicity. By atomicity, we mean that in order to process a block, we don't need to look into some custom database (i.e., for previous block data), only data from the node should be used.
@@ -57,6 +57,14 @@ How to run a module?
 
 First, you need to run a corresponding node. After the sync is complete, you need to add node credentials to the `.env` file. Afterwards you can start working with the module using `3xpl.php`. For example, to track the newest ERC-20 transfers, you'd need to run `php 3xpl.php ethereum-erc-20 M`. You can write your own script that dumps the data into TSV files or whatever.
 
+How to make my own data dump in the same format you offer on https://3xpl.com/data/dumps?
+-----------------------------------------------------------------------------------------
+
+1. Run your own node
+2. Add the node credentials to the `.env` file, e.g. `MODULE_bitcoin-main_NODES[]=http://login:password@127.0.0.1:1234/`
+3. Run `php 3xpl.php <module> B <block_number> T`, e.g. `php 3xpl.php bitcoin-main B 0 T`
+4. Find your TSV file in the `Dumps` folder
+
 How to develop a new module?
 ----------------------------
 
@@ -69,6 +77,25 @@ How to develop a new module?
 7. Implement `api_get_handle()` if node allows to retrieve handle data (see ENS in EthereumMainModule for example)
 8. Set `CoreModule` variables
 9. Start debugging your module with `3xpl.php`. The core module catches many errors (e.g. missing fields in the output).
+
+How to test a module?
+---------------------
+
+Once you're done with a module, consider adding tests. The process is the following:
+1. Choose some pivot blocks, for example, a genesis block, or blocks with some new logic after hard forks, etc. The idea is that with node upgrades some logic may break.
+2. For every block first run `php 3xpl.php <module> B <block_number> E` to see the generated events (and `php 3xpl.php <module> B <block_number> C` for the currencies if the module supports them)
+3. If you're satisfied with the results, run `php 3xpl.php <module> B <block_number> T A` to create a test string (which is serialized block data)
+4. If you don't need the full block, you can filter by transaction hash like this: `php 3xpl.php <module> B <block_number> T <transaction>` which serializes just a single transaction
+5. Add the result to the `tests` array of the module like this (see `BitcoinMainModule` as an example), use `transaction` if you were filtering out a single transaction:
+```php
+$this->tests = [
+    ['block' => ..., 'result' => '...'],
+    ['block' => ..., 'result' => '...'],
+    ['block' => ..., 'transaction' => '...', 'result' => '...'],
+];
+```
+5. Test the module by running `php 3xpl.php <module> T`
+6. Test all modules at once by running `php 3xpl.php T`
 
 File structure
 --------------

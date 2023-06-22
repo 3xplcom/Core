@@ -18,6 +18,7 @@ abstract class EVMMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
+    public ?array $special_addresses = ['the-void'];
     public ?bool $hidden_values_only = false;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
@@ -58,13 +59,27 @@ abstract class EVMMainModule extends CoreModule
 
     final public function post_post_initialize()
     {
-        if (is_null($this->currency)) throw new DeveloperError("`currency` is not set (developer error)");
-        if (is_null($this->evm_implementation)) throw new DeveloperError("`evm_implementation` is not set (developer error)");
-        if (is_null($this->reward_function)) throw new DeveloperError("`reward_function` is not set (developer error)");
+        if (is_null($this->currency))
+            throw new DeveloperError("`currency` is not set (developer error)");
 
-        if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features))
-            if (is_null($this->staking_contract))
-                throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
+        if (is_null($this->evm_implementation))
+            throw new DeveloperError("`evm_implementation` is not set (developer error)");
+
+        if (is_null($this->reward_function))
+            throw new DeveloperError("`reward_function` is not set (developer error)");
+      
+        if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
+            throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
+
+        if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features) && $this->evm_implementation === EVMImplementation::Erigon)
+            throw new DeveloperError("`Erigon` is not supported for `zkEVM` (developer error)");
+
+        if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+        {
+            $this->forking_implemented = false; // We only process finalized batches
+            $this->block_entity_name = 'batch'; // We process batches instead of blocks
+            $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
+        }
     }
 
     final public function pre_process_block($block_id)
@@ -139,15 +154,43 @@ abstract class EVMMainModule extends CoreModule
             }
             else // geth is slower as we have to do eth_getTransactionReceipt for every transaction separately
             {
+                $method = (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+                    ? 'eth_getBlockByNumber'
+                    : 'zkevm_getBatchByNumber';
+
                 $r1 = requester_single($this->select_node(),
-                    params: ['method'  => 'eth_getBlockByNumber',
+                    params: ['method'  => $method,
                              'params'  => [to_0xhex_from_int64($block_id), true],
                              'id'      => 0,
                              'jsonrpc' => '2.0',
                     ], result_in: 'result', timeout: $this->timeout);
 
                 $block_time = $r1['timestamp'];
-                $miner = $r1['miner'];
+
+                if (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+                {
+                    $miner = $r1['miner'];
+                }
+                else
+                {
+                    // zkevm_getBatchByNumber doesn't return the sequencer address, so we have to get it from the first block in the batch
+                    if (!isset($r1['transactions'][0]['blockNumber']))
+                    {
+                        $r1['transactions'] = [];
+                        $miner = '0x00';
+                    }
+                    else
+                    {
+                        $miner = requester_single($this->select_node(),
+                            params: ['method'  => 'eth_getBlockByNumber',
+                                     'params'  => [$r1['transactions'][0]['blockNumber'],
+                                                   true,
+                                     ],
+                                     'id'      => 0,
+                                     'jsonrpc' => '2.0',
+                            ], result_in: 'result', timeout: $this->timeout)['miner'];
+                    }
+                }
 
                 if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
                 {
@@ -181,17 +224,7 @@ abstract class EVMMainModule extends CoreModule
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'),
                     timeout: $this->timeout);
 
-                foreach ($curl_results as $result)
-                {
-                    $receipt_data[] = requester_multi_process($result);
-                }
-
-                reorder_by_id($receipt_data);
-
-                foreach ($receipt_data as &$receipt)
-                {
-                    $receipt = $receipt['result'];
-                }
+                $receipt_data = requester_multi_process_all($curl_results, result_in: 'result');
             }
 
             if (in_array(EVMSpecialFeatures::BorValidator, $this->extra_features))
@@ -235,42 +268,108 @@ abstract class EVMMainModule extends CoreModule
         }
         else // Mempool processing
         {
-            $r = requester_single($this->select_node(),
-                params: ['jsonrpc' => '2.0', 'method' => 'txpool_content', 'id' => 0],
-                result_in: 'result',
-                timeout: $this->timeout);
-
-            $r_combined = array_merge($r['queued'], $r['pending']);
-
-            $processing_batch_count = 0;
-            $break = false;
-
-            foreach ($r_combined as $transactions)
+            if (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
             {
-                foreach ($transactions as $transaction)
+                $r = requester_single($this->select_node(),
+                    params: ['jsonrpc'=> '2.0', 'method' => 'txpool_content', 'id' => 0],
+                    result_in: 'result',
+                    timeout: $this->timeout);
+
+                $r_combined = array_merge($r['queued'], $r['pending']);
+
+                $processing_batch_count = 0;
+                $break = false;
+
+                foreach ($r_combined as $transactions)
                 {
-                    if (!isset($this->processed_transactions[($transaction['hash'])]))
+                    foreach ($transactions as $transaction)
                     {
-                        $transaction_data[($transaction['hash'])] =
-                            [
-                                'from' => $transaction['from'],
-                                'to' => $transaction['to'],
-                                'value' => $transaction['value'],
-                                'contractAddress' => '0x00',
-                                'status' => null,
-                            ];
-
-                        $processing_batch_count++;
-
-                        if ($processing_batch_count >= 100) // For debug purposes, we limit the number of mempool transactions to process
+                        if (!isset($this->processed_transactions[($transaction['hash'])]))
                         {
-                            $break = true;
-                            break;
+                            $transaction_data[($transaction['hash'])] =
+                                [
+                                    'from' => $transaction['from'],
+                                    'to' => $transaction['to'],
+                                    'value' => $transaction['value'],
+                                    'contractAddress' => '0x00',
+                                    'status' => null,
+                                ];
+
+                            $processing_batch_count++;
+
+                            if ($processing_batch_count >= 100) // For debug purposes, we limit the number of mempool transactions to process
+                            {
+                                $break = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($break) break;
+                }
+            }
+            else//if (zkEVM)
+            {
+                // For zkEVM, we request two latest numbers: zkevm_virtualBatchNumber which is processed as a "block", and
+                // zkevm_batchNumber which is the latest batch of "trusted state" transactions (see https://zkevm.polygon.technology/faq/zkevm-protocol-faq/)
+                $multi_curl = [];
+
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                        params: ['jsonrpc' => '2.0', 'method' => 'zkevm_virtualBatchNumber', 'id' => 0], timeout: $this->timeout);
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                        params: ['jsonrpc' => '2.0', 'method' => 'zkevm_batchNumber', 'id' => 1], timeout: $this->timeout);
+
+                $multi_curl_results = requester_multi($multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
+                    timeout: $this->timeout);
+
+                $latest_numbers = requester_multi_process_all($multi_curl_results,
+                    result_in: 'result',
+                    post_process: 'to_int64_from_0xhex');
+
+                $multi_curl = [];
+
+                // Then we resuest all these batches and treat them as "mempool"
+                for ($i = $latest_numbers[0] + 1; $i <= $latest_numbers[1]; $i++)
+                {
+                    $multi_curl[] = requester_multi_prepare($this->select_node(),
+                        params: ['method'  => 'zkevm_getBatchByNumber',
+                                 'params'  => [to_0xhex_from_int64($i),
+                                               true,
+                                 ],
+                                 'id'      => (string)$i,
+                                 'jsonrpc' => '2.0',
+                        ], timeout: $this->timeout);
+                }
+
+                $multi_curl_results = requester_multi($multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
+                    timeout: $this->timeout);
+
+                $pending_batches = requester_multi_process_all($multi_curl_results,
+                    result_in: 'result',
+                    reorder: false);
+
+                foreach ($pending_batches as $pending_batch)
+                {
+                    if ($pending_batch['transactions'])
+                    {
+                        foreach ($pending_batch['transactions'] as $transaction)
+                        {
+                            if (!isset($this->processed_transactions[($transaction['hash'])]))
+                            {
+                                $transaction_data[($transaction['hash'])] =
+                                    [
+                                        'from'            => $transaction['from'],
+                                        'to'              => $transaction['to'],
+                                        'value'           => $transaction['value'],
+                                        'contractAddress' => '0x00',
+                                        'status'          => null,
+                                    ];
+                            }
                         }
                     }
                 }
-
-                if ($break) break;
             }
         }
 

@@ -17,6 +17,7 @@ abstract class UTXOMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
+    public ?array $special_addresses = ['the-void', 'script-*'];
     public ?bool $hidden_values_only = false;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect'];
@@ -46,6 +47,11 @@ abstract class UTXOMainModule extends CoreModule
     {
         if (is_null($this->p2pk_prefix1)) throw new DeveloperError("`p2pk_prefix1` is not set");
         if (is_null($this->p2pk_prefix2)) throw new DeveloperError("`p2pk_prefix2` is not set");
+
+        if (in_array(UTXOSpecialFeatures::HasMWEB, $this->extra_features))
+            $this->special_addresses[] = 'hogwarts';
+        if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features))
+            $this->special_addresses[] = '*-pool';
     }
 
     final public function pre_process_block($block_id)

@@ -29,6 +29,7 @@ abstract class UTXODIP2Module extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
+    public ?array $special_addresses = ['*-tx'];
 
     public ?bool $hidden_values_only = true; // There's nothing really being transferred
 

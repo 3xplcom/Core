@@ -7,6 +7,7 @@
 /*  These are some functions for 3xpl.php, and a prettier version of var_dump() by ghostff (with some colors changed :)  */
 
 const N = "\n";
+const T = "\t";
 
 function ddd(...$input)
 {

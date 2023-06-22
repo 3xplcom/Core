@@ -26,7 +26,7 @@ abstract class EVMTraceModule extends CoreModule
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
-    public ?bool $allow_empty_return_events = true; // Transaaction may have no traces
+    public ?bool $allow_empty_return_events = true; // Transaction may have no traces
 
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = true;
@@ -34,6 +34,7 @@ abstract class EVMTraceModule extends CoreModule
     // EVM-specific
 
     public ?EVMImplementation $evm_implementation = null;
+    public array $extra_features = [];
 
     //
 
@@ -58,19 +59,60 @@ abstract class EVMTraceModule extends CoreModule
 
             $multi_curl = [];
 
-            $multi_curl[] = requester_multi_prepare($this->select_node(),
-                params: ['method'  => 'eth_getBlockByNumber',
-                         'params'  => [to_0xhex_from_int64($block_id), false],
-                         'id'      => 0,
-                         'jsonrpc' => '2.0',
-                ], timeout: $this->timeout);
+            if (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+            {
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    params: ['method'  => 'eth_getBlockByNumber',
+                             'params'  => [to_0xhex_from_int64($block_id), false],
+                             'id'      => 0,
+                             'jsonrpc' => '2.0',
+                    ], timeout: $this->timeout);
 
-            $multi_curl[] = requester_multi_prepare($this->select_node(),
-                params: ['method'  => 'debug_traceBlockByNumber',
-                         'params'  => [to_0xhex_from_int64($block_id), ['tracer' => 'callTracer']],
-                         'id'      => 1,
-                         'jsonrpc' => '2.0',
-                ], timeout: $this->timeout);
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    params: ['method'  => 'debug_traceBlockByNumber',
+                             'params'  => [to_0xhex_from_int64($block_id), ['tracer' => 'callTracer']],
+                             'id'      => 1,
+                             'jsonrpc' => '2.0',
+                    ], timeout: $this->timeout);
+            }
+            else//if zkEVM
+            {
+                $blocks = requester_single($this->select_node(),
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'zkevm_getBatchByNumber',
+                             'params'  => [to_0xhex_from_int64($block_id), true],
+                             'id'      => 0,
+                    ],
+                    result_in: 'result',
+                    timeout: $this->timeout);
+
+                if (!$blocks['transactions'])
+                {
+                    $this->set_return_events([]);
+                    return;
+                }
+                else
+                {
+                    $this_i = 0;
+
+                    foreach ($blocks['transactions'] as $transaction)
+                    {
+                        $multi_curl[] = requester_multi_prepare($this->select_node(),
+                            params: ['method'  => 'eth_getBlockByNumber',
+                                     'params'  => [$transaction['blockNumber'], false],
+                                     'id'      => $this_i++,
+                                     'jsonrpc' => '2.0',
+                            ], timeout: $this->timeout);
+
+                        $multi_curl[] = requester_multi_prepare($this->select_node(),
+                            params: ['method'  => 'debug_traceBlockByNumber',
+                                     'params'  => [$transaction['blockNumber'], ['tracer' => 'callTracer']],
+                                     'id'      => $this_i++,
+                                     'jsonrpc' => '2.0',
+                            ], timeout: $this->timeout);
+                    }
+                }
+            }
 
             $curl_results = requester_multi($multi_curl,
                 limit: envm($this->module, 'REQUESTER_THREADS'),
@@ -87,46 +129,52 @@ abstract class EVMTraceModule extends CoreModule
 
             //
 
-            $transaction_hashes = $curl_results_prepared[0]['result']['transactions'];
-
-            if (count($curl_results_prepared[0]['result']['transactions']) !== count($curl_results_prepared[1]['result']))
-                throw new ModuleError('Transaction count mismatch');
-
             $events = [];
             $sort_key = 0;
-            $this_i = 0;
 
-            foreach ($curl_results_prepared[1]['result'] as $this_trace)
+            for ($gi = 0; $gi < count($curl_results_prepared); $gi+=2)
             {
-                $this_transaction_hash = $transaction_hashes[$this_i++];
+                // In case of non-zkEVM chain this loop will only run once, because count($curl_results_prepared) === 2
 
-                if (!isset($this_trace['result']['calls']))
-                    continue; // No internal txs
+                $transaction_hashes = $curl_results_prepared[$gi]['result']['transactions'];
 
-                if (isset($this_trace['result']['error']))
-                    continue; // Root failed
+                if (count($curl_results_prepared[$gi]['result']['transactions']) !== count($curl_results_prepared[$gi+1]['result']))
+                    throw new ModuleError('Transaction count mismatch');
 
-                $this_calls = [];
+                $this_i = 0;
 
-                evm_trace($this_trace['result']['calls'], $this_calls);
-
-                foreach ($this_calls as $this_call)
+                foreach ($curl_results_prepared[$gi+1]['result'] as $this_trace)
                 {
-                    $events[] = [
-                        'transaction' => $this_transaction_hash,
-                        'address' => $this_call['from'],
-                        'sort_key' => $sort_key++,
-                        'effect' => '-' . $this_call['value'],
-                        'extra' => $this_call['type'],
-                    ];
+                    $this_transaction_hash = $transaction_hashes[$this_i++];
 
-                    $events[] = [
-                        'transaction' => $this_transaction_hash,
-                        'address' => $this_call['to'],
-                        'sort_key' => $sort_key++,
-                        'effect' => $this_call['value'],
-                        'extra' => $this_call['type'],
-                    ];
+                    if (!isset($this_trace['result']['calls']))
+                        continue; // No internal txs
+
+                    if (isset($this_trace['result']['error']))
+                        continue; // Root failed
+
+                    $this_calls = [];
+
+                    evm_trace($this_trace['result']['calls'], $this_calls);
+
+                    foreach ($this_calls as $this_call)
+                    {
+                        $events[] = [
+                            'transaction' => $this_transaction_hash,
+                            'address' => $this_call['from'],
+                            'sort_key' => $sort_key++,
+                            'effect' => '-' . $this_call['value'],
+                            'extra' => $this_call['type'],
+                        ];
+
+                        $events[] = [
+                            'transaction' => $this_transaction_hash,
+                            'address' => $this_call['to'],
+                            'sort_key' => $sort_key++,
+                            'effect' => $this_call['value'],
+                            'extra' => $this_call['type'],
+                        ];
+                    }
                 }
             }
         }

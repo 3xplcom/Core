@@ -21,7 +21,7 @@ echo cli_format_blue_reverse('  HELLO  ') . N;
 
 // Selecting the module
 
-echo cli_format_bold('Please select a module (number or name): ') . N;
+echo cli_format_bold('Please select a module (number or name) or ' . cli_format_reverse('<T>') . ' for tests: ') . N;
 
 $available_modules = env('MODULES');
 $i_to_module = $to_echo = [];
@@ -43,6 +43,35 @@ if (isset($argv[1]))
 else
 {
     $chosen_module = (string)readline(':> ');
+}
+
+if ($chosen_module === 'T')
+{
+    $input_argv[] = 'T';
+    echo N;
+
+    $wins = [];
+    $errors = [];
+
+    foreach ($available_modules as $module_name)
+    {
+        echo "Running tests for {$module_name}...\n";
+        $module = new (module_name_to_class($module_name))();
+
+        try
+        {
+            $module->test();
+            $wins[] = "Module {$module_name} is ok";
+        }
+        catch (Throwable $e)
+        {
+            $errors[] = "Module {$module_name}: {$e->getMessage()}";
+        }
+    }
+
+    echo N;
+
+    ddd($wins, $errors);
 }
 
 $input_argv[] = $chosen_module;
@@ -69,6 +98,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Process block ' . cli_format_reverse('<B>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
     ', Check handle ' . cli_format_reverse('<H>') .
+    ', Run tests ' . cli_format_reverse('<T>') .
     N;
 
 if (isset($argv[2]))
@@ -83,7 +113,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'M', 'H']))
+if (!in_array($chosen_option, ['L', 'B', 'M', 'H', 'T']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -92,6 +122,11 @@ if ($chosen_option === 'L')
 {
     $best_block = $module->inquire_latest_block();
     ddd($best_block);
+}
+elseif ($chosen_option === 'T')
+{
+    $module->test();
+    ddd('Tests have completed successfully');
 }
 elseif ($chosen_option === 'B')
 {
@@ -116,7 +151,13 @@ elseif ($chosen_option === 'B')
 
     echo N;
 
-    echo cli_format_bold("What's next? <D> to show all events, <{:transaction}>|<{:address}> to filter, <T> for 10 first events, or <C> for currencies") . N;
+    echo cli_format_bold("What's next?\n" .
+            cli_format_reverse('<E>') . ' to show all events, ' .
+            cli_format_reverse('<{:transaction}>|<{:address}>') . ' to filter events, ' .
+            cli_format_reverse('<10>') . ' for 10 first events, ' .
+            cli_format_reverse('<C>') . ' for currencies, ' .
+            cli_format_reverse('<D>') . ' to dump events into a TSV file, or ' .
+            cli_format_reverse('<T>') . ' to generate a test') . N;
 
     if (isset($argv[4]))
     {
@@ -138,11 +179,104 @@ elseif ($chosen_option === 'B')
 
     $events = $module->get_return_events();
 
-    if ($filter === 'D')
+    if ($filter === 'E')
     {
         ddd($events);
     }
-    elseif ($filter === 'T')
+    if ($filter === 'T')
+    {
+        echo cli_format_bold(
+                cli_format_reverse('<A>') . ' for all events and currencies, ' .
+                cli_format_reverse('<{:transaction}>') . ' for a single transaction\'s events') . N;
+
+        if (isset($argv[5]))
+        {
+            $transaction = $argv[5];
+            echo ":> {$transaction}\n";
+        }
+        else
+        {
+            $transaction = readline(':> ');
+        }
+
+        $input_argv[] = $transaction;
+
+        if ($transaction === 'A')
+        {
+            ddd(serialize(['events' => $events, 'currencies' => $module->get_return_currencies()]));
+        }
+        else
+        {
+            $filtered_events = [];
+
+            foreach ($events as $event)
+            {
+                if (!is_null($event['transaction']) && str_contains($event['transaction'], $transaction))
+                    $filtered_events[] = $event;
+            }
+
+            ddd(serialize(['events' => $filtered_events]));
+        }
+    }
+    elseif ($filter === 'D')
+    {
+        // TSV format: blockchain <tab> module <tab> block <tab> transaction <tab> sort_key <tab> time <tab>
+        //             address <tab> currency <tab> sign <tab> effect <tab> valid <tab> extra <?tab> ?extra_indexed
+
+        $tsv_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'currency', 'sign', 'effect', 'valid', 'extra'];
+        $tsv = '';
+
+        foreach ($events as $event)
+        {
+            $this_tsv = [];
+
+            if ($event['address'] === '0x00')
+                $event['address'] = 'the-void';
+
+            if ($module->currency_format === CurrencyFormat::Static)
+                $event['currency'] = $module->currency;
+            else
+                $event['currency'] = ($module->complements ?? $module->module) . '/' . $event['currency'];
+
+            $event['sign'] = (str_contains($event['effect'], '-')) ? '-1' : '1';
+
+            if ($module->hidden_values_only)
+                $event['effect'] = null;
+            else
+                $event['effect'] = str_replace('-', '', $event['effect']);
+
+            if (isset($event['failed']))
+                $event['valid'] = ($event['failed'] === true || $event['failed'] === 't') ? '-1' : '1';
+            else
+                $event['valid'] = '1';
+
+            if (isset($event['extra']))
+                $event['extra'] = '\\\\x' . bin2hex($event['extra']);
+
+            $this_tsv[] = $module->blockchain;
+            $this_tsv[] = $module->module;
+
+            foreach ($tsv_fields as $f)
+                $this_tsv[] = (isset($event[$f])) ? $event[$f] : '\N';
+
+            if (in_array('extra_indexed', $module->events_table_fields))
+                $this_tsv[] = (!is_null($event['extra_indexed'])) ? '\\\\x' . bin2hex($event['extra_indexed']) : '\N';
+
+            $tsv .= join(T, $this_tsv) . N;
+        }
+
+        $fname = "Dumps/3xplor3r_{$module->blockchain}_{$module->module}_events_{$chosen_block_id}.tsv";
+
+        if (!file_exists('Dumps'))
+            mkdir('Dumps', 0777);
+
+        $f = fopen($fname, 'w');
+        fwrite($f, $tsv);
+        fclose($f);
+
+        ddd("Dumped to {$fname}");
+    }
+    elseif ($filter === '10')
     {
         if (!$events)
             ddd($events);

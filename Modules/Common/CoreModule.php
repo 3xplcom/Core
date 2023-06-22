@@ -68,6 +68,10 @@ abstract class CoreModule
                                    'n' => 'Nothing',
                                    // Note that null should be used for ordinary events
     ];
+    public ?array $special_addresses = []; // An array of special addresses which technically can't be found on blockchains,
+    // but are used in the modules. Examples: `the-void` is used for sending fees to and in coinbase transactions in UTXO chains;
+    // `sprout-pool`, `sapling-pool`, and `orchard-pool` are used in Zcash for interacting with shielded pools. In case of Zcash,
+    // a wildcard can be used like this: `*-pool`. These addresses are only available on 3xpl, but not on other block explorers.
 
     // What module returns
     // 1. Does it return events?
@@ -102,6 +106,15 @@ abstract class CoreModule
     public ?bool $handles_implemented = null; // Is there an API call to convert a handle into address?
     public ?string $handles_regex = null; // Regular expression for the handles
     public ?Closure $api_get_handle = null; // API function that performs conversion
+
+    // Tests
+    public ?array $tests = null; // Array for test cases
+
+    // Entity names
+    public string $block_entity_name = 'block';
+    public string $transaction_entity_name = 'transaction';
+    public string $address_entity_name = 'address';
+    public string $mempool_entity_name = 'mempool';
 
     ///////////////////////
     // Runtime variables //
@@ -592,5 +605,49 @@ abstract class CoreModule
                     throw new DeveloperError("Currency ids can't contain slashes");
             }
         }
+    }
+
+    ///////////
+    // Tests //
+    ///////////
+
+    final public function test()
+    {
+        if (!isset($this->tests))
+            throw new DeveloperError('No tests defined for this module');
+
+        $errors = [];
+
+        foreach ($this->tests as $test)
+        {
+            $block = $test['block'];
+            $expected_result = $test['result'];
+
+            $this->process_block($block);
+            $events = $this->get_return_events();
+
+            if (!isset($test['transaction']))
+            {
+                $got_result = serialize(['events' => $events, 'currencies' => $this->get_return_currencies()]);
+            }
+            else
+            {
+                $filtered_events = [];
+
+                foreach ($events as $event)
+                {
+                    if (!is_null($event['transaction']) && str_contains($event['transaction'], $test['transaction']))
+                        $filtered_events[] = $event;
+                }
+
+                $got_result = serialize(['events' => $filtered_events]);
+            }
+
+            if ($expected_result !== $got_result)
+                $errors[] = $block;
+        }
+
+        if ($errors)
+            throw new DeveloperError('Failed tests for blocks: ' . implode(', ', $errors) . ' ¯\_(ツ)_/¯');
     }
 }

@@ -30,14 +30,19 @@ enum EVMSpecialFeatures
     case BorValidator;
     case AllowEmptyRecipient;
     case PoSWithdrawals;
+    case zkEVM;
 }
 
 trait EVMTraits
 {
     public function inquire_latest_block()
     {
+        $method = (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+            ? 'eth_blockNumber'
+            : 'zkevm_virtualBatchNumber';
+
         return to_int64_from_0xhex(requester_single($this->select_node(),
-            params: ['jsonrpc'=> '2.0', 'method' => 'eth_blockNumber', 'id' => 0], result_in: 'result', timeout: $this->timeout));
+            params: ['jsonrpc'=> '2.0', 'method' => $method, 'id' => 0], result_in: 'result', timeout: $this->timeout));
     }
 
     public function ensure_block($block_id, $break_on_first = false)
@@ -50,7 +55,11 @@ trait EVMTraits
 
         $multi_curl = [];
 
-        if (isset($this->evm_implementation) && $this->evm_implementation === EVMImplementation::Erigon)
+        if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+        {
+            $params = ['jsonrpc'=> '2.0', 'method' => 'zkevm_getBatchByNumber', 'params' => [to_0xhex_from_int64($block_id), false], 'id' => 0];
+        }
+        elseif (isset($this->evm_implementation) && $this->evm_implementation === EVMImplementation::Erigon)
         {
             $params = ['jsonrpc'=> '2.0', 'method' => 'erigon_getHeaderByNumber', 'params' => [to_0xhex_from_int64($block_id)], 'id' => 0];
         }
@@ -77,14 +86,19 @@ trait EVMTraits
         }
 
         $result0 = requester_multi_process($curl_results[0], result_in: 'result');
-        $this->block_hash = $result0['hash'];
+
+        $hash_key = (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+            ? 'hash'
+            : 'sendSequencesTxHash';
+
+        $this->block_hash = $result0[$hash_key];
         $this->block_time = date('Y-m-d H:i:s', to_int64_from_0xhex($result0['timestamp']));
 
         if (count($curl_results) > 1)
         {
             foreach ($curl_results as $result)
             {
-                if (requester_multi_process($result, result_in: 'result')['hash'] !== $this->block_hash)
+                if (requester_multi_process($result, result_in: 'result')[$hash_key] !== $this->block_hash)
                 {
                     throw new ConsensusException("ensure_block(block_id: {$block_id}): no consensus");
                 }
