@@ -278,11 +278,10 @@ abstract class UTXONFCTModule extends CoreModule
 
             // First, we need to check if the BCMR node knows about the latest block
 
-            $_ENV['__TRIM_IN_JSON_DECODE'] = true; // TODO: make this a Requester option
-
             $latest_bcmr_block = (int)requester_single($bcmr_node,
                 endpoint: 'status/latest-block/',
-                result_in: 'height');
+                result_in: 'height',
+                flags: [RequesterOption::TrimJSON]);
 
             if ($latest_bcmr_block < $block_id)
                 throw new ModuleException("BCMR node is not ready: reports height {$latest_bcmr_block} while processing block {$block_id}");
@@ -304,7 +303,7 @@ abstract class UTXONFCTModule extends CoreModule
 
             foreach ($multi_curl_results as $result)
             {
-                $result = requester_multi_process($result, ignore_errors: true);
+                $result = requester_multi_process($result, ignore_errors: true, flags: [RequesterOption::TrimJSON]);
 
                 if (isset($result['error']))
                 {
