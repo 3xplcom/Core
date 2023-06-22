@@ -138,6 +138,9 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
                 continue;  // Block 12831012 contains 0xa36adc0ddedb4b9f9f8de5ef59fa6c99bbb8ca8bbc44d189dd0bedf6bf61b92e
                            // which is present in 12857725, 12856380, 12855736, and many more, but not in 12831012 ¯\_(ツ)_/¯
 
+            if (!$i[$this_i]['transfers'])
+                continue;
+
             $initiating_address = $i[$this_i]['account_id'];
 
             if ($initiating_address === '') // This is a bit strange
@@ -171,9 +174,6 @@ abstract class PolkadotLikeMinimalModule extends CoreModule
                 $fee = $i[$this_i]['fee'];
                     $fee_idx = $i[$this_i]['event'][0]['event_idx'];
             }
-
-            if (!$i[$this_i]['transfers'])
-                continue;
 
             foreach ($i[$this_i]['transfers'] as $this_transfer)
             {
