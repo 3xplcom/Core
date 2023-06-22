@@ -5,10 +5,8 @@
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module process CashTokens transfers. Requires a Bitcoin Cash Node to function (https://gitlab.com/bitcoin-cash-node/bitcoin-cash-node)
- *  It processes FT transfers. For NFT transfers see the UTXONFCT module.
- *  Note that this is WIP as there's no good mechanism for retrieving token data yet (see the TODO below).
- *
- *  CashTokens documentation: https://github.com/bitjson/cashtokens  */
+ *  It processes FT transfers. For NFT transfers see the UTXONFCT module. CashTokens documentation: https://github.com/bitjson/cashtokens
+ *  Requesting token details requires a BCMR indexer: https://github.com/paytaca/bcmr-indexer  */
 
 abstract class UTXOFCTModule extends CoreModule
 {
@@ -18,7 +16,7 @@ abstract class UTXOFCTModule extends CoreModule
     public ?array $events_table_nullable_fields = ['extra'];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol', 'decimals', 'description'];
-    public ?array $currencies_table_nullable_fields = [];
+    public ?array $currencies_table_nullable_fields = ['name', 'symbol', 'description'];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = true;
@@ -87,7 +85,7 @@ abstract class UTXOFCTModule extends CoreModule
             }
         }
 
-        $events = [];
+        $events = $currencies_to_process = [];
         $sort_key = 0;
 
         foreach ($block['tx'] as $transaction)
@@ -118,6 +116,9 @@ abstract class UTXOFCTModule extends CoreModule
                             'effect' => '-' . $vin['prevout']['tokenData']['amount'],
 //                            'extra' => null,
                         ];
+
+                        if ($block_id !== MEMPOOL)
+                            $currencies_to_process[] = $vin['prevout']['tokenData']['category'];
 
                         if (isset($total_sum['ft'][($vin['prevout']['tokenData']['category'])]))
                         {
@@ -160,6 +161,9 @@ abstract class UTXOFCTModule extends CoreModule
                             'effect' => $vout['tokenData']['amount'],
 //                            'extra' => null,
                         ];
+
+                        if ($block_id !== MEMPOOL)
+                            $currencies_to_process[] = $vout['tokenData']['category'];
 
                         if (isset($total_sum['ft'][($vout['tokenData']['category'])]))
                         {
@@ -254,7 +258,84 @@ abstract class UTXOFCTModule extends CoreModule
 
         $this->set_return_events($events);
 
-        if ($block_id !== MEMPOOL)
-            $this->set_return_currencies([]); // TODO: this is WIP! Once the Metadata Registry (BCMR) is ready, we'll revamp this
+        // Process currencies
+
+        if ($currencies_to_process)
+        {
+            $currencies = [];
+
+            $currencies_to_process = array_values(array_unique($currencies_to_process)); // Removing duplicates
+            $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format); // Removes already known currencies
+
+            $bcmr_nodes = envm($this->module, 'BCMR_NODES');
+            $bcmr_node = $bcmr_nodes[array_rand($bcmr_nodes)];
+
+            // First, we need to check if the BCMR node knows about the latest block
+
+            $latest_bcmr_block = (int)requester_single($bcmr_node,
+                endpoint: 'status/latest-block/',
+                result_in: 'height',
+                flags: [RequesterOption::TrimJSON]);
+
+            if ($latest_bcmr_block < $block_id)
+                throw new ModuleException("BCMR node is not ready: reports height {$latest_bcmr_block} while processing block {$block_id}");
+
+            // Then we proceed with fetching currencies
+
+            $multi_curl = [];
+
+            foreach ($currencies_to_process as $currency_id)
+            {
+                $multi_curl[] = requester_multi_prepare($bcmr_node,
+                    endpoint: "tokens/{$currency_id}/",
+                    timeout: $this->timeout);
+            }
+
+            $multi_curl_results = requester_multi($multi_curl,
+                limit: envm($this->module, 'REQUESTER_THREADS'),
+                timeout: $this->timeout);
+
+            foreach ($multi_curl_results as $result)
+            {
+                $result = requester_multi_process($result, ignore_errors: true, flags: [RequesterOption::TrimJSON]);
+
+                if (isset($result['error']))
+                {
+                    if ($result['error'] === 'no valid metadata found')
+                    {
+                        //
+                    }
+                    elseif ($result['error'] === 'category not found')
+                    {
+                        throw new ModuleError("There's a category in the block, but no details from the BCMR node");
+                    }
+                    else
+                    {
+                        throw new ModuleError("Unknown error from the BCMR node: {$result['error']}");
+                    }
+                }
+                else
+                {
+                    if (!isset($result['token']['decimals']))
+                        $this_decimals = 0;
+                    else
+                        $this_decimals = (int)$result['token']['decimals'];
+
+                    $currencies[] = [
+                        'id' => $result['token']['category'],
+                        'name' => $result['name'] ?? null,
+                        'symbol' => $result['token']['symbol'] ?? null,
+                        'decimals' => ($this_decimals <= 32767 ) ? $this_decimals : 0, // We use SMALLINT for decimals...
+                        'description' => $result['description'] ?? null,
+                    ];
+                }
+            }
+
+            $this->set_return_currencies($currencies);
+        }
+        elseif ($this->block_id !== MEMPOOL)
+        {
+            $this->set_return_currencies([]);
+        }
     }
 }
