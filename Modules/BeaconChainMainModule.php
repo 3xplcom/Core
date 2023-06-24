@@ -4,7 +4,7 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
-/*  This is the main Beacon Chain module. It requires a Prysm node to run.  */
+/*  This is the main Beacon Chain module. It requires a Prysm or a Lighthouse node to run.  */
 
 final class BeaconChainMainModule extends BeaconChainLikeMainModule implements Module
 {
@@ -18,7 +18,7 @@ final class BeaconChainMainModule extends BeaconChainLikeMainModule implements M
         $this->first_block_id = 0;
 
         // EVMMainModule
-        $this->currency = 'ethereum';
+        $this->currency = 'beacon-ethereum'; // We can't use `ethereum` here as this one has a different number of decimals
         $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 9, 'description' => null];
     }
 }

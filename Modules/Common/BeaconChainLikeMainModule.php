@@ -16,6 +16,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
+    public ?array $special_addresses = ['the-void'];
     public ?bool $hidden_values_only = false;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
@@ -26,7 +27,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
     public ?bool $allow_empty_return_events = true;
 
     public ?bool $mempool_implemented = false;
-    public ?bool $forking_implemented = true;
+    public ?bool $forking_implemented = false;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
     public ?array $extra_data_details = [
@@ -40,6 +41,10 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         'ap' => 'Attestor penalty',
         'pp' => 'Proposer penalty',
     ];
+
+    public string $block_entity_name = 'epoch';
+    public string $transaction_entity_name = 'slot';
+    public string $address_entity_name = 'validator';
 
     //
 
@@ -132,6 +137,8 @@ abstract class BeaconChainLikeMainModule extends CoreModule
             for ($i = 1; $i < count($hashes); $i++)
                 if ($hashes[0] !== $hashes[$i])
                     throw new ConsensusException("ensure_block(block_id: {$block}): no consensus");
+
+        $hashes[0] = str_replace('0x', '', $hashes[0]);
 
         $this->block_hash = $hashes[0];
         $this->block_id = $block;
