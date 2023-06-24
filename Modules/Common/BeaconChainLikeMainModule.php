@@ -228,7 +228,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 $index = requester_single($this->select_node(),
                     endpoint: "/eth/v1/beacon/states/{$slot_id}/validators/{$pubkey}",
                     timeout: $this->timeout,
-                    result_in: 'data')["index"];
+                    result_in: 'data')['index'];
 
                 $deposits[] = [$index, $address, $amount, $slot_id];
             }
@@ -263,8 +263,8 @@ abstract class BeaconChainLikeMainModule extends CoreModule
 
             foreach($proposer_slashings as $as)
             {
-                $attestation_1 = $as['signed_header_1']["message"]['proposer_index'];
-                $attestation_2 = $as['signed_header_2']["message"]['proposer_index'];
+                $attestation_1 = $as['signed_header_1']['message']['proposer_index'];
+                $attestation_2 = $as['signed_header_2']['message']['proposer_index'];
 
                 $slashed_1 = $this->ask_slashed_validators(attestationGroup: [$attestation_1], slot: $slot_id);
                 $slashed_2 = $this->ask_slashed_validators(attestationGroup: [$attestation_2], slot: $slot_id);
@@ -303,7 +303,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
 
             $last_block_time = requester_single(
                 $execution_layer,
-                params: ['jsonrpc' => '2.0', 'method' => 'eth_getBlockByHash', 'params' => ["{$block_hash}", false], 'id' => 0],
+                params: ['jsonrpc' => '2.0', 'method' => 'eth_getBlockByHash', 'params' => [$block_hash, false], 'id' => 0],
                 timeout: $this->timeout,
                 result_in: 'result'
             );
@@ -365,7 +365,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
 
                 foreach ($slot_rewards as $rw) 
                 {
-                    if (isset($rewards[$rw["validator_index"]]))
+                    if (isset($rewards[$rw['validator_index']]))
                         $rewards[$rw['validator_index']] = bcadd($rw['reward'], $rewards[$rw['validator_index']]);
                     else
                         $rewards[$rw['validator_index']] = $rw['reward'];
@@ -504,7 +504,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 'transaction' => $slot,
                 'sort_key' => $key_tes++,
                 'time' => $this->block_time,
-                'address' => 'the-void',
+                'address' => (string)$index,
                 'effect' => '-' . $amount,
                 'extra' => 'w',
                 'extra_indexed' => (string)$address
@@ -515,7 +515,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 'transaction' => $slot,
                 'sort_key' => $key_tes++,
                 'time' => $this->block_time,
-                'address' => (string)$index,
+                'address' => 'the-void',
                 'effect' => $amount,
                 'extra' => 'w',
                 'extra_indexed' => (string)$address
@@ -529,7 +529,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 'transaction' => $slot,
                 'sort_key' => $key_tes++,
                 'time' => $this->block_time,
-                'address' => (string)$index,
+                'address' => 'the-void',
                 'effect' => '-' . $amount,
                 'extra' => 'd',
                 'extra_indexed' => (string)$address
@@ -540,7 +540,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 'transaction' => $slot,
                 'sort_key' => $key_tes++,
                 'time' => $this->block_time,
-                'address' => 'the-void',
+                'address' => (string)$index,
                 'effect' => $amount,
                 'extra' => 'd',
                 'extra_indexed' => (string)$address
