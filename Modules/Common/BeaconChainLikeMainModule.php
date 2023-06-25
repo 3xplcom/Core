@@ -319,7 +319,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         }
         else
         {
-            $this->block_time = date('Y-m-d H:i:s', $slots[max(array_keys($slots))]);
+            $this_slot_times = array_reverse($slots);
+
+            foreach ($this_slot_times as $time)
+            {
+                if (!is_null($time))
+                {
+                    $this->block_time = date('Y-m-d H:i:s', $time);
+                    break;
+                }
+            }
         }
 
         foreach ($slots as $slot => $tm)
