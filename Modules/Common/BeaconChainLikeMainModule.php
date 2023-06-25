@@ -12,11 +12,11 @@ abstract class BeaconChainLikeMainModule extends CoreModule
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed; // Use `Even` if `the-void` is used
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?array $special_addresses = ['the-void'];
+//    public ?array $special_addresses = ['the-void'];
     public ?bool $hidden_values_only = false;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
@@ -41,6 +41,8 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         'ap' => 'Attestor penalty',
         'pp' => 'Proposer penalty',
     ];
+
+    public ?bool $ignore_sum_of_all_effects = true; // This is not needed if `the-void` is used
 
     public string $block_entity_name = 'epoch';
     public string $transaction_entity_name = 'slot';
@@ -410,16 +412,20 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         {
             foreach ($slashed as $validator_index => [$reward_for_slashing, $penalty])
             {
-                $events[] = [
-                    'block' => $block,
-                    'transaction' => $slot,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => 'the-void',
-                    'effect' => '-' . $reward_for_slashing,
-                    'extra' => 'sa',
-                    'extra_indexed' => (string)$validator_index
-                ];
+//                $events[] = [
+//                    'block' => $block,
+//                    'transaction' => $slot,
+//                    'sort_key' => $key_tes++,
+//                    'time' => $this->block_time,
+//                    'address' => 'the-void',
+//                    'effect' => '-' . $reward_for_slashing,
+//                    'extra' => 'sa',
+//                    'extra_indexed' => (string)$validator_index
+//                ];
+
+                // As *all* events come in pairs with `the-void` and validators don't interact with each other, we
+                // technically don't need transfers to or from `the-void`. At the current rate, this saves more than
+                // 1.500 events per second! All `the-void` transfers are left commented out in case they'll be needed for something
     
                 $events[] = [
                     'block' => $block,
@@ -443,16 +449,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                     'extra_indexed' => null
                 ];
 
-                $events[] = [
-                    'block' => $block,
-                    'transaction' => $slot,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => 'the-void',
-                    'effect' => $penalty,
-                    'extra' => 'ap',
-                    'extra_indexed' => null
-                ];
+//                $events[] = [
+//                    'block' => $block,
+//                    'transaction' => $slot,
+//                    'sort_key' => $key_tes++,
+//                    'time' => $this->block_time,
+//                    'address' => 'the-void',
+//                    'effect' => $penalty,
+//                    'extra' => 'ap',
+//                    'extra_indexed' => null
+//                ];
             }
         }
 
@@ -460,16 +466,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         {
             foreach ($slashed as $validator_index => [$reward_for_slashing, $penalty])
             {
-                $events[] = [
-                    'block' => $block,
-                    'transaction' => $slot,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => 'the-void',
-                    'effect' => '-' . $reward_for_slashing,
-                    'extra' => 'sp',
-                    'extra_indexed' => (string)$validator_index
-                ];
+//                $events[] = [
+//                    'block' => $block,
+//                    'transaction' => $slot,
+//                    'sort_key' => $key_tes++,
+//                    'time' => $this->block_time,
+//                    'address' => 'the-void',
+//                    'effect' => '-' . $reward_for_slashing,
+//                    'extra' => 'sp',
+//                    'extra_indexed' => (string)$validator_index
+//                ];
     
                 $events[] = [
                     'block' => $block,
@@ -493,16 +499,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                     'extra_indexed' => null
                 ];
 
-                $events[] = [
-                    'block' => $block,
-                    'transaction' => $slot,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => 'the-void',
-                    'effect' => $penalty,
-                    'extra' => 'pp',
-                    'extra_indexed' => null
-                ];
+//                $events[] = [
+//                    'block' => $block,
+//                    'transaction' => $slot,
+//                    'sort_key' => $key_tes++,
+//                    'time' => $this->block_time,
+//                    'address' => 'the-void',
+//                    'effect' => $penalty,
+//                    'extra' => 'pp',
+//                    'extra_indexed' => null
+//                ];
             }
         }
 
@@ -519,30 +525,30 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 'extra_indexed' => (string)$address
             ];
 
-            $events[] = [
-                'block' => $block,
-                'transaction' => $slot,
-                'sort_key' => $key_tes++,
-                'time' => $this->block_time,
-                'address' => 'the-void',
-                'effect' => $amount,
-                'extra' => 'w',
-                'extra_indexed' => (string)$address
-            ];
+//            $events[] = [
+//                'block' => $block,
+//                'transaction' => $slot,
+//                'sort_key' => $key_tes++,
+//                'time' => $this->block_time,
+//                'address' => 'the-void',
+//                'effect' => $amount,
+//                'extra' => 'w',
+//                'extra_indexed' => (string)$address
+//            ];
         }
 
         foreach ($deposits as [$index, $address, $amount, $slot])
         {
-            $events[] = [
-                'block' => $block,
-                'transaction' => $slot,
-                'sort_key' => $key_tes++,
-                'time' => $this->block_time,
-                'address' => 'the-void',
-                'effect' => '-' . $amount,
-                'extra' => 'd',
-                'extra_indexed' => (string)$address
-            ];
+//            $events[] = [
+//                'block' => $block,
+//                'transaction' => $slot,
+//                'sort_key' => $key_tes++,
+//                'time' => $this->block_time,
+//                'address' => 'the-void',
+//                'effect' => '-' . $amount,
+//                'extra' => 'd',
+//                'extra_indexed' => (string)$address
+//            ];
 
             $events[] = [
                 'block' => $block,
@@ -568,16 +574,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
             if (is_null($effect))
                 $effect = '0';
 
-            $events[] = [
-                'block' => $block,
-                'transaction' => $info[0],
-                'sort_key' => $key_tes++,
-                'time' => $this->block_time,
-                'address' => 'the-void',
-                'effect' => '-' . $effect,
-                'extra' => $extra,
-                'extra_indexed' => null
-            ];
+//            $events[] = [
+//                'block' => $block,
+//                'transaction' => $info[0],
+//                'sort_key' => $key_tes++,
+//                'time' => $this->block_time,
+//                'address' => 'the-void',
+//                'effect' => '-' . $effect,
+//                'extra' => $extra,
+//                'extra_indexed' => null
+//            ];
 
             $events[] = [
                 'block' => $block,
@@ -640,16 +646,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
 
             if (str_contains($this_void, '-'))
             {
-                $events[] = [
-                    'block' => $block,
-                    'transaction' => null,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => 'the-void',
-                    'effect' => $this_void,
-                    'extra' => 'a',
-                    'extra_indexed' => null
-                ];
+//                $events[] = [
+//                    'block' => $block,
+//                    'transaction' => null,
+//                    'sort_key' => $key_tes++,
+//                    'time' => $this->block_time,
+//                    'address' => 'the-void',
+//                    'effect' => $this_void,
+//                    'extra' => 'a',
+//                    'extra_indexed' => null
+//                ];
 
                 $events[] = [
                     'block' => $block,
@@ -675,16 +681,16 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                     'extra_indexed' => null
                 ];
 
-                $events[] = [
-                    'block' => $block,
-                    'transaction' => null,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => 'the-void',
-                    'effect' => $this_void,
-                    'extra' => 'a',
-                    'extra_indexed' => null
-                ];
+//                $events[] = [
+//                    'block' => $block,
+//                    'transaction' => null,
+//                    'sort_key' => $key_tes++,
+//                    'time' => $this->block_time,
+//                    'address' => 'the-void',
+//                    'effect' => $this_void,
+//                    'extra' => 'a',
+//                    'extra_indexed' => null
+//                ];
             }
         }
 
