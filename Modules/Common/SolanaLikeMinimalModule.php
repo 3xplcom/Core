@@ -80,8 +80,7 @@ abstract class SolanaLikeMinimalModule extends CoreModule
         }
         catch (RequesterException $e)
         {
-            if (strstr($e->getMessage(), 'was skipped, or missing due to ledger jump to recent snapshot')
-                || strstr($e->getMessage(), 'Block not available for slot')) // Empty slot
+            if (strstr($e->getMessage(), 'was skipped, or missing due to ledger jump to recent snapshot')) // Empty slot
             {
                 $this->block_time = date('Y-m-d H:i:s', 0);
                 $this->set_return_events([]);
