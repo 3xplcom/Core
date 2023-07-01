@@ -95,18 +95,23 @@ trait EVMTraits
         switch ($flag)
         {
             case 'string':
-                $length = str_repeat('0', (64 - strlen(dec2hex(strlen($data))))) . dec2hex(strlen(($data)));
-                $string = bin2hex($data) . str_repeat('0', 64 - strlen(bin2hex($data)));
-                $result = ('0000000000000000000000000000000000000000000000000000000000000040' . $length . $string);
+                $length = str_repeat('0', (64 - (strlen(dec2hex((string)strlen($data))) % 64))) . dec2hex((string)strlen(($data)));
+                $string = bin2hex($data) . str_repeat('0', 64 - (strlen(bin2hex($data)) % 64));
+                $result = str_repeat('0', 62) . '40' . $length . $string;
+                break;
+            case 'string,uint256':
+                $length = str_repeat('0', (64 - (strlen(dec2hex((string)strlen($data[0]))) % 64))) . dec2hex((string)strlen(($data[0])));
+                $string = bin2hex($data[0]) . str_repeat('0', 64 - (strlen(bin2hex($data[0])) % 64));
+                $result = str_repeat('0', 62) . '40' . str_repeat('0', (64 - strlen(dec2hex($data[1])) % 64)) . dec2hex($data[1]) . $length . $string;
                 break;
             case 'uint256':
-                $result = str_repeat('0', 64 - strlen(dec2hex($data))) . dec2hex($data);
+                $result = str_repeat('0', (64 - (strlen(dec2hex($data))) % 64)) . dec2hex($data);
                 break;
             case 'address':
                 $result = str_repeat('0', (64 - strlen($data))) . $data;
                 break;
             case 'address[]':
-                $result = str_repeat('0', 64 - strlen(dec2hex(count($data)))) . dec2hex(count($data));
+                $result = str_repeat('0', 64 - strlen(dec2hex((string)count($data)))) . dec2hex(count($data));
                 foreach ($data as $address)
                     $result .= (str_repeat('0', (64 - strlen($address))) . $address);
                 break;
@@ -115,7 +120,7 @@ trait EVMTraits
                     throw new DeveloperError('Error number of addresses given to encode_abi function');
                 $result = str_repeat('0', (64 - strlen($data[0]))) . $data[0]; //encode address to be parsed
                 $result .= str_repeat('0', 62) . '40'; //encode the position where to start read array
-                $result .= str_repeat('0', 64 - strlen(dechex(count($data[1])))) . dechex(count($data[1])); //encode number of elements in array
+                $result .= str_repeat('0', 64 - strlen(dec2hex((string)count($data[1])))) . dec2hex((string)count($data[1])); //encode number of elements in array
                 foreach ($data[1] as $address)
                     $result .= str_repeat('0', (64 - strlen($address))) . $address;
                 break;

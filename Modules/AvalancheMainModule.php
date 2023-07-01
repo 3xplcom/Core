@@ -33,45 +33,21 @@ final class AvalancheMainModule extends EVMMainModule implements Module
         $this->handles_regex = '/(.*)\.avax/';
         $this->api_get_handle = function($handle)
         {
-            /*  Okay, here things go a bit ugly. Sorry about that. Since there's no good PHP library for Avvy Domains, we
-             *  have to use a Python library. The recommended way is to set up this: https://github.com/avvydomains/python-client
-             *  and set up a proxy for it. Here's how can the Python part (`resolve.py`) look like:
-             *
-             *  from avvy import AvvyClient
-             *  from web3 import Web3
-             *  import sys
-             *  w3 = Web3(Web3.HTTPProvider('...'))
-             *  avvy = AvvyClient(w3)
-             *  evm_address = avvy.name(sys.argv[1]).resolve(avvy.RECORDS.EVM)
-             *  print(f'{evm_address}')
-             *
-             *  And the PHP part (`index.php`):
-             *
-             *  <?php if (!isset($_GET['name'])) return;
-             *  $resolves_to = trim(`python3 resolve.py {$_GET['name']}`);
-             *  if (!$resolves_to || $resolves_to === 'None') return;
-             *  echo '{"result": "' . strtolower($resolves_to) . '"}';
-             *
-             *  Then, simply point an nginx proxy to `index.php`, and add this proxy to `HANDLE_NODES`
-             *
-             *  Once there's a better PHP support or some on-chain contracts to resolve names, we'll switch to this.
-             */
-
             if (!preg_match($this->handles_regex, $handle))
                 return null;
 
-            $handle_nodes = envm($this->module, 'HANDLE_NODES');
-            $handle_node = $handle_nodes[array_rand($handle_nodes)];
-
-            try
-            {
-                $address = requester_single(daemon: $handle_node, endpoint: '?name=' . $handle, result_in: 'result');
-                return $address;
-            }
-            catch (RequesterEmptyResponseException)
-            {
-                return null;
-            }
+            return hex2bin(substr(requester_single($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'eth_call',
+                         'id'      => 0,
+                         'params'  => [['to'   => '0x1ea4e7a798557001b99d88d6b4ba7f7fc79406a9',
+                                        'data' => '0x08991a1d' . $this->encode_abi('string,uint256', [$handle, '3']),
+                                       ],
+                                       'latest',
+                         ],
+                ],
+                result_in: 'result',
+                timeout: $this->timeout), 130, 84));
         };
     }
 }
