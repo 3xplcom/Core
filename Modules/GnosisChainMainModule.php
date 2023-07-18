@@ -21,7 +21,7 @@ final class GnosisChainMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::Erigon; // Change to geth if you're running Nethermind, but this would be slower
-        $this->extra_features = [];
+        $this->extra_features = [EVMSpecialFeatures::EffectiveGasPriceCanBeZero];
         $this->reward_function = function($block_id)
         {
             return '0';
