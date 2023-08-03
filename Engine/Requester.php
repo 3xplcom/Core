@@ -97,7 +97,7 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     if (!in_array(RequesterOption::IgnoreAddingQuotesToNumbers, $flags))
         $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
-    if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
+    if (!($output = json_decode($output, associative: true, depth: 1024, flags: JSON_BIGINT_AS_STRING)))
     {
         $e_json = json_last_error_msg();
         $e_preg = preg_last_error_msg();
@@ -280,7 +280,7 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     if (!in_array(RequesterOption::IgnoreAddingQuotesToNumbers, $flags))
         $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
-    if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
+    if (!($output = json_decode($output, associative: true, depth: 1024, flags: JSON_BIGINT_AS_STRING)))
         throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: bad JSON");
 
     if (isset($output['error']) && !$ignore_errors)
