@@ -21,7 +21,7 @@ final class FantomMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [];
+        $this->extra_features = [EVMSpecialFeatures::SpecialSenderPaysNoFee];
         $this->reward_function = function($block_id)
         {
             return '0';

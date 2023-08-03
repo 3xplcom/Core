@@ -389,6 +389,10 @@ abstract class EVMMainModule extends CoreModule
                 $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
                 $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
                 // The fee is $this_burned + $this_to_miner
+
+                if (in_array(EVMSpecialFeatures::SpecialSenderPaysNoFee, $this->extra_features))
+                    if ($transaction['from'] === '0x0000000000000000000000000000000000000000')
+                        $this_burned = $this_to_miner = '0';
             }
             else
             {
