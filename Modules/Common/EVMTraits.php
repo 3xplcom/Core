@@ -226,7 +226,7 @@ function evm_trace($calls, &$this_calls)
 {
     foreach ($calls as $call)
     {
-        if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CREATE', 'CREATE2', 'SELFDESTRUCT', 'INVALID']))
+        if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CALLCODE', 'CREATE', 'CREATE2', 'SELFDESTRUCT', 'INVALID']))
             throw new ModuleError("Unknown call type: {$call['type']}");
 
         if ($call['type'] === 'INVALID' && isset($call['calls'])) // Check that INVALID calls don't have children
