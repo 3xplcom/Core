@@ -8,7 +8,7 @@
  *  Requires a fully synced `input-output-hk/cardano-db-sync` database to operate. Database schema for querying:
  *  https://github.com/input-output-hk/cardano-db-sync/blob/master/doc/schema.md  */
 
-abstract class CardanoMultiAssetLikeMainModule extends CoreModule
+abstract class CardanoNativeTokensLikeMainModule extends CoreModule
 {
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
@@ -25,7 +25,7 @@ abstract class CardanoMultiAssetLikeMainModule extends CoreModule
     public ?bool $should_return_events = true;
     public ?bool $allow_empty_return_events = true;
 
-    public ?array $currencies_table_fields = ['id', 'name', 'symbol'];
+    public ?array $currencies_table_fields = ['id', 'name', 'decimals'];
     public ?array $currencies_table_nullable_fields = [];
 
     public ?bool $should_return_currencies = true;
@@ -43,6 +43,10 @@ abstract class CardanoMultiAssetLikeMainModule extends CoreModule
 
     //
 
+    public ?string $metadata_registry = null;
+
+    //
+
     final public function pre_initialize()
     {
         $this->version = 1;
@@ -50,6 +54,13 @@ abstract class CardanoMultiAssetLikeMainModule extends CoreModule
 
     final public function post_post_initialize()
     {
+
+        $this->metadata_registry = envm(
+            $this->module,
+            'METADATA_REGISTRY',
+            new DeveloperError('Metadata registry is not set in the config')
+        );
+
         $this->db = pg_connect($this->select_node());
 
         $timeout_ms = envm($this->module, 'REQUESTER_TIMEOUT') * 1000;
@@ -118,7 +129,7 @@ abstract class CardanoMultiAssetLikeMainModule extends CoreModule
         }
 
         // inputs - due to the way foreign keys are chosen in relevant tables, 3-table-join ends up 8-10 times slower then this:
-        
+
         $ins_1 = pg_fetch_all(pg_query($this->db,
             "SELECT tx_in.tx_in_id, tx_out.address, tx_in.id as orderby, tx_out.id as nextkey
                     FROM tx_in
@@ -264,20 +275,41 @@ abstract class CardanoMultiAssetLikeMainModule extends CoreModule
             $this->set_return_currencies([]);
             return;
         }
-        $in_query = implode(', ', array_keys($currencies_used));
+        $currencies_used = check_existing_currencies(array_keys($currencies_used), $this->currency_format); // Removes already known currencies
+        $in_query = implode(', ', $currencies_used);
 
         $currencies_used = pg_fetch_all(pg_query($this->db,
-            "SELECT id, encode(name, 'hex') as name, encode(name, 'escape') as symbol
+            "SELECT fingerprint, encode(name, 'hex') as hexname, encode(name, 'escape') as name, encode(policy, 'hex') as policy
                     FROM multi_asset
                     WHERE id in ({$in_query})"));
 
         $currencies = [];
         foreach ($currencies_used as $currency) {
+            // ask off-chain metadata registry for details
+            $metadata = array();
+
+            try {
+                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname']);
+            } catch (Exception $e) {
+                // due to nature of GET, 404 is valid for our purpuses (no metadata) but response is not json-encoded, hence this
+                // also, for the same reason I cannot use multicurl, the whole batch will die
+                if (substr($e->getMessage(), -3) !== "404") {
+                    throw $e;
+                }
+            }
+
+            $decimals = '0';
+            if (array_key_exists('decimals', $metadata)) {
+                if (array_key_exists('value', $metadata['decimals'])) {
+                    $decimals = $metadata['decimals']['value'];
+                }
+            }
+
             $currencies[] = [
-                'id'       => $currency['id'],
+                'id'       => $currency['fingerprint'],
                 'name'     => $currency['name'],
-                'symbol'   => $currency['symbol'],
-            ]; // decimals by default is 0, and unchangeable
+                'decimals' => $decimals
+            ];
         }
 
         $this->set_return_currencies($currencies);
