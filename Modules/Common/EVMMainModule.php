@@ -205,10 +205,8 @@ abstract class EVMMainModule extends CoreModule
 
                 $general_data = $r1['transactions'];
                 $base_fee_per_gas = to_int256_from_0xhex($r1['baseFeePerGas'] ?? null);
-                $receipt_data = [];
 
                 $multi_curl = [];
-
                 $ij = 0;
 
                 foreach ($r1['transactions'] as $transaction)
@@ -264,6 +262,9 @@ abstract class EVMMainModule extends CoreModule
                         'effectiveGasPrice' => $receipt_data[$i]['effectiveGasPrice'] ?? $general_data[$i]['gasPrice'], // There's no effectiveGasPrice in some chains
                         'status' => $receipt_data[$i]['status'],
                     ];
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                    $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
             }
         }
         else // Mempool processing
@@ -394,6 +395,14 @@ abstract class EVMMainModule extends CoreModule
                         $this_to_miner = '0';
 
                 // The fee is $this_burned + $this_to_miner
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                {
+                    if ($transaction['type'] === '0x7e')
+                    {
+                        $this_burned = $this_to_miner = '0';
+                    }
+                }
             }
             else
             {

@@ -31,6 +31,7 @@ enum EVMSpecialFeatures
     case AllowEmptyRecipient;
     case PoSWithdrawals;
     case zkEVM;
+    case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
 }
 
