@@ -269,7 +269,10 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     if ($output === '')
         throw new RequesterEmptyResponseException("requester_multi_process(result_in:({$result_in})) failed: output is an empty string");
 
-    $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
+    if (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false))
+        $output_log = json_encode($output);
+    else
+        $output_log = substr(json_encode($output), 0, 100);
 
     if (in_array(RequesterOption::RecheckUTF8, $flags)) // Some nodes may return invalid UTF-8 sequences which lead to invalid JSON
         $output = mb_convert_encoding($output, 'UTF-8', 'UTF-8');
@@ -311,7 +314,11 @@ function requester_multi_process_all(array $multi_results, string $result_in = '
     if ($result_in)
     {
         $result_output = [];
-        $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
+
+        if (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false))
+            $output_log = json_encode($output);
+        else
+            $output_log = substr(json_encode($output), 0, 100);
 
         foreach ($output as $o)
             if (!array_key_exists($result_in, $o))
