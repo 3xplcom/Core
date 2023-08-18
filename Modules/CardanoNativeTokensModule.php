@@ -4,9 +4,9 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
-/*  This is the main Cardano module which processes UTXO transfers only. See CardanoNativeTokensLikeMainModule for details.  */
+/*  This is the main Cardano module which processes UTXO transfers only. See CardanoLikeNativeTokensModule for details.  */
 
-final class CardanoNativeTokensMainModule extends CardanoNativeTokensLikeMainModule implements Module
+final class CardanoNativeTokensModule extends CardanoLikeNativeTokensModule implements Module
 {
     function initialize()
     {

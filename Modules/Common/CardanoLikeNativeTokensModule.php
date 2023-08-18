@@ -8,7 +8,7 @@
  *  Requires a fully synced `input-output-hk/cardano-db-sync` database to operate. Database schema for querying:
  *  https://github.com/input-output-hk/cardano-db-sync/blob/master/doc/schema.md  */
 
-abstract class CardanoNativeTokensLikeMainModule extends CoreModule
+abstract class CardanoLikeNativeTokensModule extends CoreModule
 {
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
