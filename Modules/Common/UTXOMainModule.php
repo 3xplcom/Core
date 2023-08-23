@@ -160,17 +160,17 @@ abstract class UTXOMainModule extends CoreModule
 
                 $events[] = ['transaction' => $transaction['txid'],
                              'address'     => $address,
-                             'effect'      => satoshi($output['value']),
+                             'effect'      => satoshi($output['value'], $this),
                              'sort_in_transaction' => ((int)$output['n'] + 1)
                 ];
 
                 if ($this_is_coinbase)
                 {
-                    $coinbase_transaction_output = bcsub($coinbase_transaction_output, satoshi($output['value']));
+                    $coinbase_transaction_output = bcsub($coinbase_transaction_output, satoshi($output['value'], $this));
                 }
                 else
                 {
-                    $fees[($transaction['txid'])] = bcsub($fees[($transaction['txid'])], satoshi($output['value']));
+                    $fees[($transaction['txid'])] = bcsub($fees[($transaction['txid'])], satoshi($output['value'], $this));
                 }
             }
 
@@ -341,11 +341,11 @@ abstract class UTXOMainModule extends CoreModule
 
                 $events[] = ['transaction' => $input['this_transaction'],
                              'address'     => $address,
-                             'effect'      => "-" . satoshi($previous_output[($input['previous_n'])]['value']),
+                             'effect'      => "-" . satoshi($previous_output[($input['previous_n'])]['value'], $this),
                              'sort_in_transaction' => (int)$input['this_n'],
                 ];
 
-                $fees[($input['this_transaction'])] = bcadd($fees[($input['this_transaction'])], satoshi($previous_output[($input['previous_n'])]['value']));
+                $fees[($input['this_transaction'])] = bcadd($fees[($input['this_transaction'])], satoshi($previous_output[($input['previous_n'])]['value'], $this));
             }
             else
             {
