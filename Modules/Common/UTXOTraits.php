@@ -69,6 +69,7 @@ enum UTXOSpecialFeatures
     case HasMWEB; // Litecoin Core has some additional MWEB data
     case HasShieldedPools; // Shielded pool processing in Zcash
     case Not8Decimals; // There's a "non-standard" number of decimals, i.e. not 8; e.g. Peercoin
+    case OneAddressInScriptPubKey; // There's no "addresses" array in scriptPubKey
 }
 
 // See https://stackoverflow.com/questions/19233053/hashing-from-a-public-key-to-a-bitcoin-address-in-php

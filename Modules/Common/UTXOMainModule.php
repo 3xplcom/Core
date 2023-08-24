@@ -136,14 +136,20 @@ abstract class UTXOMainModule extends CoreModule
                     }
                 }
 
-                if (isset($output['scriptPubKey']['addresses'][0]) && count($output['scriptPubKey']['addresses']) === 1)
+                if (!in_array(UTXOSpecialFeatures::OneAddressInScriptPubKey, $this->extra_features))
                 {
-                    $address = $output['scriptPubKey']['addresses'][0];
-                }
-                else
-                {
-                    $address = 'script-' . substr(hash('sha256', $output['scriptPubKey']['hex']), 0, 32);
+                    if (isset($output['scriptPubKey']['addresses'][0]) && count($output['scriptPubKey']['addresses']) === 1)
+                        $address = $output['scriptPubKey']['addresses'][0];
+                    else
+                        $address = 'script-' . substr(hash('sha256', $output['scriptPubKey']['hex']), 0, 32);
                     // We use special `script-...` address format for all outputs which don't have a standard representation
+                }
+                else // OneAddressInScriptPubKey
+                {
+                    if (isset($output['scriptPubKey']['address']))
+                        $address = $output['scriptPubKey']['address'];
+                    else
+                        $address = 'script-' . substr(hash('sha256', $output['scriptPubKey']['hex']), 0, 32);
                 }
 
                 if (!in_array(UTXOSpecialFeatures::IgnorePubKeyConversion, $this->extra_features))
@@ -317,14 +323,19 @@ abstract class UTXOMainModule extends CoreModule
             {
                 $previous_output = $previous_outputs_lib[($input['previous_transaction'])];
 
-                if (isset($previous_output[($input['previous_n'])]['scriptPubKey']['addresses'][0])
-                    && count($previous_output[($input['previous_n'])]['scriptPubKey']['addresses']) === 1)
+                if (!in_array(UTXOSpecialFeatures::OneAddressInScriptPubKey, $this->extra_features))
                 {
-                    $address = $previous_output[($input['previous_n'])]['scriptPubKey']['addresses'][0];
+                    if (isset($previous_output[($input['previous_n'])]['scriptPubKey']['addresses'][0]) && count($previous_output[($input['previous_n'])]['scriptPubKey']['addresses']) === 1)
+                        $address = $previous_output[($input['previous_n'])]['scriptPubKey']['addresses'][0];
+                    else
+                        $address = 'script-' . substr(hash('sha256', $previous_output[($input['previous_n'])]['scriptPubKey']['hex']), 0, 32);
                 }
-                else
+                else // OneAddressInScriptPubKey
                 {
-                    $address = 'script-' . substr(hash('sha256', $previous_output[($input['previous_n'])]['scriptPubKey']['hex']), 0, 32);
+                    if (isset($previous_output[($input['previous_n'])]['scriptPubKey']['address']))
+                        $address = $previous_output[($input['previous_n'])]['scriptPubKey']['address'];
+                    else
+                        $address = 'script-' . substr(hash('sha256', $previous_output[($input['previous_n'])]['scriptPubKey']['hex']), 0, 32);
                 }
 
                 if (!in_array(UTXOSpecialFeatures::IgnorePubKeyConversion, $this->extra_features))

@@ -17,7 +17,7 @@ final class PeercoinMainModule extends UTXOMainModule implements Module
         $this->first_block_date = '2012-08-16';
 
         // UTXOMainModule
-        $this->extra_features = [UTXOSpecialFeatures::Not8Decimals];
+        $this->extra_features = [UTXOSpecialFeatures::Not8Decimals, UTXOSpecialFeatures::OneAddressInScriptPubKey];
         $this->p2pk_prefix1 = '';
         $this->p2pk_prefix2 = '37';
     }
