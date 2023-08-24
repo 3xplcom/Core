@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module works with the ERC-1155 MT (BEP-1155 and similar) standard, see
  *  https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1155.md */
@@ -68,7 +68,7 @@ abstract class EVMERC1155Module extends CoreModule
                 params: ['jsonrpc' => '2.0',
                          'method'  => 'eth_getLogs',
                          'params'  =>
-                             [['blockhash' => $this->block_hash,
+                             [['blockHash' => $this->block_hash,
                                'topics'    => ['0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62'],
                               ],
                              ],
@@ -80,7 +80,7 @@ abstract class EVMERC1155Module extends CoreModule
                 params: ['jsonrpc' => '2.0',
                          'method'  => 'eth_getLogs',
                          'params'  =>
-                             [['blockhash' => $this->block_hash,
+                             [['blockHash' => $this->block_hash,
                                'topics'    => ['0x4a39dc06d4c0dbc64b70af90fd698a233a518aa5d07e595d983b8c0526c8f7fb'],
                               ],
                              ],
@@ -160,6 +160,9 @@ abstract class EVMERC1155Module extends CoreModule
 
         foreach ($logs_single as $log)
         {
+            if ($log['blockHash'] !== $this->block_hash && !in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+                throw new ModuleError("The node returned wrong data for {$this->block_hash}: {$log['blockHash']}");
+
             if (count($log['topics']) !== 4)
                 continue; // This is ERC-20
 
@@ -186,6 +189,9 @@ abstract class EVMERC1155Module extends CoreModule
 
         foreach ($logs_batch as $log)
         {
+            if ($log['blockHash'] !== $this->block_hash && !in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+                throw new ModuleError("The node returned wrong data for {$this->block_hash}: {$log['blockHash']}");
+
             if (count($log['topics']) !== 4)
                 continue; // This is ERC-20
 
@@ -288,6 +294,8 @@ abstract class EVMERC1155Module extends CoreModule
                     elseif ($bit['error']['message'] === 'invalid jump destination')
                         $bit['result'] = '0x';
                     elseif (str_contains($bit['error']['message'], 'Function does not exist'))
+                        $bit['result'] = '0x';
+                    elseif (str_contains($bit['error']['message'], 'VM execution error.'))
                         $bit['result'] = '0x';
                     else
                         throw new RequesterException("Request to the node errored with `{$bit['error']['message']}`: " . print_r($bit['error'], true));
