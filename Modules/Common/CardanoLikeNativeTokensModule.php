@@ -117,9 +117,10 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         $in_query = implode(', ', $in_query);
 
         $outs = pg_fetch_all(pg_query($this->db,
-            "SELECT tx_out.tx_id, tx_out.address, ma_tx_out.ident AS token, ma_tx_out.quantity
+            "SELECT tx_out.tx_id, tx_out.address, multi_asset.fingerprint, ma_tx_out.ident AS token, ma_tx_out.quantity
                     FROM tx_out
                     JOIN ma_tx_out ON (ma_tx_out.tx_out_id = tx_out.id)
+                    JOIN multi_asset ON ma_tx_out.ident = multi_asset.id
                     WHERE tx_out.tx_id in ({$in_query})
                     ORDER BY tx_out.tx_id, tx_out.index"));
 
@@ -154,19 +155,21 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         $subquery = implode(', ', $subquery);
 
         $ins_2 = pg_fetch_all(pg_query($this->db,
-            "SELECT tx_out_id as id, ident AS token, quantity
+            "SELECT ma_tx_out.tx_out_id as id, multi_asset.fingerprint, ident AS token, ma_tx_out.quantity
                     FROM ma_tx_out
+                    JOIN multi_asset ON ma_tx_out.ident = multi_asset.id
                     WHERE tx_out_id in ({$subquery})"));
 
         $ins = [];
         foreach ($ins_2 as $aux)
         {
             $ins[] = [
-                'tx_in_id' => $ins_dict[$aux['id']]['tx_in_id'],
-                'address'  => $ins_dict[$aux['id']]['address'],
-                'orderby'  => $ins_dict[$aux['id']]['orderby'],
-                'token'    => $aux['token'],
-                'quantity' => $aux['quantity'],
+                'tx_in_id'    => $ins_dict[$aux['id']]['tx_in_id'],
+                'address'     => $ins_dict[$aux['id']]['address'],
+                'orderby'     => $ins_dict[$aux['id']]['orderby'],
+                'fingerprint' => $aux['fingerprint'],
+                'token'       => $aux['token'],
+                'quantity'    => $aux['quantity'],
             ];
         }
         usort($ins, fn($a, $b) => $a['orderby'] <=> $b['orderby']);
@@ -184,10 +187,11 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         }
 
         $deltas = pg_fetch_all(pg_query($this->db,
-            "SELECT tx_id, ident AS token, quantity
+            "SELECT ma_tx_mint.tx_id, multi_asset.fingerprint, ident AS token, ma_tx_mint.quantity
                     FROM ma_tx_mint
+                    JOIN multi_asset ON ma_tx_mint.ident = multi_asset.id
                     WHERE tx_id IN ({$in_query})
-                    ORDER BY id"));
+                    ORDER BY ma_tx_mint.id"));
 
         foreach ($deltas as $delta) {
             if (str_contains($delta['quantity'], '-')) {
@@ -213,7 +217,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                     $events[] = ['transaction' => substr($transaction['hash'], 2),
                                  'address'     => 'the-void',
                                  'effect'      => "-" . $mint['quantity'], // inverted representation: mint = void losing assets
-                                 'currency'    => $mint['token'],
+                                 'currency'    => $mint['fingerprint'],
                                  'sort_key'    => $sort_key++,
                     ];
 
@@ -226,7 +230,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                 $events[] = ['transaction' => substr($transaction['hash'], 2),
                              'address'     => $input['address'],
                              'effect'      => "-" . $input['quantity'],
-                             'currency'    => $input['token'],
+                             'currency'    => $input['fingerprint'],
                              'sort_key'    => $sort_key++,
                 ];
 
@@ -239,7 +243,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                     $events[] = ['transaction' => substr($transaction['hash'], 2),
                                  'address'     => 'the-void',
                                  'effect'      => substr($burn['quantity'], 1), // inverted representation: burn = void gaining assets
-                                 'currency'    => $burn['token'],
+                                 'currency'    => $burn['fingerprint'],
                                  'sort_key'    => $sort_key++,
                     ];
                     $currencies_used[$burn['token']] = 1;
@@ -251,7 +255,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                 $events[] = ['transaction' => substr($transaction['hash'], 2),
                              'address'     => $output['address'],
                              'effect'      => $output['quantity'],
-                             'currency'    => $output['token'],
+                             'currency'    => $output['fingerprint'],
                              'sort_key'    => $sort_key++,
                 ];
 
@@ -298,10 +302,10 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                 }
             }
 
-            $decimals = '0';
+            $decimals = 0;
             if (array_key_exists('decimals', $metadata)) {
                 if (array_key_exists('value', $metadata['decimals'])) {
-                    $decimals = $metadata['decimals']['value'];
+                    $decimals = intval($metadata['decimals']['value']);
                 }
             }
 
