@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes avalanche cross-chain transfers that involve c-chain on either side. Special microservice API by Blockchair is needed (see https://github.com/Blockchair/avax-atomic-unpacker).  */
 
