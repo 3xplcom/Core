@@ -4,11 +4,10 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes deposits and withdrawals happening on the Beacon Chain.
- *  This is the main module for Beacon Chain as it should have at least 1 event for every validator, thus it implements `api_get_balance()`
+/*  This module processes block proposals (including missing blocks) happening on the Beacon Chain.
  *  It requires a Prysm-like node to run.  */
 
-abstract class BeaconChainLikeMainModule extends CoreModule
+abstract class BeaconChainLikeProposalsModule extends CoreModule
 {
     use BeaconChainLikeTraits;
 
@@ -16,26 +15,26 @@ abstract class BeaconChainLikeMainModule extends CoreModule
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed;
-    public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
-    public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?bool $hidden_values_only = false;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
     public ?array $events_table_nullable_fields = [];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
-    public ?bool $allow_empty_return_events = true;
+    public ?bool $allow_empty_return_events = false;
 
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = false;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
     public ?array $extra_data_details = [
-        'd' => 'Deposit',
-        'w' => 'Withdrawal',
+        'p' => 'Proposer reward',
+        'o' => 'Orphaned or missed block (no rewards for proposer)',
     ];
+
+    public ?bool $must_complement = true; // The main module is "Deposits"
 
     public ?bool $ignore_sum_of_all_effects = true; // Essentially, all events here always come in pair with `the-void`, but we don't
     // put that into the database to save space.
@@ -65,9 +64,10 @@ abstract class BeaconChainLikeMainModule extends CoreModule
     final public function pre_process_block($block) // $block here is an epoch number
     {
         $events = [];
+        $rq_blocks = [];
+        $rq_blocks_data = [];
         $rq_slot_time = [];
-        $withdrawals = [];          // [i] -> [validator, address, amount, slot]
-        $deposits = [];             // [i] -> [validator_index, address, amount, slot]
+        $rewards_slots = [];        // [validator] -> [slot, reward]
         $slot_data = [];
 
         $proposers = requester_single($this->select_node(),
@@ -77,7 +77,10 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         );
 
         foreach ($proposers as $proposer)
+        {
             $slots[$proposer['slot']] = null;
+            $rewards_slots[$proposer['validator_index']] = [$proposer['slot'], null];
+        }
 
         foreach ($slots as $slot => $tm)
             $rq_slot_time[] = requester_multi_prepare($this->select_node(), endpoint: "eth/v1/beacon/blocks/{$slot}");
@@ -103,41 +106,13 @@ abstract class BeaconChainLikeMainModule extends CoreModule
             if (isset($slot_info['data']['message']['body']['execution_payload']))
             {
                 $timestamp = (int)$slot_info['data']['message']['body']['execution_payload']['timestamp'];
-                $withdrawal = $slot_info['data']['message']['body']['execution_payload']['withdrawals'];
             }
             else
             {
                 $timestamp = 0;
-                $withdrawal = [];
             }
 
             $slots[$slot_id] = $timestamp;
-            
-            foreach ($withdrawal as $w)
-            {
-                $withdrawals[] = [
-                    $w['validator_index'],
-                    $w['address'],
-                    $w['amount'],
-                    $slot_id,
-                ];
-            }
-
-            $deposit = $slot_info['data']['message']['body']['deposits'];
-
-            foreach ($deposit as $d)
-            {
-                $pubkey = $d['data']['pubkey'];
-                $address = $d['data']['withdrawal_credentials'];
-                $amount = $d['data']['amount'];
-
-                $index = requester_single($this->select_node(),
-                    endpoint: "/eth/v1/beacon/states/{$slot_id}/validators/{$pubkey}",
-                    timeout: $this->timeout,
-                    result_in: 'data')['index'];
-
-                $deposits[] = [$index, $address, $amount, $slot_id];
-            }
         }
 
         if ($block < $this->chain_config['BELLATRIX_FORK_EPOCH'])
@@ -185,43 +160,54 @@ abstract class BeaconChainLikeMainModule extends CoreModule
             }
         }
 
-        $key_tes = 0;
+        foreach ($slots as $slot => $tm)
+            $rq_blocks[] = requester_multi_prepare($this->select_node(), endpoint: "eth/v1/beacon/rewards/blocks/{$slot}");
 
-        foreach ($deposits as [$index, $address, $amount, $slot])
+        $rq_blocks_multi = requester_multi($rq_blocks,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout,
+            valid_codes: [200, 404]
+        );
+
+        foreach ($rq_blocks_multi as $v)
+            $rq_blocks_data[] = requester_multi_process($v);
+
+        foreach ($rq_blocks_data as $rq)
         {
-            $events[] = [
-                'block' => $block,
-                'transaction' => $slot,
-                'sort_key' => $key_tes++,
-                'time' => $this->block_time,
-                'address' => (string)$index,
-                'effect' => $amount,
-                'extra' => 'd',
-                'extra_indexed' => (string)$address
-            ];
+            if (isset($rq['code']) && $rq['code'] === '404')
+                continue;
+            elseif (isset($rq['code']))
+                throw new ModuleError('Unexpected response code');
+
+            $proposer_index = $rq['data']['proposer_index'];
+            $rewards_slots[$proposer_index][1] = bcadd($rq['data']['attestations'], $rq['data']['sync_aggregate']);
         }
 
-        foreach ($withdrawals as [$index, $address, $amount, $slot])
+        $key_tes = 0;
+
+        foreach ($rewards_slots as $validator => $info)
         {
+            $extra = 'p';
+
+            if ($slots[$info[0]] === null)
+                $extra = 'o';
+
+            $effect = $info[1];
+
+            if (is_null($effect))
+                $effect = '0';
+
             $events[] = [
                 'block' => $block,
-                'transaction' => $slot,
+                'transaction' => $info[0],
                 'sort_key' => $key_tes++,
                 'time' => $this->block_time,
-                'address' => (string)$index,
-                'effect' => '-' . $amount,
-                'extra' => 'w',
-                'extra_indexed' => (string)$address
+                'address' => (string)$validator,
+                'effect' => $effect,
+                'extra' => $extra,
             ];
         }
 
         $this->set_return_events($events);
-    }
-
-    public function api_get_balance($index)
-    {
-        return requester_single($this->select_node(),
-            endpoint: "eth/v1/beacon/states/head/validators/{$index}",
-            timeout: $this->timeout)['data']['balance'];
     }
 }
