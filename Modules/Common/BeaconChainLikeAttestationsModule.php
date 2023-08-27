@@ -234,29 +234,13 @@ abstract class BeaconChainLikeAttestationsModule extends CoreModule
 
         foreach ($rewards as $validator => $reward)
         {
-            $this_void = bcmul($reward, '-1');
-            $this_void = ($this_void === '0') ? '-0' : $this_void;
-
-            if (str_contains($this_void, '-'))
-            {
-                $events[] = [
-                    'block' => $block,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => (string)$validator,
-                    'effect' => $reward,
-                ];
-            }
-            else
-            {
-                $events[] = [
-                    'block' => $block,
-                    'sort_key' => $key_tes++,
-                    'time' => $this->block_time,
-                    'address' => (string)$validator,
-                    'effect' => $reward,
-                ];
-            }
+            $events[] = [
+                'block' => $block,
+                'sort_key' => $key_tes++,
+                'time' => $this->block_time,
+                'address' => (string)$validator,
+                'effect' => $reward,
+            ];
         }
 
         $this->set_return_events($events);
