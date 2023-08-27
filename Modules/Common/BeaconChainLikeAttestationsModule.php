@@ -13,8 +13,8 @@ abstract class BeaconChainLikeAttestationsModule extends CoreModule
 
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
-    public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed;
+    public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::None;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::None;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?bool $hidden_values_only = false;
 
