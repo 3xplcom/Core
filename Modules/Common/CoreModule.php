@@ -210,7 +210,7 @@ abstract class CoreModule
             if ($this->transaction_hash_format !== TransactionHashFormat::None && $this->transaction_hash_format !== $complemented->transaction_hash_format)
                 throw new DeveloperError("`transaction_hash_format` mismatch for complemented module `{$this->complements}`");
 
-            if ($this->transaction_hash_format !== TransactionHashFormat::None && $this->transaction_render_model !== $complemented->transaction_render_model)
+            if ($this->transaction_render_model !== TransactionRenderModel::None && $this->transaction_render_model !== $complemented->transaction_render_model)
                 throw new DeveloperError("`transaction_render_model` mismatch for complemented module `{$this->complements}`");
 
             if ($this->should_return_currencies || $complemented->should_return_currencies)
