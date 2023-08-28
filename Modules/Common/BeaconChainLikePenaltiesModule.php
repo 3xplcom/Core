@@ -284,15 +284,15 @@ abstract class BeaconChainLikePenaltiesModule extends CoreModule
                 $attestors_slashing[$proposer_index][2] = $rq['data']['attester_slashings'];
             }
 
-            if (isset($proposer_slashings[$proposer_index]))
+            if (isset($proposers_slashing[$proposer_index]))
             {
-                $proposer_slashings[$proposer_index][2] = $rq['data']['proposer_slashings'];
+                $proposers_slashing[$proposer_index][2] = $rq['data']['proposer_slashings'];
             }
         }
 
         $key_tes = 0;
 
-        foreach ($proposer_slashings as $index => [$slashed, $slot, $reward])
+        foreach ($proposers_slashing as $index => [$slashed, $slot, $reward])
         {
             foreach ($slashed as $validator_index => [$reward_for_slashing, $penalty])
             {
