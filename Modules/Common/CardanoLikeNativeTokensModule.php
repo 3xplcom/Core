@@ -122,7 +122,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                     JOIN ma_tx_out ON (ma_tx_out.tx_out_id = tx_out.id)
                     JOIN multi_asset ON ma_tx_out.ident = multi_asset.id
                     WHERE tx_out.tx_id in ({$in_query})
-                    ORDER BY tx_out.tx_id, tx_out.index"));
+                    ORDER BY tx_out.tx_id, ma_tx_out.id")); // order of sorting: by transaction > by multi-asset component of that transaction
 
         foreach ($outs as $out)
         {
@@ -131,6 +131,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
         // inputs - due to the way foreign keys are chosen in relevant tables, 3-table-join ends up 8-10 times slower then this:
 
+        // obtain outputs that were spent in given block
         $ins_1 = pg_fetch_all(pg_query($this->db,
             "SELECT tx_in.tx_in_id, tx_out.address, tx_in.id as orderby, tx_out.id as nextkey
                     FROM tx_in
@@ -147,6 +148,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         $ins_dict = [];
         $subquery = [];
 
+        // rearrange spent outputs as a map for improved lookup at a later stage
         foreach ($ins_1 as $aux)
         {
                 $ins_dict[$aux['nextkey']] = $aux;
@@ -154,25 +156,34 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         }
         $subquery = implode(', ', $subquery);
 
+        // obtain multi-asset components associated to outputs from previous step
         $ins_2 = pg_fetch_all(pg_query($this->db,
-            "SELECT ma_tx_out.tx_out_id as id, multi_asset.fingerprint, ident AS token, ma_tx_out.quantity
+            "SELECT ma_tx_out.tx_out_id as id, multi_asset.fingerprint, ident AS token, ma_tx_out.quantity, ma_tx_out.id as order_inner
                     FROM ma_tx_out
                     JOIN multi_asset ON ma_tx_out.ident = multi_asset.id
                     WHERE tx_out_id in ({$subquery})"));
 
+        // merge generic input info with MA-specific
         $ins = [];
-        foreach ($ins_2 as $aux)
+        foreach ($ins_2 as $ma_specific)
         {
             $ins[] = [
-                'tx_in_id'    => $ins_dict[$aux['id']]['tx_in_id'],
-                'address'     => $ins_dict[$aux['id']]['address'],
-                'orderby'     => $ins_dict[$aux['id']]['orderby'],
-                'fingerprint' => $aux['fingerprint'],
-                'token'       => $aux['token'],
-                'quantity'    => $aux['quantity'],
+                'tx_in_id'    => $ins_dict[$ma_specific['id']]['tx_in_id'], // columns ins_1.nextkey and ins_2.id
+                'address'     => $ins_dict[$ma_specific['id']]['address'],  // act as pivots for that merger
+                'orderby'     => $ins_dict[$ma_specific['id']]['orderby'],  // equivalent to sql 3-table-join under tx_out.id = ma_tx_out.tx_out_id
+                'order_inner' => $ma_specific['order_inner'],
+                'fingerprint' => $ma_specific['fingerprint'],
+                'token'       => $ma_specific['token'],
+                'quantity'    => $ma_specific['quantity'],
             ];
         }
-        usort($ins, fn($a, $b) => $a['orderby'] <=> $b['orderby']);
+
+        // manually sort data to achieve consistent ordering with outputs
+        array_multisort(
+            array_column($ins, 'orderby'), SORT_ASC,     // first, by transaction
+            array_column($ins, 'order_inner'), SORT_ASC, // then, by multi-asset component within said transaction
+            $ins
+        );
 
         unset($ins_1);
         unset($ins_2);
@@ -308,6 +319,10 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                     $decimals = intval($metadata['decimals']['value']);
                 }
             }
+
+            // null the gibberish names
+            $currency['name'] = preg_replace('/\\\\\d\d\d/', '', $currency['name']);
+            $currency['name'] = preg_replace('/[\x00-\x1F\x7F]/u', '', $currency['name']);
 
             $currencies[] = [
                 'id'       => $currency['fingerprint'],
