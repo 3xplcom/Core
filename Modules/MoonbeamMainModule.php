@@ -20,7 +20,7 @@ final class MoonbeamMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles];
+        $this->extra_features = [];
         $this->reward_function = function($block_id)
         {
             return '0';
@@ -28,7 +28,7 @@ final class MoonbeamMainModule extends EVMMainModule implements Module
 
         // Handles
         $this->handles_implemented = true;
-        $this->handles_regex = '/(.*)\.eth/';
+        $this->handles_regex = '/(.*)\.dot/';
         $this->api_get_handle = function($handle)
         {
             if (!preg_match($this->handles_regex, $handle))
