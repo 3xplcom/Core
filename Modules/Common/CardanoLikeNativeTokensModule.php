@@ -14,7 +14,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::UTXO;
-    public ?CurrencyFormat $currency_format = CurrencyFormat::Numeric;
+    public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?bool $hidden_values_only = false; // ??
