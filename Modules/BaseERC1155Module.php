@@ -4,17 +4,17 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes ERC-20 token transfers in Arbitrum. It requires a geth node to run.  */
+/*  This module processes ERC-1155 MT transfers in Base. It requires a geth node to run.  */
 
-final class ArbitrumOneERC20Module extends EVMERC20Module implements Module
+final class BaseERC1155Module extends EVMERC1155Module implements Module
 {
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'arbitrum-one';
-        $this->module = 'arbitrum-one-erc-20';
+        $this->blockchain = 'base';
+        $this->module = 'base-erc-1155';
         $this->is_main = false;
-        $this->first_block_date = '2021-05-28';
+        $this->first_block_date = '2023-06-15';
         $this->first_block_id = 0;
     }
 }

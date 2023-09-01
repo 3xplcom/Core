@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1); // by nikzh@nikzh.com for 3xpl.com, v.3.0.0
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes both transparent and shielded transfers. There are three special addresses for the shielded
  *  pools: `sprout-pool`, `sapling-pool`, `orchard-pool`. If all events for these addresses are summed up, one will get
