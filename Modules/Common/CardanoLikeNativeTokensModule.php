@@ -290,16 +290,26 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
             $this->set_return_currencies([]);
             return;
         }
-        $currencies_used = check_existing_currencies(array_keys($currencies_used), $this->currency_format); // Removes already known currencies
-        $in_query = implode(', ', $currencies_used);
+
+        $in_query = implode(', ', array_keys($currencies_used));
 
         $currencies_used = pg_fetch_all(pg_query($this->db,
             "SELECT fingerprint, encode(name, 'hex') as hexname, encode(name, 'escape') as name, encode(policy, 'hex') as policy
                     FROM multi_asset
                     WHERE id in ({$in_query})"));
 
+        foreach ($currencies_used as $r)
+            $this_to_check[] = $r['fingerprint'];
+
+        $checking = check_existing_currencies($this_to_check, $this->currency_format); // Removes already known currencies
+
         $currencies = [];
         foreach ($currencies_used as $currency) {
+
+            if (!in_array($currency['fingerprint'], $checking)) {
+                continue;
+            }
+
             // ask off-chain metadata registry for details
             $metadata = array();
 
