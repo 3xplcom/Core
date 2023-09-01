@@ -17,7 +17,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?bool $hidden_values_only = false; // ??
+    public ?bool $hidden_values_only = false;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'currency'];
     public ?array $events_table_nullable_fields = [];
@@ -54,7 +54,6 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
     final public function post_post_initialize()
     {
-
         $this->metadata_registry = envm(
             $this->module,
             'METADATA_REGISTRY',
@@ -62,7 +61,6 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         );
 
         $this->db = pg_connect($this->select_node());
-
         $timeout_ms = envm($this->module, 'REQUESTER_TIMEOUT') * 1000;
         pg_query($this->db, "SET statement_timeout = {$timeout_ms}");
     }
@@ -129,9 +127,8 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
             $block[($out['tx_id'])]['outputs'][] = $out;
         }
 
-        // inputs - due to the way foreign keys are chosen in relevant tables, 3-table-join ends up 8-10 times slower then this:
-
-        // obtain outputs that were spent in given block
+        // Obtain outputs that were spent in given block
+        // Due to the way foreign keys are chosen in relevant tables, 3-table-join ends up 8-10 times slower than this:
         $ins_1 = pg_fetch_all(pg_query($this->db,
             "SELECT tx_in.tx_in_id, tx_out.address, tx_in.id as orderby, tx_out.id as nextkey
                     FROM tx_in
@@ -151,9 +148,10 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         // rearrange spent outputs as a map for improved lookup at a later stage
         foreach ($ins_1 as $aux)
         {
-                $ins_dict[$aux['nextkey']] = $aux;
-                $subquery[] = $aux['nextkey'];
+            $ins_dict[$aux['nextkey']] = $aux;
+            $subquery[] = $aux['nextkey'];
         }
+
         $subquery = implode(', ', $subquery);
 
         // obtain multi-asset components associated to outputs from previous step
@@ -164,13 +162,15 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                     WHERE tx_out_id in ({$subquery})"));
 
         // merge generic input info with MA-specific
+
         $ins = [];
+
         foreach ($ins_2 as $ma_specific)
         {
             $ins[] = [
                 'tx_in_id'    => $ins_dict[$ma_specific['id']]['tx_in_id'], // columns ins_1.nextkey and ins_2.id
-                'address'     => $ins_dict[$ma_specific['id']]['address'],  // act as pivots for that merger
-                'orderby'     => $ins_dict[$ma_specific['id']]['orderby'],  // equivalent to sql 3-table-join under tx_out.id = ma_tx_out.tx_out_id
+                'address'     => $ins_dict[$ma_specific['id']]['address'], // act as pivots for that merger
+                'orderby'     => $ins_dict[$ma_specific['id']]['orderby'], // equivalent to sql 3-table-join under tx_out.id = ma_tx_out.tx_out_id
                 'order_inner' => $ma_specific['order_inner'],
                 'fingerprint' => $ma_specific['fingerprint'],
                 'token'       => $ma_specific['token'],
@@ -180,7 +180,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
         // manually sort data to achieve consistent ordering with outputs
         array_multisort(
-            array_column($ins, 'orderby'), SORT_ASC,     // first, by transaction
+            array_column($ins, 'orderby'), SORT_ASC, // first, by transaction
             array_column($ins, 'order_inner'), SORT_ASC, // then, by multi-asset component within said transaction
             $ins
         );
@@ -190,7 +190,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         unset($ins_dict);
         unset($subquery);
 
-        // this works under assumption that one cannot transfer tokens without transfering ada (ie MA-outs are strictly a subset of ADA-outs)
+        // this works under assumption that one cannot transfer tokens without transferring ada (ie MA-outs are strictly a subset of ADA-outs)
 
         foreach ($ins as $in)
         {
@@ -204,43 +204,43 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                     WHERE tx_id IN ({$in_query})
                     ORDER BY ma_tx_mint.id"));
 
-        foreach ($deltas as $delta) {
-            if (str_contains($delta['quantity'], '-')) {
+        foreach ($deltas as $delta)
+        {
+            if (str_contains($delta['quantity'], '-'))
+            {
                 $block[($delta['tx_id'])]['burns'][] = $delta;
-            } else {
+            }
+            else
+            {
                 $block[($delta['tx_id'])]['mints'][] = $delta;
             }
-
         }
 
         //
 
         $sort_key = 0;
-
         $currencies_used = [];
 
         foreach ($block as $transaction)
         {
             // Generating events
-            if (array_key_exists('mints', $transaction)) {
-                foreach ($transaction['mints'] as $mint)
-                {
-                    $events[] = ['transaction' => substr($transaction['hash'], 2),
-                                 'address'     => 'the-void',
-                                 'effect'      => "-" . $mint['quantity'], // inverted representation: mint = void losing assets
-                                 'currency'    => $mint['fingerprint'],
-                                 'sort_key'    => $sort_key++,
-                    ];
+            foreach ($transaction['mints'] ?? [] as $mint)
+            {
+                $events[] = ['transaction' => substr($transaction['hash'], 2),
+                             'address'     => 'the-void',
+                             'effect'      => '-' . $mint['quantity'], // inverted representation: mint = void losing assets
+                             'currency'    => $mint['fingerprint'],
+                             'sort_key'    => $sort_key++,
+                ];
 
-                    $currencies_used[$mint['token']] = 1;
-                }
+                $currencies_used[$mint['token']] = 1;
             }
 
             foreach ($transaction['inputs'] as $input)
             {
                 $events[] = ['transaction' => substr($transaction['hash'], 2),
                              'address'     => $input['address'],
-                             'effect'      => "-" . $input['quantity'],
+                             'effect'      => '-' . $input['quantity'],
                              'currency'    => $input['fingerprint'],
                              'sort_key'    => $sort_key++,
                 ];
@@ -248,17 +248,16 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
                 $currencies_used[$input['token']] = 1;
             }
 
-            if (array_key_exists('burns', $transaction)) {
-                foreach ($transaction['burns'] as $burn)
-                {
-                    $events[] = ['transaction' => substr($transaction['hash'], 2),
-                                 'address'     => 'the-void',
-                                 'effect'      => substr($burn['quantity'], 1), // inverted representation: burn = void gaining assets
-                                 'currency'    => $burn['fingerprint'],
-                                 'sort_key'    => $sort_key++,
-                    ];
-                    $currencies_used[$burn['token']] = 1;
-                }
+            foreach ($transaction['burns'] ?? [] as $burn)
+            {
+                $events[] = ['transaction' => substr($transaction['hash'], 2),
+                             'address'     => 'the-void',
+                             'effect'      => substr($burn['quantity'], 1), // inverted representation: burn = void gaining assets
+                             'currency'    => $burn['fingerprint'],
+                             'sort_key'    => $sort_key++,
+                ];
+
+                $currencies_used[$burn['token']] = 1;
             }
 
             foreach ($transaction['outputs'] as $output)
@@ -285,6 +284,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         $this->set_return_events($events);
 
         // process currencies
+
         if (count($currencies_used) < 1)
         {
             $this->set_return_currencies([]);
@@ -304,18 +304,22 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         $checking = check_existing_currencies($this_to_check, $this->currency_format); // Removes already known currencies
 
         $currencies = [];
-        foreach ($currencies_used as $currency) {
 
-            if (!in_array($currency['fingerprint'], $checking)) {
+        foreach ($currencies_used as $currency)
+        {
+            if (!in_array($currency['fingerprint'], $checking))
                 continue;
-            }
 
             // ask off-chain metadata registry for details
-            $metadata = array();
 
-            try {
+            $metadata = [];
+
+            try
+            {
                 $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname']);
-            } catch (Exception $e) {
+            }
+            catch (Exception $e)
+            {
                 // due to nature of GET, 404 is valid for our purpuses (no metadata) but response is not json-encoded, hence this
                 // also, for the same reason I cannot use multicurl, the whole batch will die
                 if (substr($e->getMessage(), -3) !== "404") {
@@ -324,11 +328,10 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
             }
 
             $decimals = 0;
-            if (array_key_exists('decimals', $metadata)) {
-                if (array_key_exists('value', $metadata['decimals'])) {
+
+            if (array_key_exists('decimals', $metadata))
+                if (array_key_exists('value', $metadata['decimals']))
                     $decimals = intval($metadata['decimals']['value']);
-                }
-            }
 
             // null the gibberish names
             $currency['name'] = preg_replace('/\\\\\d\d\d/', '', $currency['name']);
