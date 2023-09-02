@@ -44,7 +44,7 @@ final class HandshakeMainModule extends HandshakeLikeMainModule implements Modul
                     throw $e;
             }
 
-            if ($owner)
+            if ($owner && $owner['hash'] !== '0000000000000000000000000000000000000000000000000000000000000000')
             {
                 $address = requester_single($this->select_node(),
                     endpoint: "tx/{$owner['hash']}",
