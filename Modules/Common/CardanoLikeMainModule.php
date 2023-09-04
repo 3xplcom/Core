@@ -33,7 +33,7 @@ abstract class CardanoLikeMainModule extends CoreModule
 
     //
 
-    public ?\PgSql\Connection $db;
+    public ?\PgSql\Connection $db = null;
     public ?string $block_time = null;
     public ?int $block_db_id = null;
     public ?int $transaction_count = null;
@@ -47,19 +47,31 @@ abstract class CardanoLikeMainModule extends CoreModule
 
     final public function post_post_initialize()
     {
-        $this->db = pg_connect($this->select_node());
-
-        $timeout_ms = envm($this->module, 'REQUESTER_TIMEOUT') * 1000;
-        pg_query($this->db, "SET statement_timeout = {$timeout_ms}");
+        //
     }
+
+    private function db_connect()
+    {
+        if (is_null($this->db))
+        {
+            $this->db = pg_pconnect($this->select_node());
+            $timeout_ms = envm($this->module, 'REQUESTER_TIMEOUT') * 1000;
+            pg_query($this->db, "SET statement_timeout = {$timeout_ms}");
+        }
+    }
+
+    //
 
     final public function inquire_latest_block()
     {
+        $this->db_connect();
         return (int)pg_fetch_assoc(pg_query($this->db, 'SELECT max(block_no) FROM block'))['max'];
     }
 
     final public function ensure_block($block_id, $break_on_first = false)
     {
+        $this->db_connect();
+
         $block = pg_fetch_assoc(pg_query_params($this->db, 'SELECT id, hash, time, tx_count FROM block WHERE block_no = $1', [$block_id]));
         $this->block_hash = substr($block['hash'], 2);
         $this->block_time = $block['time'];
@@ -74,6 +86,7 @@ abstract class CardanoLikeMainModule extends CoreModule
     {
         $events = [];
         $block = [];
+        $this->db_connect();
 
         $transactions = pg_fetch_all(pg_query_params($this->db,
             'SELECT id, hash, out_sum, fee, deposit FROM tx WHERE block_id = $1 ORDER BY block_index', [$this->block_db_id]));
