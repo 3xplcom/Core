@@ -24,6 +24,7 @@ final class BeaconChainMainModule extends BeaconChainLikeMainModule implements M
             'BELLATRIX_FORK_EPOCH' => 144896,
             'SLOT_PER_EPOCH' => 32,
             'DELAY' => 2,
+            'CAPELLA_FORK_EPOCH' => 194048,
         ];
     }
 }

@@ -58,6 +58,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
     final public function post_post_initialize()
     {
         if (!isset($this->chain_config['BELLATRIX_FORK_EPOCH'])) throw new DeveloperError("`BELLATRIX_FORK_EPOCH` is not set");
+        if (!isset($this->chain_config['CAPELLA_FORK_EPOCH'])) throw new DeveloperError("`CAPELLA_FORK_EPOCH` is not set");
         if (!isset($this->chain_config['SLOT_PER_EPOCH'])) throw new DeveloperError("`SLOT_PER_EPOCH` is not set");
         if (!isset($this->chain_config['DELAY'])) throw new DeveloperError("`DELAY` is not set");
     }
@@ -93,6 +94,7 @@ abstract class BeaconChainLikeMainModule extends CoreModule
 
         foreach ($slot_data as $slot_info)
         {
+            $withdrawal = [];
             if (isset($slot_info['code']) && $slot_info['code'] === '404')
                 continue;
             elseif (isset($slot_info['code']))
@@ -103,7 +105,10 @@ abstract class BeaconChainLikeMainModule extends CoreModule
             if (isset($slot_info['data']['message']['body']['execution_payload']))
             {
                 $timestamp = (int)$slot_info['data']['message']['body']['execution_payload']['timestamp'];
-                $withdrawal = $slot_info['data']['message']['body']['execution_payload']['withdrawals'];
+                if ($block >= $this->chain_config['CAPELLA_FORK_EPOCH'])
+                {
+                    $withdrawal = $slot_info['data']['message']['body']['execution_payload']['withdrawals'];
+                }
             }
             else
             {
