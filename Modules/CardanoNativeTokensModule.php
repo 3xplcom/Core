@@ -13,7 +13,7 @@ final class CardanoNativeTokensModule extends CardanoLikeNativeTokensModule impl
         // CoreModule
         $this->blockchain = 'cardano';
         $this->module = 'cardano-native-tokens';
-        $this->is_main = true;
+        $this->is_main = false;
         $this->first_block_id = 1;
         $this->first_block_date = '2017-09-23';
     }
