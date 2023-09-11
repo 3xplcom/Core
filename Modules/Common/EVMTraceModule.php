@@ -15,7 +15,7 @@ abstract class EVMTraceModule extends CoreModule
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWith0x;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
     public ?array $events_table_nullable_fields = ['extra'];

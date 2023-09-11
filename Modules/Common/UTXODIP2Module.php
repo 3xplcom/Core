@@ -31,7 +31,7 @@ abstract class UTXODIP2Module extends CoreModule
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['*-tx'];
 
-    public ?bool $hidden_values_only = true; // There's nothing really being transferred
+    public ?PrivacyModel $privacy_model = PrivacyModel::Shielded; // There's nothing really being transferred
 
     //
 

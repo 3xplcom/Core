@@ -18,7 +18,7 @@ abstract class UTXOMainModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
     public ?array $special_addresses = ['the-void', 'script-*'];
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent; // This also includes Zcash as we show value changes for the shielded pools
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect'];
     public ?array $events_table_nullable_fields = [];
