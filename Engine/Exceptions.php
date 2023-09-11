@@ -47,7 +47,7 @@ function exception_handler(Throwable $e): void
 
     echo $log_row;
 
-    throw new Exception($e->getMessage());
+    throw new Exception('Failed', previous: $e);
 }
 
 set_error_handler("error_handler", E_ALL);
