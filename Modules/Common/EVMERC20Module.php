@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module works with the ERC-20 (BEP-20 and similar) standard, see
  *  https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md */
@@ -34,6 +34,9 @@ abstract class EVMERC20Module extends CoreModule
     public ?bool $mempool_implemented = false; // Technically, this is possible
     public ?bool $forking_implemented = true;
 
+    // EVM-specific
+    public array $extra_features = [];
+
     //
 
     final public function pre_initialize()
@@ -43,24 +46,70 @@ abstract class EVMERC20Module extends CoreModule
 
     final public function post_post_initialize()
     {
-        //
+        if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+        {
+            $this->forking_implemented = false; // We only process finalized batches
+            $this->block_entity_name = 'batch'; // We process batches instead of blocks
+            $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
+        }
     }
 
     final public function pre_process_block($block_id)
     {
         // Get logs
 
-        $logs = requester_single($this->select_node(),
-            params: ['jsonrpc'=> '2.0',
-                     'method' => 'eth_getLogs',
-                     'params' =>
-                         [['blockhash' => $this->block_hash,
-                           'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
-                          ],
-                         ],
-                     'id' => 0,
-            ],
-            result_in: 'result', timeout: $this->timeout);
+        if ((!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features)))
+        {
+            $logs = requester_single($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'eth_getLogs',
+                         'params'  =>
+                             [['blockHash' => $this->block_hash,
+                               'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+                              ],
+                             ],
+                         'id'      => 0,
+                ],
+                result_in: 'result',
+                timeout: $this->timeout);
+        }
+        else//if (zkEVM)
+        {
+            // We need to get the block range for the batch
+
+            $blocks = requester_single($this->select_node(),
+                params: ['jsonrpc' => '2.0',
+                         'method'  => 'zkevm_getBatchByNumber',
+                         'params'  => [to_0xhex_from_int64($block_id), true],
+                         'id'      => 0,
+                ],
+                result_in: 'result',
+                timeout: $this->timeout);
+
+            if (!$blocks['transactions'])
+            {
+                $logs = [];
+            }
+            else
+            {
+                $first_block = $blocks['transactions'][0]['blockNumber'];
+                $last_block = end($blocks['transactions'])['blockNumber'];
+
+                $logs = requester_single($this->select_node(),
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_getLogs',
+                             'params'  =>
+                                 [['fromBlock' => $first_block,
+                                   'toBlock'   => $last_block,
+                                   'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+                                  ],
+                                 ],
+                             'id'      => 0,
+                    ],
+                    result_in: 'result',
+                    timeout: $this->timeout);
+            }
+        }
 
         // Process logs
 
@@ -70,23 +119,26 @@ abstract class EVMERC20Module extends CoreModule
 
         foreach ($logs as $log)
         {
+            if ($log['blockHash'] !== $this->block_hash && !in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+                throw new ModuleError("The node returned wrong data for {$this->block_hash}: {$log['blockHash']}");
+
             if (count($log['topics']) !== 3)
                 continue; // This is ERC-721
 
             $events[] = [
                 'transaction' => $log['transactionHash'],
-                'currency' => $log['address'],
-                'address' => '0x' . substr($log['topics'][1], 26),
-                'sort_key' => $sort_key++,
-                'effect' => '-' . to_int256_from_0xhex($log['data']),
+                'currency'    => $log['address'],
+                'address'     => '0x' . substr($log['topics'][1], 26),
+                'sort_key'    => $sort_key++,
+                'effect'      => '-' . to_int256_from_0xhex($log['data']),
             ];
 
             $events[] = [
                 'transaction' => $log['transactionHash'],
-                'currency' => $log['address'],
-                'address' => '0x' . substr($log['topics'][2], 26),
-                'sort_key' => $sort_key++,
-                'effect' => to_int256_from_0xhex($log['data']),
+                'currency'    => $log['address'],
+                'address'     => '0x' . substr($log['topics'][2], 26),
+                'sort_key'    => $sort_key++,
+                'effect'      => to_int256_from_0xhex($log['data']),
             ];
 
             $currencies_to_process[] = $log['address'];
@@ -101,35 +153,54 @@ abstract class EVMERC20Module extends CoreModule
 
         if ($currencies_to_process)
         {
-            $multi_curl = [];
-            $lib = [];
-
+            $multi_curl = $lib = [];
             $this_id = 0;
 
             foreach ($currencies_to_process as $currency_id)
             {
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x06fdde03'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_call',
+                             'params'  => [['to'   => $currency_id,
+                                            'data' => '0x06fdde03',
+                                           ],
+                                           'latest',
+                             ],
+                             'id'      => $this_id++,
+                    ],
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x95d89b41'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_call',
+                             'params'  => [['to'   => $currency_id,
+                                            'data' => '0x95d89b41',
+                                           ],
+                                           'latest',
+                             ],
+                             'id'      => $this_id++,
+                    ],
                     timeout: $this->timeout); // Symbol
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['jsonrpc'=> '2.0', 'method' => 'eth_call', 'params' => [['to' => $currency_id, 'data' => '0x313ce567'], 'latest'], 'id' => $this_id++],
+                    params: ['jsonrpc' => '2.0',
+                             'method'  => 'eth_call',
+                             'params'  => [['to'   => $currency_id,
+                                            'data' => '0x313ce567',
+                                           ],
+                                           'latest',
+                             ],
+                             'id'      => $this_id++,
+                    ],
                     timeout: $this->timeout); // Decimals
             }
 
             $curl_results = requester_multi($multi_curl,
                 limit: envm($this->module, 'REQUESTER_THREADS'),
-                timeout: $this->timeout,
-                valid_codes: [200]);
+                timeout: $this->timeout);
 
             foreach ($curl_results as $v)
-            {
                 $currency_data[] = requester_multi_process($v, ignore_errors: true);
-            }
 
             reorder_by_id($currency_data);
 
@@ -174,19 +245,16 @@ abstract class EVMERC20Module extends CoreModule
             foreach ($lib as $id => $l)
             {
                 if ($l['decimals'] > 32767)
-                {
-                    $l['decimals'] = 0;
-                    // We use SMALLINT for decimals...
-                }
+                    $l['decimals'] = 0; // We use SMALLINT for decimals...
 
                 // This removes invalid UTF-8 sequences
                 $l['name'] = mb_convert_encoding($l['name'], 'UTF-8', 'UTF-8');
                 $l['symbol'] = mb_convert_encoding($l['symbol'], 'UTF-8', 'UTF-8');
 
                 $currencies[] = [
-                    'id' => $id,
-                    'name' => $l['name'],
-                    'symbol' => $l['symbol'],
+                    'id'       => $id,
+                    'name'     => $l['name'],
+                    'symbol'   => $l['symbol'],
                     'decimals' => $l['decimals'],
                 ];
             }
@@ -216,7 +284,7 @@ abstract class EVMERC20Module extends CoreModule
         {
             $return = [];
 
-            foreach ($currencies as $c)
+            foreach ($currencies as $ignored)
                 $return[] = '0';
 
             return $return;

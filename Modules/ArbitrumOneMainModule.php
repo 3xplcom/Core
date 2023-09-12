@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Arbitrum One module. It requires a geth node to run.  */
 
@@ -18,6 +18,7 @@ final class ArbitrumOneMainModule extends EVMMainModule implements Module
         $this->first_block_id = 0;
         $this->currency = 'ethereum';
         $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 18, 'description' => null];
+        $this->mempool_implemented = false; // Unlike other EVMMainModule heirs, Arbitrum One doesn't implement mempool
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;

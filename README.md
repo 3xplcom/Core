@@ -78,6 +78,25 @@ How to develop a new module?
 8. Set `CoreModule` variables
 9. Start debugging your module with `3xpl.php`. The core module catches many errors (e.g. missing fields in the output).
 
+How to test a module?
+---------------------
+
+Once you're done with a module, consider adding tests. The process is the following:
+1. Choose some pivot blocks, for example, a genesis block, or blocks with some new logic after hard forks, etc. The idea is that with node upgrades some logic may break.
+2. For every block first run `php 3xpl.php <module> B <block_number> E` to see the generated events (and `php 3xpl.php <module> B <block_number> C` for the currencies if the module supports them)
+3. If you're satisfied with the results, run `php 3xpl.php <module> B <block_number> T A` to create a test string (which is serialized block data)
+4. If you don't need the full block, you can filter by transaction hash like this: `php 3xpl.php <module> B <block_number> T <transaction>` which serializes just a single transaction
+5. Add the result to the `tests` array of the module like this (see `BitcoinMainModule` as an example), use `transaction` if you were filtering out a single transaction:
+```php
+$this->tests = [
+    ['block' => ..., 'result' => '...'],
+    ['block' => ..., 'result' => '...'],
+    ['block' => ..., 'transaction' => '...', 'result' => '...'],
+];
+```
+5. Test the module by running `php 3xpl.php <module> T`
+6. Test all modules at once by running `php 3xpl.php T`
+
 File structure
 --------------
 

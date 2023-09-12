@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Ethereum module. It requires either a geth or an Erigon node to run (but the latter is much faster).  */
 
@@ -20,7 +20,8 @@ final class EthereumMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::Erigon; // Change to geth if you're running geth, but this would be slower
-        $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles];
+        $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles, EVMSpecialFeatures::PoSWithdrawals];
+        $this->staking_contract = '0x00000000219ab540356cbb839cbe05303d7705fa';
         $this->reward_function = function($block_id)
         {
             if ($block_id >= 0 && $block_id <= 4_369_999)
