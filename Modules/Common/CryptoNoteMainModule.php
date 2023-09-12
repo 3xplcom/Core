@@ -209,8 +209,10 @@ abstract class CryptoNoteMainModule extends CoreModule
                     ];
                 }
 
-                foreach ($transaction_details[$hash]['outputs'] as $output)
+                foreach ($transaction_details[$hash]['outputs'] ?? [] as $output)
                 {
+                    // Some transactions don't have outputs, thus `?? []` (the entire input amount goes to the fee pool in that case)
+
                     $amount = ($transaction['tx_version'] === '1') ? $output['amount'] : '+?';
 
                     $events[] = ['transaction' => $hash,
