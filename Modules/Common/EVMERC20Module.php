@@ -18,7 +18,7 @@ abstract class EVMERC20Module extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::HexWith0x;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect'];
     public ?array $events_table_nullable_fields = [];

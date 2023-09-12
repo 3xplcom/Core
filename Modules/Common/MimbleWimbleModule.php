@@ -50,7 +50,7 @@ abstract class MimbleWimbleModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
 
-    public ?bool $hidden_values_only = true; // We don't know transfer amounts in MWEB!
+    public ?PrivacyModel $privacy_model = PrivacyModel::Shielded; // We don't know transfer amounts in MWEB!
 
     //
 

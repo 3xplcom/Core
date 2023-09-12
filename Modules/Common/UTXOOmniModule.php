@@ -113,7 +113,7 @@ abstract class UTXOOmniModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['the-void'];
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?int $genesis_block = null;
     public ?string $genesis_json = null;

@@ -104,3 +104,10 @@ enum ExtraDataModel: string
     case Identifier = 'Identifier'; // This is reserved for NFT transfers: the NFT id is stored here
     case None = 'Zilch'; // There's no extra data for the module
 }
+
+enum PrivacyModel
+{
+    case Transparent; // Every event has a known value
+    case Mixed; // Any value is acceptable, including `-?` and `+?`
+    case Shielded; // The only allowed values are `-?` and `+?`
+}
