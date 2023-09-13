@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Errors and exceptions  */
 
@@ -15,11 +15,10 @@ class ModuleError extends Error {} // This should be used by module developers i
 
 class RequesterException extends Exception {} // Curl errors
 class RequesterEmptyResponseException extends RequesterException {} // This can be caught if an empty response is considered to be a valid response
-
 class MathException extends Exception {} // This is for math exceptions
-
 class ConsensusException extends Exception {} // This is a special exception that should be used in ensure_block() in case
 // if different nodes return different block data
+class ModuleException extends Exception {} // Unlike ModuleError, this can be used for situations when reprocessing the block may fix the issue
 
 // Error handling
 function error_handler($severity, $message, $file, $line): void
@@ -48,7 +47,7 @@ function exception_handler(Throwable $e): void
 
     echo $log_row;
 
-    throw new Exception($e->getMessage());
+    throw new Exception('Failed', previous: $e);
 }
 
 set_error_handler("error_handler", E_ALL);

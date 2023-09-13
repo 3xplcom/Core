@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module process main UTXO transfers. Requires an HSD-like node. The difference between this and
  *  UTXOMainModule is the `rest/block` output format from the node, and it also processes Handshake data
@@ -19,7 +19,8 @@ abstract class HandshakeLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
-    public ?bool $hidden_values_only = false;
+    public ?array $special_addresses = ['the-void'];
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
     public ?array $events_table_nullable_fields = ['extra', 'extra_indexed'];
@@ -46,13 +47,14 @@ abstract class HandshakeLikeMainModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        $_ENV['__TRIM_IN_JSON_DECODE'] = true; /// TODO: it's much better to have `options` for requester_single()
-
         if ($block_id !== MEMPOOL)
         {
             $block_hash = $this->block_hash;
 
-            $block = requester_single($this->select_node(), endpoint: "block/{$block_hash}", timeout: $this->timeout);
+            $block = requester_single($this->select_node(),
+                endpoint: "block/{$block_hash}",
+                timeout: $this->timeout,
+                flags: [RequesterOption::TrimJSON]);
 
             $this->block_time = date('Y-m-d H:i:s', (int)$block['time']);
         }
@@ -61,7 +63,10 @@ abstract class HandshakeLikeMainModule extends CoreModule
             $block = $block['txs'] = $multi_curl = [];
             $islice = 0;
 
-            $mempool = requester_single($this->select_node(), params: ['method' => 'getrawmempool', 'params' => [false]], result_in: 'result', timeout: $this->timeout);
+            $mempool = requester_single($this->select_node(),
+                params: ['method' => 'getrawmempool', 'params' => [false]],
+                result_in: 'result',
+                timeout: $this->timeout);
 
             foreach ($mempool as $tx_hash)
             {
@@ -78,7 +83,7 @@ abstract class HandshakeLikeMainModule extends CoreModule
             $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
 
             foreach ($curl_results as $v)
-                $block['txs'][] = requester_multi_process($v);
+                $block['txs'][] = requester_multi_process($v, flags: [RequesterOption::TrimJSON]);
         }
 
         $events = $sort_in_block_lib = $fees = [];

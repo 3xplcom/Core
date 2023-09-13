@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This utility should be used to debug the modules.
  *  Usage: `php 3xpl.php`, or
@@ -240,10 +240,21 @@ elseif ($chosen_option === 'B')
 
             $event['sign'] = (str_contains($event['effect'], '-')) ? '-1' : '1';
 
-            if ($module->hidden_values_only)
-                $event['effect'] = null;
-            else
+            if ($module->privacy_model === PrivacyModel::Transparent)
+            {
                 $event['effect'] = str_replace('-', '', $event['effect']);
+            }
+            elseif ($module->privacy_model === PrivacyModel::Mixed)
+            {
+                if (in_array($event['effect'], ['-?', '+?']))
+                    $event['effect'] = null;
+                else
+                    $event['effect'] = str_replace('-', '', $event['effect']);
+            }
+            else // Shielded
+            {
+                $event['effect'] = null;
+            }
 
             if (isset($event['failed']))
                 $event['valid'] = ($event['failed'] === true || $event['failed'] === 't') ? '-1' : '1';

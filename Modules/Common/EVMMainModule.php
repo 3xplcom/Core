@@ -1,10 +1,11 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes "extrnal" EVM transactions. Both geth and Erigon are supported.  */
+/*  This module processes "external" EVM transactions, block rewards, and withdrawals from the PoS chain.
+ *  Supported nodes: geth and Erigon.  */
 
 abstract class EVMMainModule extends CoreModule
 {
@@ -17,12 +18,23 @@ abstract class EVMMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
-    public ?bool $hidden_values_only = false;
+    public ?array $special_addresses = ['the-void'];
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
     public ?array $events_table_nullable_fields = ['transaction', 'extra'];
 
-    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
+    public ?array $extra_data_details =
+        [EVMSpecialTransactions::FeeToMiner->value           => 'Miner fee',
+         EVMSpecialTransactions::Burning->value              => 'Burnt fee',
+         EVMSpecialTransactions::BlockReward->value          => 'Block reward',
+         EVMSpecialTransactions::UncleInclusionReward->value => 'Uncle inclusion reward',
+         EVMSpecialTransactions::UncleReward->value          => 'Uncle reward',
+         EVMSpecialTransactions::ContractCreation->value     => 'Contract creation',
+         EVMSpecialTransactions::ContractDestruction->value  => 'Contract destruction',
+         EVMSpecialTransactions::Withdrawal->value           => 'Withdrawal',
+        ];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
@@ -35,6 +47,7 @@ abstract class EVMMainModule extends CoreModule
 
     public ?EVMImplementation $evm_implementation = null;
     public array $extra_features = [];
+    public ?string $staking_contract = null;
     public ?Closure $reward_function = null;
 
     //
@@ -54,6 +67,9 @@ abstract class EVMMainModule extends CoreModule
 
         if (is_null($this->reward_function))
             throw new DeveloperError("`reward_function` is not set (developer error)");
+      
+        if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
+            throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
 
         if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features) && $this->evm_implementation === EVMImplementation::Erigon)
             throw new DeveloperError("`Erigon` is not supported for `zkEVM` (developer error)");
@@ -74,7 +90,7 @@ abstract class EVMMainModule extends CoreModule
         // 1. Transactions are executed
         // 2. If there are uncles, uncle miners are rewarded
         // 3. Block miner gets block reward + fees + uncle inclusion reward
-        // Note that in PoS it's a bit different
+        // 4. Withdrawals are processed (in case of a PoS chain)
 
         // How transactions work:
         // 1. Part of the fee is getting burnt (sent to `the-void`)
@@ -91,6 +107,8 @@ abstract class EVMMainModule extends CoreModule
         {
             if ($this->evm_implementation === EVMImplementation::Erigon) // Erigon is faster as it supports `eth_getBlockReceipts`
             {
+                // Retrieving data
+
                 $multi_curl = [];
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
@@ -103,43 +121,35 @@ abstract class EVMMainModule extends CoreModule
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
                     params: ['method'  => 'eth_getBlockReceipts',
                              'params'  => [to_0xhex_from_int64($block_id)],
-                             'id'      => 0,
+                             'id'      => 1,
                              'jsonrpc' => '2.0',
                     ], timeout: $this->timeout);
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
 
-                $r1 = requester_multi_process($curl_results[0], result_in: 'result');
-                $r2 = requester_multi_process($curl_results[1], result_in: 'result');
-                // This should be rewritten in a better way using request ids
+                $r[0] = requester_multi_process($curl_results[0]);
+                $r[1] = requester_multi_process($curl_results[1]);
+                reorder_by_id($r);
+                $r0 = $r[0]['result'];
+                $r1 = $r[1]['result'];
 
-                if (isset($r1['difficulty'])) // $r1 is the response for eth_getBlockByNumber, $r2 is for eth_getBlockReceipts
+                // Processing data
+
+                $general_data = $r0['transactions'];
+                $base_fee_per_gas = to_int256_from_0xhex($r0['baseFeePerGas'] ?? null);
+                $receipt_data = $r1;
+                $block_time = $r0['timestamp'];
+                $miner = $r0['miner'];
+
+                if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
                 {
-                    $general_data = $r1['transactions'];
-                    $base_fee_per_gas = to_int256_from_0xhex($r1['baseFeePerGas'] ?? null);
-                    $receipt_data = $r2;
-                    $block_time = $r1['timestamp'];
-                    $miner = $r1['miner'];
-
-                    if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
-                    {
-                        $uncle_count = count($r1['uncles']);
-                        $uncles = $r1['uncles'];
-                    }
+                    $uncle_count = count($r0['uncles']);
+                    $uncles = $r0['uncles'];
                 }
-                else // $r2 is the response for eth_getBlockByNumber, $r1 is for eth_getBlockReceipts
-                {
-                    $general_data = $r2['transactions'];
-                    $base_fee_per_gas = to_int256_from_0xhex($r2['baseFeePerGas'] ?? null);
-                    $receipt_data = $r1;
-                    $block_time = $r2['timestamp'];
-                    $miner = $r2['miner'];
 
-                    if (in_array(EVMSpecialFeatures::HasOrHadUncles, $this->extra_features))
-                    {
-                        $uncle_count = count($r2['uncles']);
-                        $uncles = $r2['uncles'];
-                    }
+                if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features))
+                {
+                    $withdrawals = $r0['withdrawals'];
                 }
             }
             else // geth is slower as we have to do eth_getTransactionReceipt for every transaction separately
@@ -188,12 +198,15 @@ abstract class EVMMainModule extends CoreModule
                     $uncles = $r1['uncles'];
                 }
 
+                if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features))
+                {
+                    $withdrawals = $r1['withdrawals'];
+                }
+
                 $general_data = $r1['transactions'];
                 $base_fee_per_gas = to_int256_from_0xhex($r1['baseFeePerGas'] ?? null);
-                $receipt_data = [];
 
                 $multi_curl = [];
-
                 $ij = 0;
 
                 foreach ($r1['transactions'] as $transaction)
@@ -249,6 +262,9 @@ abstract class EVMMainModule extends CoreModule
                         'effectiveGasPrice' => $receipt_data[$i]['effectiveGasPrice'] ?? $general_data[$i]['gasPrice'], // There's no effectiveGasPrice in some chains
                         'status' => $receipt_data[$i]['status'],
                     ];
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                    $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
             }
         }
         else // Mempool processing
@@ -373,7 +389,20 @@ abstract class EVMMainModule extends CoreModule
                 $this_gas_used = to_int256_from_0xhex($transaction['gasUsed']);
                 $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
                 $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
+
+                if (in_array(EVMSpecialFeatures::EffectiveGasPriceCanBeZero, $this->extra_features))
+                    if ($transaction['effectiveGasPrice'] === '0x0')
+                        $this_to_miner = '0';
+
                 // The fee is $this_burned + $this_to_miner
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                {
+                    if ($transaction['type'] === '0x7e')
+                    {
+                        $this_burned = $this_to_miner = '0';
+                    }
+                }
             }
             else
             {
@@ -494,8 +523,11 @@ abstract class EVMMainModule extends CoreModule
 
                 foreach ($uncles as $uncle)
                     $multi_curl[] = requester_multi_prepare($this->select_node(),
-                        params: ['jsonrpc'=> '2.0', 'method' => 'eth_getUncleByBlockNumberAndIndex', 'params' => [to_0xhex_from_int64($block_id), to_0xhex_from_int64($ij)],
-                                 'id' => $ij++], timeout: $this->timeout);
+                        params: ['jsonrpc' => '2.0',
+                                 'method'  => 'eth_getUncleByBlockNumberAndIndex',
+                                 'params'  => [to_0xhex_from_int64($block_id),to_0xhex_from_int64($ij)],
+                                 'id'      => $ij++,
+                        ], timeout: $this->timeout);
 
                 $curl_results = requester_multi($multi_curl, limit: envm($this->module, 'REQUESTER_THREADS'), timeout: $this->timeout);
 
@@ -586,6 +618,34 @@ abstract class EVMMainModule extends CoreModule
                 'failed' => false,
                 'extra' => EVMSpecialTransactions::BlockReward->value,
             ];
+
+            // Withdrawals come last
+
+            if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features))
+            {
+                foreach ($withdrawals as $withdrawal)
+                {
+                    $events[] = [
+                        'transaction' => null,
+                        'address' => $this->staking_contract,
+                        'sort_in_block' => $ijk,
+                        'sort_in_transaction' => 0,
+                        'effect' => '-' . to_int256_from_0xhex($withdrawal['amount']),
+                        'failed' => false,
+                        'extra' => EVMSpecialTransactions::Withdrawal->value,
+                    ];
+
+                    $events[] = [
+                        'transaction' => null,
+                        'address' => $withdrawal['address'],
+                        'sort_in_block' => $ijk++,
+                        'sort_in_transaction' => 1,
+                        'effect' => to_int256_from_0xhex($withdrawal['amount']),
+                        'failed' => false,
+                        'extra' => EVMSpecialTransactions::Withdrawal->value,
+                    ];
+                }
+            }
         }
 
         ////////////////
@@ -649,7 +709,7 @@ abstract class EVMMainModule extends CoreModule
             return '0';
 
         return to_int256_from_0xhex(requester_single($this->select_node(),
-            params: ['jsonrpc'=> '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
+            params: ['jsonrpc' => '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
             result_in: 'result', timeout: $this->timeout));
     }
 }

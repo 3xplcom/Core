@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*
  *  This module process Omni transfers. Requires an Omni Core node to function.
@@ -112,7 +112,8 @@ abstract class UTXOOmniModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Numeric; // Currency ids are numbers in Omni
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?bool $hidden_values_only = false;
+    public ?array $special_addresses = ['the-void'];
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?int $genesis_block = null;
     public ?string $genesis_json = null;

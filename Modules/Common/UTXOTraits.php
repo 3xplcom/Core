@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Common functions for UTXO-based modules (UTXOMainModule, UTXOOmniModule)  */
 
@@ -68,6 +68,8 @@ enum UTXOSpecialFeatures
     case HasAddressPrefixes; // Bitcoin Cash node uses `bitcoincash:` prefix for all standard addresses
     case HasMWEB; // Litecoin Core has some additional MWEB data
     case HasShieldedPools; // Shielded pool processing in Zcash
+    case Not8Decimals; // There's a "non-standard" number of decimals, i.e. not 8; e.g. Peercoin
+    case OneAddressInScriptPubKey; // There's no "addresses" array in scriptPubKey
 }
 
 // See https://stackoverflow.com/questions/19233053/hashing-from-a-public-key-to-a-bitcoin-address-in-php
@@ -163,9 +165,20 @@ class CryptoP2PK
 }
 
 // Carefully converts floats from the node to numerics
-function satoshi($value)
+function satoshi(string $value, CoreModule|false $module = false): string
 {
-    if ($value === '0.00000000') return '0';
-    if (strlen(explode('.', $value)[1]) !== 8) throw new \ModuleError("satoshi(value: ({$value})): incorrect value");
-    return ltrim(str_replace('.', '', $value), '0');
+    if ($module === false || !in_array(UTXOSpecialFeatures::Not8Decimals, $module->extra_features))
+    {
+        if ($value === '0.00000000') return '0';
+        if (strlen(explode('.', $value)[1]) !== 8) throw new ModuleError("satoshi(value: ({$value})): incorrect value");
+        return ltrim(str_replace('.', '', $value), '0');
+    }
+    else
+    {
+        $decimals = $module->currency_details['decimals'];
+        if ($value === '0.' . str_repeat('0', $decimals)) return '0';
+        $value_parts = explode('.', $value);
+        if (strlen($value_parts[1]) !== $decimals) throw new ModuleError("satoshi(value: ({$value})): incorrect number of decimals");
+        return ltrim(str_replace('.', '', $value), '0');
+    }
 }

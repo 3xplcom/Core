@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  These enums describe variations of different formats used by the engine  */
 
@@ -103,4 +103,11 @@ enum ExtraDataModel: string
     case Type = 'Type'; // Special event type (can be null for ordinary events), e.g. for Omni we use Omni types
     case Identifier = 'Identifier'; // This is reserved for NFT transfers: the NFT id is stored here
     case None = 'Zilch'; // There's no extra data for the module
+}
+
+enum PrivacyModel
+{
+    case Transparent; // Every event has a known value
+    case Mixed; // Any value is acceptable, including `-?` and `+?`
+    case Shielded; // The only allowed values are `-?` and `+?`
 }
