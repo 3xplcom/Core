@@ -6,13 +6,13 @@
 
 /*  This module processes avalanche cross-chain transfers that involve c-chain on either side. Special microservice API by Blockchair is needed (see https://github.com/Blockchair/avax-atomic-unpacker). */
 
-final class AvalancheCCrossChainMainModule extends AvalancheCCrossChainLikeMainModule implements Module 
+final class AvalancheCrossChainMainModule extends AvalancheCrossChainLikeMainModule implements Module 
 {
 	function initialize() 
 	{
 		// CoreModule
 		$this->blockchain = 'avalanche';
-		$this->module = 'avalanche-c-crosschain';
+		$this->module = 'avalanche-crosschain';
 		$this->is_main = false;
 		$this->first_block_date = '2020-09-23';
 		$this->first_block_id = 1;

@@ -6,7 +6,7 @@
 
 /*  This module processes avalanche cross-chain transfers that involve c-chain on either side. Special microservice API by Blockchair is needed (see https://github.com/Blockchair/avax-atomic-unpacker).  */
 
-abstract class AvalancheCCrossChainLikeMainModule extends CoreModule
+abstract class AvalancheCrossChainLikeMainModule extends CoreModule
 {
 
     use EVMTraits;
@@ -18,7 +18,7 @@ abstract class AvalancheCCrossChainLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'extra'];
     public ?array $events_table_nullable_fields = ['transaction', 'extra'];
@@ -39,6 +39,9 @@ abstract class AvalancheCCrossChainLikeMainModule extends CoreModule
 
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = false;
+
+    // EVM-inherited
+    public array $extra_features = [];
 
     // Avalanche-specific
     public ?string $unpacker_handle = null;
