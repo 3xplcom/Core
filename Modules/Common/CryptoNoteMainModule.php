@@ -148,7 +148,7 @@ abstract class CryptoNoteMainModule extends CoreModule
         $sort_key = 1;
         $coinbase_transactions = 0;
 
-        if (!$this->block_data['txs'][0]['coinbase'] && $block_id !== MEMPOOL)
+        if ($block_id !== MEMPOOL && !$this->block_data['txs'][0]['coinbase'])
             throw new ModuleError('The first transaction is not coinbase');
 
         if (count($this->block_data['txs']) !== count($transaction_details) && $block_id !== MEMPOOL)
