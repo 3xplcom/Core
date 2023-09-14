@@ -151,8 +151,8 @@ abstract class CoreModule
 
         // Nodes
 
-        $this->nodes = envm($this->module, 'NODES', new DeveloperError('Nodes are not set in the config'));
-        $this->timeout = envm($this->module, 'REQUESTER_TIMEOUT', new DeveloperError('Timeout is not set in the config'));
+        $this->nodes = envm($this->module, 'NODES', new DeveloperError("Nodes are not set in the config for module {$this->module}"));
+        $this->timeout = envm($this->module, 'REQUESTER_TIMEOUT', new DeveloperError("Timeout is not set in the config for module {$this->module}"));
 
         // Post-initialization. Here we check if all settings are applied correctly.
 
