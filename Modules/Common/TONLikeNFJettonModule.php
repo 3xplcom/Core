@@ -25,7 +25,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
     public ?array $events_table_nullable_fields = [];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol'];
-    public ?array $currencies_table_nullable_fields = ['name', 'symbol'];
+    public ?array $currencies_table_nullable_fields = [];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = true;
@@ -100,15 +100,17 @@ abstract class TONLikeNFJettonModule extends CoreModule
             {
                 $transaction['hash'] = strtolower($transaction['hash']);
 
-                if(isset($transaction['messageIn']))
+                if (isset($transaction['messageIn']))
                 {
                     $messageIn = $transaction['messageIn'][0]; // by default in TON there is only 1 message IN
+
                     if (isset($messageIn['transfer'])) 
                     {
-                        if ((in_array($transaction['messageIn'][0]['transfer']['transfer_type'], ["transfer", "deploy_nft"]) &&  
-                            $transaction['messageIn'][0]['transfer']['type'] === 'nft'))
+                        if (in_array($transaction['messageIn'][0]['transfer']['transfer_type'], ["transfer", "deploy_nft"])
+                            && $transaction['messageIn'][0]['transfer']['type'] === 'nft')
                         {
                             $token_info = $this->api_get_nft_info($transaction['messageIn'][0]['transfer']['token']);
+
                             $events[] = [
                                 'transaction' => $transaction['hash'],
                                 'currency'    => $token_info['collection_address'],
@@ -119,6 +121,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
                                 'extra_indexed' => $transaction['messageIn'][0]['transfer']['token'],
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
                             ];
+
                             $events[] = [
                                 'transaction' => $transaction['hash'],
                                 'currency'    => $token_info['collection_address'],
@@ -129,11 +132,11 @@ abstract class TONLikeNFJettonModule extends CoreModule
                                 'extra_indexed' => $transaction['messageIn'][0]['transfer']['token'],
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
                             ];
+
                             $currencies_to_process[] = $token_info['collection_address'];
                         }
                     }
                 }
-
             }
         }
 
@@ -164,19 +167,19 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
             foreach ($currency_data as $account_data)
             {
-                if(isset($account_data["contract_state"]["contract_data"]["collection_content"]["metadata"])) 
+                if (isset($account_data["contract_state"]["contract_data"]["collection_content"]["metadata"]))
                 {
                     $metadata = $account_data["contract_state"]["contract_data"]["collection_content"]["metadata"];
-                    if(count($metadata) > 0)    // onchain metadata will have only 'url' field
+
+                    if (count($metadata) > 0) // onchain metadata will have only 'url' field
                     {
                         $currencies[] = [
                             'id'       => $account_data["account"],
-                            'name'     => isset($metadata["name"]) ?  mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : null,
-                            'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : null,
+                            'name'     => isset($metadata["name"]) ?  mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : '',
+                            'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : '',
                         ];
                     }
                 }
-                
             }
         }
 
@@ -201,25 +204,23 @@ abstract class TONLikeNFJettonModule extends CoreModule
     // get collection address and index of nft
     private function api_get_nft_info($nft)
     {
-
         $nft_info = requester_single(
             $this->select_node(),
             endpoint: "account?account={$nft}",
             timeout: $this->timeout,
             flags: [RequesterOption::RecheckUTF8]
         );
-        if(isset($nft_info['contract_state']['contract_data'])) 
-        {
+
+        if (isset($nft_info['contract_state']['contract_data']))
             return [
                 'collection_address' => $nft_info['contract_state']['contract_data']['collection_address'],
                 'index' => $nft_info['contract_state']['contract_data']['index'],
             ];
-        } else {
+        else
             return [
                 'collection_address' => null,
                 'index' => null,
             ];
-        }
     }
 
     // Getting amount of NFTs from the node by collection
@@ -232,14 +233,17 @@ abstract class TONLikeNFJettonModule extends CoreModule
         $collection_array = "[";
 
         // Input currencies should be in format like this: `ton-nft/EQDpQ2E8wCsG6OVq_5B3VmCkdD8gRrj124vh-5rh3aKUfDST`
-        foreach ($currencies as $c) {
+        foreach ($currencies as $c)
+        {
             $currency = explode('/', $c)[1];
             $real_currencies[] = $currency;
             $collection_array .= ($currency . ",");
         }
+
         $collection_array .= "]";
 
         $return = [];
+
         $account_info = requester_single(
             $this->select_node(),
             endpoint: "account?account={$address}&nfts_count={$collection_array}",
@@ -248,15 +252,14 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
         $account_currencies_info = array_column($account_info, 'balance', 'token');
 
-        foreach ($real_currencies as $c) {
-            if (isset($account_currencies_info[$c])) {
+        foreach ($real_currencies as $c)
+        {
+            if (isset($account_currencies_info[$c]))
                 $return[] = $account_currencies_info[$c];
-            } else {
+            else
                 $return[] = null;
-            }
         }
 
         return $return;
     }
-
 }

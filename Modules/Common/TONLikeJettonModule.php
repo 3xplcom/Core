@@ -25,7 +25,7 @@ abstract class TONLikeJettonModule extends CoreModule
     public ?array $events_table_nullable_fields = [];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol', 'decimals'];
-    public ?array $currencies_table_nullable_fields = ['name', 'symbol', 'decimals'];
+    public ?array $currencies_table_nullable_fields = [];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = true;
@@ -100,13 +100,14 @@ abstract class TONLikeJettonModule extends CoreModule
             {
                 $transaction['hash'] = strtolower($transaction['hash']);
 
-                if(isset($transaction['messageIn']))
+                if (isset($transaction['messageIn']))
                 {
                     $messageIn = $transaction['messageIn'][0]; // by default in TON there is only 1 message IN
                     if (isset($messageIn['transfer']))
                     {
-                        if($transaction['messageIn'][0]['transfer']['transfer_type'] === 'transfer_notification' || 
-                           $transaction['messageIn'][0]['transfer']['transfer_type'] ===  'internal_transfer') {
+                        if ($transaction['messageIn'][0]['transfer']['transfer_type'] === 'transfer_notification'
+                            || $transaction['messageIn'][0]['transfer']['transfer_type'] === 'internal_transfer')
+                        {
                             $events[] = [
                                 'transaction' => $transaction['hash'],
                                 'currency'    => $transaction['messageIn'][0]['transfer']['token'],
@@ -115,6 +116,7 @@ abstract class TONLikeJettonModule extends CoreModule
                                 'effect'      => '-' . $transaction['messageIn'][0]['transfer']['amount'],
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
                             ];
+
                             $events[] = [
                                 'transaction' => $transaction['hash'],
                                 'currency'    => $transaction['messageIn'][0]['transfer']['token'],
@@ -123,12 +125,11 @@ abstract class TONLikeJettonModule extends CoreModule
                                 'effect'      => $transaction['messageIn'][0]['transfer']['amount'],
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
                             ];
+
                             $currencies_to_process[] = $transaction['messageIn'][0]['transfer']['token'];
                         }
-    
                     }
                 }
-
             }
         }
 
@@ -162,14 +163,15 @@ abstract class TONLikeJettonModule extends CoreModule
                 if (isset($account_data["contract_state"]["contract_data"]["jetton_content"]["metadata"])) 
                 {
                     $metadata = $account_data["contract_state"]["contract_data"]["jetton_content"]["metadata"];
+
                     if (count($metadata) > 0)    // onchain
                     {
                         // This removes invalid UTF-8 sequences
                         $currencies[] = [
                             'id'       => $account_data["account"],
-                            'name'     => isset($metadata["name"]) ? mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : null,
-                            'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : null,
-                            'decimals' => isset($metadata['decimals']) ? ($metadata["decimals"] > 32767 ? 0 : $metadata['decimals']) : null,
+                            'name'     => isset($metadata["name"]) ? mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : '',
+                            'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : '',
+                            'decimals' => isset($metadata['decimals']) ? ($metadata["decimals"] > 32767 ? 0 : $metadata['decimals']) : 0,
                         ];
                     }
                 }
@@ -210,9 +212,11 @@ abstract class TONLikeJettonModule extends CoreModule
             $real_currencies[] = $currency;
             $jetton_array .= ($currency . ",");
         }
+
         $jetton_array .= "]";
 
         $return = [];
+
         $account_info = requester_single(
             $this->select_node(),
             endpoint: "account?account={$address}&jettons={$jetton_array}",
@@ -223,11 +227,10 @@ abstract class TONLikeJettonModule extends CoreModule
 
         foreach($real_currencies as $c) 
         {
-            if(isset($account_currencies_info[$c])) {
+            if (isset($account_currencies_info[$c]))
                 $return[] = $account_currencies_info[$c];
-            } else {
+            else
                 $return[] = null;
-            }
         }
 
         return $return;
