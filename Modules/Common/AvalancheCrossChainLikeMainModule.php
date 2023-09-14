@@ -67,9 +67,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
             new DeveloperError('Assets service is not set in the config')
         );
 
-        if (is_null($this->main_token_descr)) {
+        if (is_null($this->main_token_descr))
             throw new DeveloperError('`main_token_descr` is not set (developer error)');
-        }
     }
 
     final public function pre_process_block($block_id)
@@ -129,7 +128,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
         &$currencies_used
     )
     {
-        foreach ($tx_legs as $tx_leg) {
+        foreach ($tx_legs as $tx_leg)
+        {
             $atomic_events[] = [
                 'transaction'         => $hash,
                 'address'             => (is_null($extra)) ? $tx_leg['addr'] : '0x00',
@@ -150,7 +150,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
         $ittr = 0;
 
         // enforcing per-tx sorting: burning -> inputs -> imports -> outputs -> exports
-        foreach ($block_extra_atomics as $atomic_transaction) {
+        foreach ($block_extra_atomics as $atomic_transaction)
+        {
             $atomic_events[] = [
                 'transaction'         => $atomic_transaction['hash'],
                 'address'             => '0x00',
@@ -161,7 +162,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                 'extra'               => EVMSpecialTransactions::Burning->value,
             ];
 
-            if (array_key_exists('inputs', $atomic_transaction)) {
+            if (array_key_exists('inputs', $atomic_transaction))
+            {
                 $this->parse_transaction_legs(
                     $atomic_transaction['inputs'],
                     $atomic_transaction['hash'],
@@ -174,7 +176,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                 );
             }
 
-            if (array_key_exists('imports', $atomic_transaction)) {
+            if (array_key_exists('imports', $atomic_transaction))
+            {
                 $this->parse_transaction_legs(
                     $atomic_transaction['imports'],
                     $atomic_transaction['hash'],
@@ -187,7 +190,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                 );
             }
 
-            if (array_key_exists('outputs', $atomic_transaction)) {
+            if (array_key_exists('outputs', $atomic_transaction))
+            {
                 $this->parse_transaction_legs(
                     $atomic_transaction['outputs'],
                     $atomic_transaction['hash'],
@@ -200,7 +204,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                 );
             }
 
-            if (array_key_exists('exports', $atomic_transaction)) {
+            if (array_key_exists('exports', $atomic_transaction))
+            {
                 $this->parse_transaction_legs(
                     $atomic_transaction['exports'],
                     $atomic_transaction['hash'],
@@ -223,7 +228,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
     private function process_events($block_id, $events, $block_time)
     {
         $hmr_time = date('Y-m-d H:i:s', to_int64_from_0xhex($block_time));
-        foreach ($events as &$event) {
+        foreach ($events as &$event)
+        {
             $event['block'] = $block_id;
             $event['time'] = $hmr_time;
         }
@@ -239,7 +245,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
 
         $sort_key = 0;
 
-        foreach ($events as &$event) {
+        foreach ($events as &$event)
+        {
             $event['sort_key'] = $sort_key;
             $sort_key++;
 
@@ -267,15 +274,19 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
     {
         $currencies = [];
 
-        foreach ($currencies_used as $id => $_) {
-            if ($id === $this->main_token_descr['id']) {
+        foreach ($currencies_used as $id => $_)
+        {
+            if ($id === $this->main_token_descr['id'])
+            {
                 $currencies[] = [
                     'id'       => $this->main_token_descr['id'],
                     'name'     => $this->main_token_descr['name'],
                     'symbol'   => $this->main_token_descr['symbol'],
                     'decimals' => $this->main_token_descr['decimals']
                 ];
-            } else {
+            } 
+            else
+            {
                 $cur_data = $this->fetch_currency_description($id);
 
                 $currencies[] = [
