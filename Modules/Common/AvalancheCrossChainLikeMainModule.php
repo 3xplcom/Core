@@ -276,7 +276,7 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                     'decimals' => $this->main_token_descr['decimals']
                 ];
             } else {
-                $cur_data = fetch_currency_description($id);
+                $cur_data = $this->fetch_currency_description($id);
 
                 $currencies[] = [
                     'id'       => $id,
