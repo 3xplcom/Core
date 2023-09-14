@@ -5,3 +5,5 @@
     - Core, UTXO modules, EVM modules
 * [Yulian Volianskyi](https://github.com/jzethar)
     - Beacon Chain modules
+* [alexqrid](https://github.com/alexqrid)
+  - TVM modules
