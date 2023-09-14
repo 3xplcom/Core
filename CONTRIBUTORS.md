@@ -5,3 +5,5 @@
     - Core, UTXO modules, EVM modules
 * [Yulian Volianskyi](https://github.com/jzethar)
     - Beacon Chain modules
+* [Kirill Kuzminykh](https://github.com/Oskal174)
+    - Aptos modules
