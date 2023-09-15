@@ -125,6 +125,14 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
             $in_query[] = $transaction['id'];
         }
 
+        // orphan-guards
+        $known_txids = [
+            'outs'   => [],
+            'ins'    => [],
+            'deltas' => [],
+        ];
+        $total_asset_movements = '0';
+
         $in_query = implode(', ', $in_query);
 
         $outs = pg_fetch_all(pg_query($this->db,
@@ -138,6 +146,8 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         foreach ($outs as $out)
         {
             $block[($out['tx_id'])]['outputs'][] = $out;
+            $known_txids['outs'][($out['tx_id'])] = 1;
+            $total_asset_movements = bcsub($total_asset_movements, $out['quantity']);
         }
 
         // Obtain outputs that were spent in given block
@@ -208,6 +218,8 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
         foreach ($ins as $in)
         {
             $block[($in['tx_in_id'])]['inputs'][] = $in;
+            $known_txids['ins'][($in['tx_in_id'])] = 1;
+            $total_asset_movements = bcadd($total_asset_movements, $in['quantity']);
         }
 
         $deltas = pg_fetch_all(pg_query($this->db,
@@ -227,7 +239,23 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
             {
                 $block[($delta['tx_id'])]['mints'][] = $delta;
             }
+            $known_txids['deltas'][($delta['tx_id'])] = 1;
+            $total_asset_movements = bcadd($total_asset_movements, $delta['quantity']);
         }
+
+        // Checking for Orphans
+
+        // should ins & outs query yeild mismatched data (ie db records get erased between our queries) - throw and retry
+        // here, in-db tx-ids are sufficient check, bcz UTXO
+        if (count(array_diff_assoc($known_txids['ins'], $known_txids['outs'], $known_txids['deltas'])) +
+            count(array_diff_assoc($known_txids['outs'], $known_txids['ins'], $known_txids['deltas'])) > 0) {
+            throw new ConsensusException('Transactions used mismatch (orphaned block?)');
+
+        }
+
+        // deltas need special check, as there's no obligation for them to be present, using similar logic to cardano-core - sum over netflow:
+        if ($total_asset_movements !== '0')
+            throw new ConsensusException('Transactions net flow mismatch (orphaned block?)');
 
         //
 
