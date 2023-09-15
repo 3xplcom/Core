@@ -4,11 +4,11 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes avalanche cross-chain transfers that involve c-chain on either side. Special microservice API by Blockchair is needed (see https://github.com/Blockchair/avax-atomic-unpacker).  */
+/*  This module processes Avalanche cross-chain transfers that involve C-chain on either side.
+ *  Special microservice API by Blockchair is needed (see https://github.com/Blockchair/avax-atomic-unpacker). */
 
-abstract class AvalancheCrossChainLikeMainModule extends CoreModule
+abstract class AvalancheLikeX2CModule extends CoreModule
 {
-
     use EVMTraits;
 
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWith0x;
@@ -26,7 +26,8 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
     public ?array $extra_data_details = [
         'x' => 'Export',
-        'i' => 'Import'
+        'i' => 'Import',
+        'b' => 'Burnt fee',
     ];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol', 'decimals'];
@@ -156,7 +157,7 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                 'transaction'         => $atomic_transaction['hash'],
                 'address'             => '0x00',
                 'sort_in_block'       => $ittr,
-                'sort_in_transaction' => 1,
+                'sort_in_transaction' => PHP_INT_MAX,
                 'effect'              => to_int256_from_0xhex($atomic_transaction['burnt']),
                 'currency'            => $this->main_token_descr['id'],
                 'extra'               => EVMSpecialTransactions::Burning->value,
@@ -216,7 +217,6 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                     $atomic_events,
                     $currencies_used
                 );
-
             }
 
             $ittr++;
@@ -228,6 +228,7 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
     private function process_events($block_id, $events, $block_time)
     {
         $hmr_time = date('Y-m-d H:i:s', to_int64_from_0xhex($block_time));
+
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;
@@ -297,6 +298,7 @@ abstract class AvalancheCrossChainLikeMainModule extends CoreModule
                 ];
             }
         }
+
         $this->set_return_currencies($currencies);
     }
 }
