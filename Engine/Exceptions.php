@@ -52,4 +52,4 @@ function exception_handler(Throwable $e): void
 }
 
 set_error_handler("error_handler", E_ALL);
-// set_exception_handler("exception_handler");
+set_exception_handler("exception_handler");
