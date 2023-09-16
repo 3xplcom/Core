@@ -17,7 +17,7 @@ abstract class TVMMainModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
     public ?array $special_addresses = ['the-void', 'treasury', 'dex'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
