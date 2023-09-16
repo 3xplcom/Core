@@ -111,3 +111,13 @@ enum PrivacyModel
     case Mixed; // Any value is acceptable, including `-?` and `+?`
     case Shielded; // The only allowed values are `-?` and `+?`
 }
+
+// This is for
+enum SearchableEntity: string
+{
+    case Block = 'block';
+    case Transaction = 'transaction';
+    case Address = 'address';
+    case Handle = 'handle';
+    case Any = 'any';
+}
