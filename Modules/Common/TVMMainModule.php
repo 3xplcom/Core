@@ -7,12 +7,6 @@
 /*  This module processes "external" TVM transactions, block rewards.
  *  Supported nodes: java-tron with the following fix https://github.com/tronprotocol/java-tron/pull/5469 */
 
-function to_timestamp_from_long_unixtime(string $long_unixtime): string
-{
-    // 1555400628000
-    return DateTime::createFromFormat('U.u', bcdiv($long_unixtime, '1000', 3))->format("Y-m-d H:i:s");
-}
-
 abstract class TVMMainModule extends CoreModule
 {
     use TVMTraits;
