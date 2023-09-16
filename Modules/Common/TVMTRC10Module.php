@@ -51,15 +51,31 @@ abstract class TVMTRC10Module extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        $r1 = requester_single($this->select_node(),
-            endpoint: "/wallet/getblockbynum?num={$block_id}", // no visible=true, because asset_name can be
-            timeout: $this->timeout);;
+
+        try
+        {
+            $r1 = requester_single($this->select_node(),
+                endpoint: "/wallet/getblockbynum?num={$block_id}", // no visible=true, because asset_name can be
+                timeout: $this->timeout);
+        }
+        catch (RequesterEmptyArrayInResponseException)
+        {
+            $r1 = [];
+        }
+
         $general_data = $r1['transactions'] ?? [];
 
-        // there can be TRC-10 transfers in internal transactions as well
-        $r2 = requester_single($this->select_node(),
-            endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}",
-            timeout: $this->timeout);
+        try
+        {
+            // there can be TRC-10 transfers in internal transactions as well
+            $r2 = requester_single($this->select_node(),
+                endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}",
+                timeout: $this->timeout);
+        }
+        catch (RequesterEmptyArrayInResponseException)
+        {
+            $r2 = [];
+        }
 
         // Process logs
         $events = [];
@@ -78,13 +94,19 @@ abstract class TVMTRC10Module extends CoreModule
             if (in_array($transaction_type, $exchange_transaction_types))
             {
                 $other_trc10_transactions_data[] = $receipt;
-                $other_trc10_transactions_info[] = $r2[$i];
+                $other_trc10_transactions_info[] = $r2[$i] ?? [];
                 continue;
             }
+
+            if (count($other_trc10_transactions_data) > 0 && count($r2) === 0)
+                throw new ModuleError("No transaction info for dex trc10 transfers");
+
             if (($transaction_type) !== 'TransferAssetContract')
                 continue;
+
             if (($receipt['raw_data']['contract'][0]['type'] ?? null) !== 'TransferAssetContract')
                 continue;
+
             $data = $receipt['raw_data']['contract'][0]['parameter']['value'];
             $asset_id = $this->get_asset_info($data['asset_name'], block_id: $block_id);
             $events[] = [
@@ -421,10 +443,16 @@ abstract class TVMTRC10Module extends CoreModule
         foreach ($currencies as $c)
             $real_currencies[] = explode('/', $c)[1];
 
+        try
+        {
+            $data = requester_single($this->select_node(),
+                endpoint: "/wallet/getaccount?address={$address}",
+                timeout: $this->timeout);
+        }
+        catch (RequesterEmptyArrayInResponseException){
+            return [];
+        }
 
-        $data = requester_single($this->select_node(),
-            endpoint: "/wallet/getaccount?value={$address}",
-            timeout: $this->timeout);
 
         // i.e. address not found
         if (count($data) == 0)
