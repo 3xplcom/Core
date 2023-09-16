@@ -99,8 +99,6 @@ trait TVMTraits
         }
 
         $multi_curl = [];
-
-
         $params = ['jsonrpc' => '2.0', 'method' => 'eth_getBlockByNumber', 'params' => [to_0xhex_from_int64($block_id), false], 'id' => 0];
 
         foreach ($this->nodes as $node)
@@ -134,6 +132,8 @@ trait TVMTraits
                 }
             }
         }
+
+        $this->block_hash = remove_0x_safely($this->block_hash);
     }
 
     /**

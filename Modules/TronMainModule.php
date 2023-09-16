@@ -14,13 +14,14 @@ final class TronMainModule extends TVMMainModule implements Module
         $this->blockchain = 'tron';
         $this->module = 'tron-main';
         $this->is_main = true;
+        $this->first_block_id = 0;
         $this->first_block_date = '2018-06-25';
-        $this->currency = 'TRON';
+        $this->currency = 'tron';
         $this->currency_details = ['name' => 'TRON', 'symbol' => 'TRX', 'decimals' => 6, 'description' => null];
 
         // TVMMainModule
         $this->extra_features = [TVMSpecialFeatures::AllowEmptyRecipient];
-        $this->extra_data_details = TVMSpecialTransactions::to_assoc_array();
+        $this->extra_data_details = array_flip(TVMSpecialTransactions::to_assoc_array());
         $this->reward_function = function ($block_id) {
             $sr_reward = '0';
             $partners_reward = '0';

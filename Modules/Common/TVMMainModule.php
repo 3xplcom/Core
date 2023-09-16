@@ -24,7 +24,7 @@ abstract class TVMMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
-    public ?array $special_addresses = ['the-void', 'votes-treasury', 'dex'];
+    public ?array $special_addresses = ['the-void', 'treasury', 'dex'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
@@ -36,7 +36,7 @@ abstract class TVMMainModule extends CoreModule
     public ?bool $should_return_currencies = false;
     public ?bool $allow_empty_return_events = false;
 
-    public ?bool $mempool_implemented = true;
+    public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = true;
 
     // TVM-specific
@@ -146,7 +146,7 @@ abstract class TVMMainModule extends CoreModule
                 $data = $general_data[$i]['raw_data']['contract'][0]['parameter']['value'];
                 $transaction_type = $general_data[$i]['raw_data']['contract'][0]['type'];
 
-                if (!array_key_exists($transaction_type, $this->extra_data_details)) {
+                if (!in_array($transaction_type, $this->extra_data_details)) {
                     throw new ModuleError("Unknown contract interaction type {$transaction_type} in {$general_data[$i]['txID']}.");
                 }
 
@@ -227,7 +227,7 @@ abstract class TVMMainModule extends CoreModule
                     case "WithdrawBalanceContract":
                         $transaction_data[($general_data[$i]['txID'])] =
                             [
-                                'from' => 'votes-treasury',
+                                'from' => 'treasury',
                                 'to' => $data['owner_address'],
                                 'value' => $receipt_data[$i]["withdraw_amount"],
                                 'contractAddress' => null,
@@ -576,7 +576,7 @@ abstract class TVMMainModule extends CoreModule
 
             $events[] = [
                 'transaction' => null,
-                'address' => 'votes-treasury',
+                'address' => 'treasury',
                 'sort_in_block' => $ijk++,
                 'sort_in_transaction' => 1,
                 'effect' => $this_to_voters,
