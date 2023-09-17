@@ -18,7 +18,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-void'];
+    public ?array $special_addresses = ['the-abyss'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'extra', 'extra_indexed', 'failed'];
@@ -113,8 +113,8 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => $token_info['collection_address'],
-                                'address'     => ($transaction['messageIn'][0]['transfer']['from'] === "") ? 'the-void' : $transaction['messageIn'][0]['transfer']['from'],
+                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-abyss',
+                                'address'     => ($transaction['messageIn'][0]['transfer']['from'] !== '') ? $transaction['messageIn'][0]['transfer']['from'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '-1',
                                 'extra'       => $token_info['index'],
@@ -124,8 +124,8 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => $token_info['collection_address'],
-                                'address'     => ($transaction['messageIn'][0]['transfer']['to'] === "") ? 'the-void' : $transaction['messageIn'][0]['transfer']['to'],
+                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-abyss',
+                                'address'     => ($transaction['messageIn'][0]['transfer']['to'] !== '') ? $transaction['messageIn'][0]['transfer']['to'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '1',
                                 'extra'       => $token_info['index'],
@@ -133,7 +133,8 @@ abstract class TONLikeNFJettonModule extends CoreModule
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
                             ];
 
-                            $currencies_to_process[] = $token_info['collection_address'];
+                            if ($token_info['collection_address'] !== '')
+                                $currencies_to_process[] = $token_info['collection_address'];
                         }
                     }
                 }

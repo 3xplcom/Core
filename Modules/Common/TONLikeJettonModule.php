@@ -18,7 +18,7 @@ abstract class TONLikeJettonModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-void'];
+    public ?array $special_addresses = ['the-abyss'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'failed'];
@@ -110,8 +110,8 @@ abstract class TONLikeJettonModule extends CoreModule
                         {
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => $transaction['messageIn'][0]['transfer']['token'],
-                                'address'     => $transaction['messageIn'][0]['transfer']['from'],
+                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-abyss',
+                                'address'     => ($transaction['messageIn'][0]['transfer']['from'] !== '') ? $transaction['messageIn'][0]['transfer']['from'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '-' . $transaction['messageIn'][0]['transfer']['amount'],
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
@@ -119,14 +119,15 @@ abstract class TONLikeJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => $transaction['messageIn'][0]['transfer']['token'],
-                                'address'     => $transaction['messageIn'][0]['destination'],
+                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-abyss',
+                                'address'     => ($transaction['messageIn'][0]['destination'] !== '') ? $transaction['messageIn'][0]['destination'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => $transaction['messageIn'][0]['transfer']['amount'],
                                 'failed'      => $transaction['messageIn'][0]['transfer']['failed'],
                             ];
 
-                            $currencies_to_process[] = $transaction['messageIn'][0]['transfer']['token'];
+                            if ($transaction['messageIn'][0]['transfer']['token'] !== '')
+                                $currencies_to_process[] = $transaction['messageIn'][0]['transfer']['token'];
                         }
                     }
                 }
