@@ -218,7 +218,7 @@ abstract class TVMTRC721Module extends CoreModule
             return $return;
         }
 
-        $address = "0x" . substr($address,2);
+        $address = "0x" . $address;
 
         if (!preg_match(StandardPatterns::iHexWith0x40->value, $address))
         {
