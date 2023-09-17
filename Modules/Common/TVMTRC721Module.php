@@ -158,15 +158,7 @@ abstract class TVMTRC721Module extends CoreModule
 
                 if (!isset($bit['result']) && isset($bit['error']))
                 {
-                    if (str_starts_with($bit['error']['message'], 'execution reverted'))
-                        $bit['result'] = '0x';
-                    elseif (str_starts_with($bit['error']['message'], 'invalid opcode'))
-                        $bit['result'] = '0x';
-                    elseif ($bit['error']['message'] === 'out of gas')
-                        $bit['result'] = '0x';
-                    elseif ($bit['error']['message'] === 'invalid jump destination')
-                        $bit['result'] = '0x';
-                    elseif (str_contains($bit['error']['message'], 'Function does not exist'))
+                    if (str_starts_with($bit['error']['message'], 'REVERT opcode executed'))
                         $bit['result'] = '0x';
                     else
                         throw new RequesterException("Request to the node errored with `{$bit['error']['message']}`");
