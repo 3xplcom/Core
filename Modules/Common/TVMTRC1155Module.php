@@ -15,7 +15,7 @@ abstract class TVMTRC1155Module extends CoreModule
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
-    public ?CurrencyFormat $currency_format = CurrencyFormat::HexWithout0x;
+    public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::NFT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
