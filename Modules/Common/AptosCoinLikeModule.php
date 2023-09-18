@@ -77,26 +77,28 @@ abstract class AptosCoinLikeModule extends CoreModule
                 {
                     continue;
                 }
-                $coin = str_replace(['0x1::coin::CoinStore<', '>'], '', $changed_resource);
+                $coin = str_replace(['0x1::coin::CoinStore<', ' '], '', $changed_resource);
+                if (str_ends_with($coin, '>'))
+                {
+                    $coin = substr($coin, 0, strlen($coin)-1);
+                }
                 if ($coin === '0x1::aptos_coin::AptosCoin')
                 {
                     continue;
                 }
 
                 $address = $change['address'];
+                $changed_resource = str_replace(' ', '', $changed_resource);
                 $changed_resource_encode = urlencode($changed_resource);
-                try
-                {
-                    $resource_before = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['first_version']}", timeout: $this->timeout);
-                } catch (RequesterException $e)
+
+                $resource_before = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['first_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+                if (!isset($resource_before['data']))
                 {
                     $resource_before = null;
                 }
 
-                try
-                {
-                    $resource_after = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['last_version']}", timeout: $this->timeout);
-                } catch (RequesterException $e)
+                $resource_after = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['last_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+                if (!isset($resource_after['data']))
                 {
                     $resource_after = null;
                 }
@@ -172,16 +174,15 @@ abstract class AptosCoinLikeModule extends CoreModule
         foreach ($currencies as $currency)
         {
             $coin = explode('/', $currency)[1];
-            try
+            $resource = urlencode("0x1::coin::CoinStore<{$coin}>");
+            $result = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/$resource", timeout: $this->timeout, valid_codes: [200, 404]);
+            // Code 404 and no field 'data' in response if there is no resource for address
+            if (!isset($result['data']))
             {
-                $resource = urlencode("0x1::coin::CoinStore<{$coin}>");
-                $result = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/$resource", timeout: $this->timeout);
-            } catch (RequesterException $e)
-            {
-                // There is no resource for user.
                 $balances[] = '0';
                 continue;
             }
+
             $balances[] = (string) $result['data']['coin']['value'];
         }
 

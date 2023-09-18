@@ -184,18 +184,14 @@ abstract class AptosLikeMainModule extends CoreModule
                             $address = $change['address'];
                             $changed_resource_encode = urlencode($changed_resource);
 
-                            try
-                            {
-                                $resource_before = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['first_version']}", timeout: $this->timeout);
-                            } catch (RequesterException $e)
+                            $resource_before = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['first_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+                            if (!isset($resource_before['data']))
                             {
                                 $resource_before = null;
                             }
 
-                            try
-                            {
-                                $resource_after = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['last_version']}", timeout: $this->timeout);
-                            } catch (RequesterException $e)
+                            $resource_after = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['last_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+                            if (!isset($resource_after['data']))
                             {
                                 $resource_after = null;
                             }
@@ -271,9 +267,6 @@ abstract class AptosLikeMainModule extends CoreModule
                     ];
 
                     break;
-
-                default:
-                    break;
             }
         }
 
@@ -282,16 +275,13 @@ abstract class AptosLikeMainModule extends CoreModule
 
     public function api_get_balance(string $address): string
     {
-        try
+        $resource = urlencode("0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>");
+        $result = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/$resource", timeout: $this->timeout, valid_codes: [200, 404]);
+        // Code 404 and no field 'data' in response if there is no resource for address
+        if (!isset($result['data']))
         {
-            $resource = urlencode("0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>");
-            $result = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/$resource", timeout: $this->timeout);
-        } catch (RequesterException $e)
-        {
-            // There is no resource for user.
             return '0';
         }
-
         return (string) $result['data']['coin']['value'];
     }
 }
