@@ -80,7 +80,7 @@ abstract class AptosCoinLikeModule extends CoreModule
                 $coin = str_replace(['0x1::coin::CoinStore<', ' '], '', $changed_resource);
                 if (str_ends_with($coin, '>'))
                 {
-                    $coin = substr($coin, 0, strlen($coin)-1);
+                    $coin = substr($coin, 0, -1);
                 }
                 if ($coin === '0x1::aptos_coin::AptosCoin')
                 {
