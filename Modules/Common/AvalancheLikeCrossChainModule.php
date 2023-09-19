@@ -7,7 +7,7 @@
 /*  This module processes Avalanche cross-chain transfers that involve C-chain on either side.
  *  Special microservice API by Blockchair is needed (see https://github.com/Blockchair/avax-atomic-unpacker). */
 
-abstract class AvalancheLikeX2CModule extends CoreModule
+abstract class AvalancheLikeCrossChainModule extends CoreModule
 {
     use EVMTraits;
 
@@ -25,8 +25,8 @@ abstract class AvalancheLikeX2CModule extends CoreModule
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
     public ?array $extra_data_details = [
-        'x' => 'Export',
         'i' => 'Import',
+        'x' => 'Export',
         'b' => 'Burnt fee',
     ];
 
@@ -48,6 +48,7 @@ abstract class AvalancheLikeX2CModule extends CoreModule
     public ?string $unpacker_handle = null;
     public ?string $asset_info_handle = null;
     public ?array $main_token_descr = null;
+    public ?array $sister_networks = null;
 
     final public function pre_initialize()
     {
@@ -70,6 +71,9 @@ abstract class AvalancheLikeX2CModule extends CoreModule
 
         if (is_null($this->main_token_descr))
             throw new DeveloperError('`main_token_descr` is not set (developer error)');
+
+        if (is_null($this->sister_networks))
+            throw new DeveloperError('`sister_networks` is not set (developer error)');
     }
 
     final public function pre_process_block($block_id)
@@ -133,7 +137,7 @@ abstract class AvalancheLikeX2CModule extends CoreModule
         {
             $atomic_events[] = [
                 'transaction'         => $hash,
-                'address'             => (is_null($extra)) ? $tx_leg['addr'] : '0x00',
+                'address'             => (is_null($extra)) ? $tx_leg['addr'] : ($this->sister_networks[$tx_leg['blockchain']] ?? '0x00'),
                 'sort_in_block'       => $sort_outer,
                 'sort_in_transaction' => $sort_inner,
                 'effect'              => $signum . to_int256_from_0xhex($tx_leg['amount']),
