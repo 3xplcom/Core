@@ -18,11 +18,11 @@ abstract class TONLikeNFJettonModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-abyss'];
+    public ?array $special_addresses = ['the-abyss', 'the-undefcurr'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'extra', 'extra_indexed', 'failed'];
-    public ?array $events_table_nullable_fields = [];
+    public ?array $events_table_nullable_fields = ['extra'];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol'];
     public ?array $currencies_table_nullable_fields = [];
@@ -35,7 +35,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
     public ?bool $mempool_implemented = false; // Technically, this is possible
     public ?bool $forking_implemented = true;
 
-    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Identifier;
 
     public ?array $shards = [];
     public ?string $workchain = null; // This should be set in the final module
@@ -113,7 +113,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-abyss',
+                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-undefcurr',
                                 'address'     => ($transaction['messageIn'][0]['transfer']['from'] !== '') ? $transaction['messageIn'][0]['transfer']['from'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '-1',
@@ -124,7 +124,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-abyss',
+                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-undefcurr',
                                 'address'     => ($transaction['messageIn'][0]['transfer']['to'] !== '') ? $transaction['messageIn'][0]['transfer']['to'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '1',
@@ -151,9 +151,19 @@ abstract class TONLikeNFJettonModule extends CoreModule
         if ($currencies_to_process)
         {
             $multi_curl = [];
+            $currency_data = [];
 
             foreach ($currencies_to_process as $currency_id)
             {
+                if ($currency_id === 'the-undefcurr') // here we suppose that it will be only 1 undef_curr and no more
+                {
+                    $currencies[] = [
+                        'id'       => 'the-undefcurr',
+                        'name'     => '',
+                        'symbol'   => '',
+                    ];
+                    continue;
+                }
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
                     endpoint: "account?account={$currency_id}",
                     timeout: $this->timeout);
@@ -168,19 +178,16 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
             foreach ($currency_data as $account_data)
             {
+                $metadata = [];
                 if (isset($account_data["contract_state"]["contract_data"]["collection_content"]["metadata"]))
                 {
                     $metadata = $account_data["contract_state"]["contract_data"]["collection_content"]["metadata"];
-
-                    if (count($metadata) > 0) // onchain metadata will have only 'url' field
-                    {
-                        $currencies[] = [
-                            'id'       => $account_data["account"],
-                            'name'     => isset($metadata["name"]) ?  mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : '',
-                            'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : '',
-                        ];
-                    }
-                }
+                } 
+                $currencies[] = [
+                    'id'       => $account_data['account'],
+                    'name'     => isset($metadata['name']) ?  mb_convert_encoding($metadata['name'], 'UTF-8', 'UTF-8') : '',
+                    'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata['symbol'], 'UTF-8', 'UTF-8') : '',
+                ];
             }
         }
 
@@ -205,12 +212,17 @@ abstract class TONLikeNFJettonModule extends CoreModule
     // get collection address and index of nft
     private function api_get_nft_info($nft)
     {
-        $nft_info = requester_single(
-            $this->select_node(),
-            endpoint: "account?account={$nft}",
-            timeout: $this->timeout,
-            flags: [RequesterOption::RecheckUTF8]
-        );
+        try {
+            $nft_info = requester_single(
+                $this->select_node(),
+                endpoint: "account?account={$nft}",
+                timeout: $this->timeout,
+                flags: [RequesterOption::RecheckUTF8]
+            );
+        } catch (RequesterException)
+        {
+            $nft_info = null;
+        }
 
         if (isset($nft_info['contract_state']['contract_data']))
             return [
@@ -219,7 +231,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
             ];
         else
             return [
-                'collection_address' => null,
+                'collection_address' => 'the-undefcurr',
                 'index' => null,
             ];
     }

@@ -18,7 +18,7 @@ abstract class TONLikeJettonModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-abyss'];
+    public ?array $special_addresses = ['the-abyss', 'the-undefcurr'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'failed'];
@@ -34,8 +34,6 @@ abstract class TONLikeJettonModule extends CoreModule
 
     public ?bool $mempool_implemented = false; // Technically, this is possible
     public ?bool $forking_implemented = true;
-
-    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
 
     public ?array $shards = [];
     public ?string $workchain = null; // This should be set in the final module
@@ -110,7 +108,7 @@ abstract class TONLikeJettonModule extends CoreModule
                         {
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-abyss',
+                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-undefcurr',
                                 'address'     => ($transaction['messageIn'][0]['transfer']['from'] !== '') ? $transaction['messageIn'][0]['transfer']['from'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '-' . $transaction['messageIn'][0]['transfer']['amount'],
@@ -119,7 +117,7 @@ abstract class TONLikeJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-abyss',
+                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-undefcurr',
                                 'address'     => ($transaction['messageIn'][0]['destination'] !== '') ? $transaction['messageIn'][0]['destination'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => $transaction['messageIn'][0]['transfer']['amount'],
@@ -127,7 +125,7 @@ abstract class TONLikeJettonModule extends CoreModule
                             ];
 
                             if ($transaction['messageIn'][0]['transfer']['token'] !== '')
-                                $currencies_to_process[] = $transaction['messageIn'][0]['transfer']['token'];
+                                $currencies_to_process[] = ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-undefcurr';
                         }
                     }
                 }
@@ -144,9 +142,20 @@ abstract class TONLikeJettonModule extends CoreModule
         if ($currencies_to_process)
         {
             $multi_curl = [];
+            $currency_data = [];
 
             foreach ($currencies_to_process as $currency_id)
             {
+                if ($currency_id === 'the-undefcurr') // here we suppose that it will be only 1 undef_curr and no more
+                {
+                    $currencies[] = [
+                        'id'       => 'the-undefcurr',
+                        'name'     => '',
+                        'symbol'   => '',
+                        'decimals' => 0,
+                    ];
+                    continue;
+                }
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
                     endpoint: "/account?account={$currency_id}&unpack=true",
                     timeout: $this->timeout);
@@ -161,21 +170,18 @@ abstract class TONLikeJettonModule extends CoreModule
 
             foreach ($currency_data as $account_data) 
             {
+                $metadata = [];
                 if (isset($account_data["contract_state"]["contract_data"]["jetton_content"]["metadata"])) 
                 {
                     $metadata = $account_data["contract_state"]["contract_data"]["jetton_content"]["metadata"];
-
-                    if (count($metadata) > 0)    // onchain
-                    {
-                        // This removes invalid UTF-8 sequences
-                        $currencies[] = [
-                            'id'       => $account_data["account"],
-                            'name'     => isset($metadata["name"]) ? mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : '',
-                            'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : '',
-                            'decimals' => isset($metadata['decimals']) ? ($metadata["decimals"] > 32767 ? 0 : $metadata['decimals']) : 0,
-                        ];
-                    }
                 }
+                // This removes invalid UTF-8 sequences
+                $currencies[] = [
+                    'id'       => $account_data['account'],
+                    'name'     => isset($metadata["name"]) ? mb_convert_encoding($metadata["name"], 'UTF-8', 'UTF-8') : '',
+                    'symbol'   => isset($metadata['symbol']) ? mb_convert_encoding($metadata["symbol"], 'UTF-8', 'UTF-8') : '',
+                    'decimals' => isset($metadata['decimals']) ? ($metadata["decimals"] > 32767 ? 0 : $metadata['decimals']) : 0,
+                ];
             }
         }
 
