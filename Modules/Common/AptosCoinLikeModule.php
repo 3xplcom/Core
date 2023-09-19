@@ -77,10 +77,10 @@ abstract class AptosCoinLikeModule extends CoreModule
                 {
                     continue;
                 }
-                $coin = str_replace(['0x1::coin::CoinStore<', ' '], '', $changed_resource);
-                if (str_ends_with($coin, '>'))
+                $coin = str_replace(['0x1::coin::CoinStore<', '>'], '', $changed_resource);
+                if (str_contains($coin, '<') || str_contains($coin, '>'))
                 {
-                    $coin = substr($coin, 0, -1);
+                    continue; // Skip the Utility composite tokens
                 }
                 if ($coin === '0x1::aptos_coin::AptosCoin')
                 {
