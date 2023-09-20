@@ -146,6 +146,7 @@ abstract class AptosCoinLikeModule extends CoreModule
         // Process Coins metadata
         $currencies = [];
         $currencies_to_process = array_unique($currencies_to_process);
+        $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format);
         foreach ($currencies_to_process as $currency)
         {
             $currency_address = explode('::', $currency)[0];

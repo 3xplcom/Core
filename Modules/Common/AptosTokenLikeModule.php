@@ -172,6 +172,7 @@ abstract class AptosTokenLikeModule extends CoreModule
         }
 
         $currencies_to_process = array_unique($currencies_to_process);
+        $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format);
         foreach ($currencies_to_process as $currency)
         {
             $parts = explode('::', $currency);
