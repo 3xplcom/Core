@@ -25,7 +25,7 @@ final class AvalancheCrossChainModule extends AvalancheLikeCrossChainModule impl
             'decimals' => '9', 
             'id' => 'FvwEAhmxKfeiG8SnEvq42hc6whRyY3EFYAvebMqDNDGCgxN5Z'
         ];
-        $this->sister_networks = [
+        $this->sister_chains = [
             '2oYMBNV4eNHyqk2fjjV5nVQLDbtmNJzq5s3qs3Lo6ftnC6FByM' => 'X-Chain',
             '11111111111111111111111111111111LpoYY' => 'P-Chain',
         ];

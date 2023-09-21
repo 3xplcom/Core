@@ -48,7 +48,7 @@ abstract class AvalancheLikeCrossChainModule extends CoreModule
     public ?string $unpacker_handle = null;
     public ?string $asset_info_handle = null;
     public ?array $main_token_descr = null;
-    public ?array $sister_networks = null;
+    public ?array $sister_chains = null;
 
     final public function pre_initialize()
     {
@@ -72,8 +72,8 @@ abstract class AvalancheLikeCrossChainModule extends CoreModule
         if (is_null($this->main_token_descr))
             throw new DeveloperError('`main_token_descr` is not set (developer error)');
 
-        if (is_null($this->sister_networks))
-            throw new DeveloperError('`sister_networks` is not set (developer error)');
+        if (is_null($this->sister_chains))
+            throw new DeveloperError('`sister_chains` is not set (developer error)');
     }
 
     final public function pre_process_block($block_id)
