@@ -225,10 +225,13 @@ abstract class TONLikeNFJettonModule extends CoreModule
         }
 
         if (isset($nft_info['contract_state']['contract_data']))
+        {
+            $contract_data = $nft_info['contract_state']['contract_data'];
             return [
-                'collection_address' => $nft_info['contract_state']['contract_data']['collection_address'],
-                'index' => $nft_info['contract_state']['contract_data']['index'],
+                'collection_address' => isset($contract_data['collection_address']) ? $contract_data['collection_address'] : 'the-undefcurr',
+                'index' => isset($contract_data['index']) ? $contract_data['index'] : null ,
             ];
+        }
         else
             return [
                 'collection_address' => 'the-undefcurr',
