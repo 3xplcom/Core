@@ -245,6 +245,8 @@ abstract class TVMTRC1155Module extends CoreModule
                 {
                     if (str_starts_with($bit['error']['message'], 'REVERT opcode executed'))
                         $bit['result'] = '0x';
+                    elseif ($bit['error']['message'] === 'Smart contract is not exist.')
+                        $bit['result'] = '0x';
                     else
                         throw new RequesterException("Request to the node errored with `{$bit['error']['message']}`: " . print_r($bit['error'], true));
                 }
