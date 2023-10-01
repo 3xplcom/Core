@@ -32,7 +32,7 @@ final class GnosisChainMainModule extends EVMMainModule implements Module
 
         // Handles
         $this->handles_implemented = true;
-        $this->handles_regex = '/(.*)\.gno/';
+        $this->handles_regex = '/(.*)\.(gno|owl)/';
         $this->api_get_handle = function($handle)
         {
             if (!preg_match($this->handles_regex, $handle))
