@@ -33,6 +33,8 @@ enum EVMSpecialFeatures
     case zkEVM;
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
+    case FeesToTreasury;
+    case FlattenedTraces;
 }
 
 trait EVMTraits

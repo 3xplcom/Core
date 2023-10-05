@@ -297,6 +297,8 @@ abstract class EVMERC1155Module extends CoreModule
                         $bit['result'] = '0x';
                     elseif (str_contains($bit['error']['message'], 'VM execution error.'))
                         $bit['result'] = '0x';
+                    elseif (str_contains($bit['error']['message'], 'VM Exception while processing transaction'))
+                        $bit['result'] = '0x';
                     else
                         throw new RequesterException("Request to the node errored with `{$bit['error']['message']}`: " . print_r($bit['error'], true));
                 }

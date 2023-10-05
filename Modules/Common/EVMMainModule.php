@@ -50,6 +50,9 @@ abstract class EVMMainModule extends CoreModule
     public ?string $staking_contract = null;
     public ?Closure $reward_function = null;
 
+    public ?Closure $fee_function = null;
+    public ?array $fee_function_args = null;
+
     //
 
     final public function pre_initialize()
@@ -80,6 +83,9 @@ abstract class EVMMainModule extends CoreModule
             $this->block_entity_name = 'batch'; // We process batches instead of blocks
             $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
         }
+
+        if (!is_null($this->fee_function) && is_null($this->fee_function_args))
+            throw new DeveloperError('`fee_function_args` is not set when `fee_function` is set');
     }
 
     final public function pre_process_block($block_id)
@@ -236,6 +242,9 @@ abstract class EVMMainModule extends CoreModule
                     result_in: 'result', timeout: $this->timeout);
             }
 
+            if (in_array(EVMSpecialFeatures::FeesToTreasury, $this->extra_features))
+                $miner = 'treasury';
+
             // Data processing
 
             $this->block_time = date('Y-m-d H:i:s', to_int64_from_0xhex($block_time));
@@ -387,8 +396,23 @@ abstract class EVMMainModule extends CoreModule
             if ($block_id !== MEMPOOL)
             {
                 $this_gas_used = to_int256_from_0xhex($transaction['gasUsed']);
-                $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
-                $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
+                $effective_gas_price = to_int256_from_0xhex($transaction['effectiveGasPrice']);
+                $this_burned = '0';
+                $this_to_miner = '0';
+
+                if (!is_null($this->fee_function))
+                {
+                    $args = [];
+                    foreach ($this->fee_function_args as $key)
+                        $args[$key] = $$key;
+
+                    [$this_burned, $this_to_miner] = $this->fee_function->call($this, $args);
+                }
+                else
+                {
+                    $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
+                    $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
+                }
 
                 if (in_array(EVMSpecialFeatures::EffectiveGasPriceCanBeZero, $this->extra_features))
                     if ($transaction['effectiveGasPrice'] === '0x0')
