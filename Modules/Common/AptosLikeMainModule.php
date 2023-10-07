@@ -17,7 +17,7 @@ abstract class AptosLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-void', 'the-contract'];
+    public ?array $special_addresses = ['the-void' /* 0x00 */, 'the-contract' /* 0x01 */];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
     public ?bool $ignore_sum_of_all_effects = false;
 
@@ -97,7 +97,7 @@ abstract class AptosLikeMainModule extends CoreModule
                             'block' => $block['block_height'],
                             'transaction' => $trx['hash'],
                             'time' => $this->block_time,
-                            'address' => 'the-void',
+                            'address' => '0x00', // the-void
                             'sort_key' => $sort_key++,
                             'effect' => '-' . $balance,
                             'failed' => $failed,
@@ -129,7 +129,7 @@ abstract class AptosLikeMainModule extends CoreModule
                                 'block' => $block['block_height'],
                                 'transaction' => $trx['hash'],
                                 'time' => $this->block_time,
-                                'address' => 'the-void',
+                                'address' => '0x00', // the-void
                                 'sort_key' => $sort_key++,
                                 'effect' => '-' . $trx_event['data']['rewards_amount'],
                                 'failed' => $failed,
@@ -245,7 +245,7 @@ abstract class AptosLikeMainModule extends CoreModule
                                 'block' => $block['block_height'],
                                 'transaction' => $trx['hash'],
                                 'time' => $this->block_time,
-                                'address' => 'the-contract',
+                                'address' => '0x01', // the-contract
                                 'sort_key' => $sort_key++,
                                 'effect' => bcmul($diff_sum, '-1'),
                                 'failed' => $failed,
@@ -270,7 +270,7 @@ abstract class AptosLikeMainModule extends CoreModule
                         'block' => $block['block_height'],
                         'transaction' => $trx['hash'],
                         'time' => $this->block_time,
-                        'address' => 'the-void',
+                        'address' => '0x00', // the-void
                         'sort_key' => $sort_key++,
                         'effect' => $fee,
                         'failed' => $failed,
@@ -278,6 +278,17 @@ abstract class AptosLikeMainModule extends CoreModule
                     ];
 
                     break;
+            }
+        }
+
+        foreach ($events as &$event)
+        {
+            if (!in_array($event['address'], ['0x00', '0x01']))
+            {
+                if (strlen($event['address']) !== 66) // This is the only known blockchain stripping leading zeroes in addresses ¯\_(ツ)_/¯
+                {
+                    $event['address'] = '0x' . str_pad(substr($event['address'], 2), 64, '0', STR_PAD_LEFT);
+                }
             }
         }
 
