@@ -27,7 +27,7 @@ final class AptosMainModule extends AptosLikeMainModule implements Module
             if (!preg_match($this->handles_regex, $handle))
                 return null;
 
-            $handle = str_replace('.apt/', '', $handle);
+            $handle = str_replace('.apt', '', $handle);
 
             // SC have two views: get_targer_addr and get_owner_addr, right now we use only get_targer_addr to resolve.
             // https://explorer.aptoslabs.com/account/0x867ed1f6bf916171b1de3ee92849b8978b7d1b9e0a8cc982a3d19d535dfd9c0c/modules/view/router/get_target_addr?network=mainnet
