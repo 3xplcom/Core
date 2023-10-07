@@ -9,6 +9,7 @@
 enum AptosSpecialTransactions: string
 {
     case ValidatorReward = 'r';
+    case Fee = 'f';
 }
 
 trait AptosTraits

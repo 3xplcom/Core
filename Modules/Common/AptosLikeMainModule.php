@@ -25,7 +25,10 @@ abstract class AptosLikeMainModule extends CoreModule
     public ?array $events_table_nullable_fields = ['extra'];
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
-    public ?array $extra_data_details = [AptosSpecialTransactions::ValidatorReward->value => 'Validator reward',];
+    public ?array $extra_data_details = [
+        AptosSpecialTransactions::ValidatorReward->value => 'Validator reward',
+        AptosSpecialTransactions::Fee->value => 'Fee',
+    ];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
@@ -263,7 +266,7 @@ abstract class AptosLikeMainModule extends CoreModule
                         'sort_key' => $sort_key++,
                         'effect' => '-' . $fee,
                         'failed' => $failed,
-                        'extra' => 'f',
+                        'extra' => AptosSpecialTransactions::Fee->value,
                     ];
 
                     $events[] = [
@@ -274,7 +277,7 @@ abstract class AptosLikeMainModule extends CoreModule
                         'sort_key' => $sort_key++,
                         'effect' => $fee,
                         'failed' => $failed,
-                        'extra' => 'f',
+                        'extra' => AptosSpecialTransactions::Fee->value,
                     ];
 
                     break;
