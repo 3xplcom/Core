@@ -18,7 +18,7 @@ abstract class TONLikeJettonModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-abyss', 'the-undefcurr'];
+    public ?array $special_addresses = ['the-abyss', 'undefined-asset'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'failed'];
@@ -108,7 +108,7 @@ abstract class TONLikeJettonModule extends CoreModule
                         {
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-undefcurr',
+                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'undefined-asset',
                                 'address'     => ($transaction['messageIn'][0]['transfer']['from'] !== '') ? $transaction['messageIn'][0]['transfer']['from'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '-' . $transaction['messageIn'][0]['transfer']['amount'],
@@ -117,7 +117,7 @@ abstract class TONLikeJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-undefcurr',
+                                'currency'    => ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'undefined-asset',
                                 'address'     => ($transaction['messageIn'][0]['destination'] !== '') ? $transaction['messageIn'][0]['destination'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => $transaction['messageIn'][0]['transfer']['amount'],
@@ -125,7 +125,7 @@ abstract class TONLikeJettonModule extends CoreModule
                             ];
 
                             if ($transaction['messageIn'][0]['transfer']['token'] !== '')
-                                $currencies_to_process[] = ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'the-undefcurr';
+                                $currencies_to_process[] = ($transaction['messageIn'][0]['transfer']['token'] !== '') ? $transaction['messageIn'][0]['transfer']['token'] : 'undefined-asset';
                         }
                     }
                 }
@@ -146,10 +146,10 @@ abstract class TONLikeJettonModule extends CoreModule
 
             foreach ($currencies_to_process as $currency_id)
             {
-                if ($currency_id === 'the-undefcurr') // here we suppose that it will be only 1 undef_curr and no more
+                if ($currency_id === 'undefined-asset') // here we suppose that it will be only 1 undef_curr and no more
                 {
                     $currencies[] = [
-                        'id'       => 'the-undefcurr',
+                        'id'       => 'undefined-asset',
                         'name'     => '',
                         'symbol'   => '',
                         'decimals' => 0,

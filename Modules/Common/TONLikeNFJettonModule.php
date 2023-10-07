@@ -18,7 +18,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-abyss', 'the-undefcurr'];
+    public ?array $special_addresses = ['the-abyss', 'undefined-asset'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'extra', 'extra_indexed', 'failed'];
@@ -113,7 +113,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-undefcurr',
+                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'undefined-asset',
                                 'address'     => ($transaction['messageIn'][0]['transfer']['from'] !== '') ? $transaction['messageIn'][0]['transfer']['from'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '-1',
@@ -124,7 +124,7 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
                             $events[] = [
                                 'transaction' => $transaction['hash'],
-                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'the-undefcurr',
+                                'currency'    => ($token_info['collection_address'] !== '') ? $token_info['collection_address'] : 'undefined-asset',
                                 'address'     => ($transaction['messageIn'][0]['transfer']['to'] !== '') ? $transaction['messageIn'][0]['transfer']['to'] : 'the-abyss',
                                 'sort_key'    => $sort_key++,
                                 'effect'      => '1',
@@ -155,10 +155,10 @@ abstract class TONLikeNFJettonModule extends CoreModule
 
             foreach ($currencies_to_process as $currency_id)
             {
-                if ($currency_id === 'the-undefcurr') // here we suppose that it will be only 1 undef_curr and no more
+                if ($currency_id === 'undefined-asset') // here we suppose that it will be only 1 undef_curr and no more
                 {
                     $currencies[] = [
-                        'id'       => 'the-undefcurr',
+                        'id'       => 'undefined-asset',
                         'name'     => '',
                         'symbol'   => '',
                     ];
@@ -228,13 +228,13 @@ abstract class TONLikeNFJettonModule extends CoreModule
         {
             $contract_data = $nft_info['contract_state']['contract_data'];
             return [
-                'collection_address' => isset($contract_data['collection_address']) ? $contract_data['collection_address'] : 'the-undefcurr',
+                'collection_address' => isset($contract_data['collection_address']) ? $contract_data['collection_address'] : 'undefined-asset',
                 'index' => isset($contract_data['index']) ? $contract_data['index'] : null ,
             ];
         }
         else
             return [
-                'collection_address' => 'the-undefcurr',
+                'collection_address' => 'undefined-asset',
                 'index' => null,
             ];
     }
