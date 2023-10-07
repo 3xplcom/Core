@@ -1,12 +1,12 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module process the Aptos Coin (ERC20) transfers in Aptos Blockchain. */
+/*  This module process the Aptos Coin (FT) transfers in Aptos blockchain.  */
 
-abstract class AptosCoinLikeModule extends CoreModule
+abstract class AptosLikeCoinModule extends CoreModule
 {
     use AptosTraits;
 
@@ -64,24 +64,30 @@ abstract class AptosCoinLikeModule extends CoreModule
             }
 
             $failed = false;
+
             if ($trx['vm_status'] !== 'Executed successfully')
             {
                 $failed = true;
             }
 
             $diff_sum = [];
+
             foreach ($trx['changes'] as $change)
             {
                 $changed_resource = $change['data']['type'] ?? '';
+
                 if (!str_starts_with($changed_resource, '0x1::coin::CoinStore<'))
                 {
                     continue;
                 }
+
                 $coin = str_replace(['0x1::coin::CoinStore<', '>'], '', $changed_resource);
+
                 if (str_contains($coin, '<') || str_contains($coin, '>'))
                 {
                     continue; // Skip the Utility composite tokens
                 }
+
                 if ($coin === '0x1::aptos_coin::AptosCoin')
                 {
                     continue;
@@ -92,24 +98,28 @@ abstract class AptosCoinLikeModule extends CoreModule
                 $changed_resource_encode = urlencode($changed_resource);
 
                 $resource_before = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['first_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+
                 if (!isset($resource_before['data']))
                 {
                     $resource_before = null;
                 }
 
                 $resource_after = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['last_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+
                 if (!isset($resource_after['data']))
                 {
                     $resource_after = null;
                 }
 
                 $diff = bcsub($resource_after['data']['coin']['value'] ?? '0', $resource_before['data']['coin']['value'] ?? '0');
+
                 if ($diff === '0')
                 {
                     continue;
                 }
 
                 $diff_sum[$coin] = bcadd($diff_sum[$coin] ?? '0', $diff);
+
                 $events[] = [
                     'block' => $block['block_height'],
                     'transaction' => $trx['hash'],
@@ -129,6 +139,7 @@ abstract class AptosCoinLikeModule extends CoreModule
             {
                 if ($diff_coin === '0')
                     continue;
+
                 $events[] = [
                     'block' => $block['block_height'],
                     'transaction' => $trx['hash'],
@@ -147,6 +158,7 @@ abstract class AptosCoinLikeModule extends CoreModule
         $currencies = [];
         $currencies_to_process = array_unique($currencies_to_process);
         $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format);
+
         foreach ($currencies_to_process as $currency)
         {
             $currency_address = explode('::', $currency)[0];
@@ -172,6 +184,7 @@ abstract class AptosCoinLikeModule extends CoreModule
 
         // Input currencies should be in format like this: `aptos-erc-20/0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC`
         $balances = [];
+
         foreach ($currencies as $currency)
         {
             $coin = explode('/', $currency)[1];

@@ -1,12 +1,12 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes the Aptos Token (NFT) transfers in Aptos Blockchain.  */
+/*  This module processes the Aptos Collection (NFT) transfers in Aptos Blockchain.  */
 
-final class AptosTokenModule extends AptosTokenLikeModule implements Module
+final class AptosCollectionModule extends AptosLikeCollectionModule implements Module
 {
     function initialize()
     {

@@ -1,4 +1,4 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
@@ -51,9 +51,11 @@ abstract class AptosLikeMainModule extends CoreModule
 
         $events = [];
         $sort_key = 0;
+
         foreach ($block['transactions'] as $trx)
         {
             $failed = false;
+
             if ($trx['vm_status'] !== 'Executed successfully')
             {
                 $failed = true;
@@ -66,6 +68,7 @@ abstract class AptosLikeMainModule extends CoreModule
                     foreach ($trx['changes'] as $change)
                     {
                         $changed_resource = $change['data']['type'] ?? null;
+
                         if ($changed_resource !== '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>')
                         {
                             continue;
@@ -73,6 +76,7 @@ abstract class AptosLikeMainModule extends CoreModule
 
                         $address = $change['address'];
                         $balance = $change['data']['data']['coin']['value'] ?? '0';
+
                         if ($balance === '0')
                         {
                             continue;
@@ -142,6 +146,7 @@ abstract class AptosLikeMainModule extends CoreModule
                     // Function 0x1::aptos_account::transfer allow to transfer APT only and automatically creates CoinStore for destination account.
                     $fee = bcmul($trx['gas_used'], $trx['gas_unit_price']);
                     $trx['payload']['function'] = $trx['payload']['function'] ?? ''; // function is null for smart-contract deploys
+
                     if (
                         $trx['payload']['function'] === '0x1::aptos_account::transfer' ||
                         ($trx['payload']['function'] === '0x1::coin::transfer' &&
@@ -173,9 +178,11 @@ abstract class AptosLikeMainModule extends CoreModule
                     else
                     {
                         $diff_sum = '0';
+
                         foreach ($trx['changes'] as $change)
                         {
                             $changed_resource = $change['data']['type'] ?? null;
+
                             if ($changed_resource !== '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>')
                             {
                                 continue;
@@ -185,18 +192,21 @@ abstract class AptosLikeMainModule extends CoreModule
                             $changed_resource_encode = urlencode($changed_resource);
 
                             $resource_before = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['first_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+
                             if (!isset($resource_before['data']))
                             {
                                 $resource_before = null;
                             }
 
                             $resource_after = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/{$changed_resource_encode}?ledger_version={$block['last_version']}", timeout: $this->timeout, valid_codes: [200, 404]);
+
                             if (!isset($resource_after['data']))
                             {
                                 $resource_after = null;
                             }
 
                             $diff = bcsub($resource_after['data']['coin']['value'] ?? '0', $resource_before['data']['coin']['value'] ?? '0');
+
                             if ($address === $trx['sender'])
                             {
                                 if ($diff[0] === '-')
@@ -216,6 +226,7 @@ abstract class AptosLikeMainModule extends CoreModule
                             }
 
                             $diff_sum = bcadd($diff_sum, $diff);
+
                             $events[] = [
                                 'block' => $block['block_height'],
                                 'transaction' => $trx['hash'],
@@ -277,11 +288,13 @@ abstract class AptosLikeMainModule extends CoreModule
     {
         $resource = urlencode("0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>");
         $result = requester_single($this->select_node(), endpoint: "v1/accounts/{$address}/resource/$resource", timeout: $this->timeout, valid_codes: [200, 404]);
+
         // Code 404 and no field 'data' in response if there is no resource for address
         if (!isset($result['data']))
         {
             return '0';
         }
+
         return (string) $result['data']['coin']['value'];
     }
 }

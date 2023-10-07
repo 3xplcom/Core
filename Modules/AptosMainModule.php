@@ -19,12 +19,14 @@ final class AptosMainModule extends AptosLikeMainModule implements Module
         $this->first_block_date = '2022-10-12';
         $this->first_block_id = 0;
 
-        // Handles (AptosNames)
+        // Handles (Aptos Names)
         $this->handles_implemented = true;
         $this->handles_regex = '/(.*)\.apt/';
-        $this->api_get_handle = function ($handle) {
+        $this->api_get_handle = function ($handle)
+        {
             if (!preg_match($this->handles_regex, $handle))
                 return null;
+
             $handle = str_replace('.apt/', '', $handle);
 
             // SC have two views: get_targer_addr and get_owner_addr, right now we use only get_targer_addr to resolve.

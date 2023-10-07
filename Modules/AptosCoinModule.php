@@ -1,12 +1,12 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes the Aptos Coin (ERC20) transfers in Aptos Blockchain.  */
+/*  This module processes the Aptos Coin (FT) transfers in Aptos Blockchain.  */
 
-final class AptosCoinModule extends AptosCoinLikeModule implements Module
+final class AptosCoinModule extends AptosLikeCoinModule implements Module
 {
     function initialize()
     {

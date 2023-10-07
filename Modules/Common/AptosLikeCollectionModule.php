@@ -1,12 +1,12 @@
-<?php declare(strict_types=1);
+<?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module process the Aptos Token (NFT) transfers in Aptos Blockchain. */
+/*  This module process the Aptos Collection (NFT) transfers in Aptos Blockchain.  */
 
-abstract class AptosTokenLikeModule extends CoreModule
+abstract class AptosLikeCollectionModule extends CoreModule
 {
     use AptosTraits;
 
@@ -65,12 +65,14 @@ abstract class AptosTokenLikeModule extends CoreModule
             }
 
             $failed = false;
+
             if ($trx['vm_status'] !== 'Executed successfully')
             {
                 $failed = true;
             }
 
             $currencies_in_trx = [];
+
             foreach ($trx['events'] as $trx_event)
             {
                 if (!str_starts_with($trx_event['type'], '0x3::token'))
@@ -82,6 +84,7 @@ abstract class AptosTokenLikeModule extends CoreModule
                 $creator = $trx_event['data']['id']['creator'] ?? $trx_event['data']['id']['token_data_id']['creator'] ?? null;
                 $name = $trx_event['data']['id']['name'] ?? $trx_event['data']['id']['token_data_id']['name'] ?? null;
                 $collection = $trx_event['data']['id']['collection'] ?? $trx_event['data']['id']['token_data_id']['collection'] ?? null;
+
                 if (is_null($creator) || is_null($name) || is_null($collection))
                 {
                     continue; // skip not interested 0x3::token events.
@@ -89,6 +92,7 @@ abstract class AptosTokenLikeModule extends CoreModule
 
                 $currency_process_id = $creator . '::' . bin2hex($collection) . '::' . bin2hex($name);
                 $currency_id = $creator . '::' . bin2hex($collection);
+
                 if (!array_key_exists($currency_process_id, $currencies_in_trx))
                 {
                     $currencies_in_trx[$currency_process_id] = [
@@ -173,6 +177,7 @@ abstract class AptosTokenLikeModule extends CoreModule
 
         $currencies_to_process = array_unique($currencies_to_process);
         $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format);
+
         foreach ($currencies_to_process as $currency)
         {
             $parts = explode('::', $currency);
