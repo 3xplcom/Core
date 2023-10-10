@@ -58,33 +58,21 @@ abstract class EVMTraceModule extends CoreModule
             // for this task.
 
             $multi_curl = [];
+            $curl_results_prepared = [];
 
-            if (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+            if (in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
             {
-                $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method'  => 'eth_getBlockByNumber',
-                             'params'  => [to_0xhex_from_int64($block_id), false],
-                             'id'      => 0,
-                             'jsonrpc' => '2.0',
-                    ], timeout: $this->timeout);
-
-                $multi_curl[] = requester_multi_prepare($this->select_node(),
-                    params: ['method'  => 'debug_traceBlockByNumber',
-                             'params'  => [to_0xhex_from_int64($block_id), ['tracer' => 'callTracer']],
-                             'id'      => 1,
-                             'jsonrpc' => '2.0',
-                    ], timeout: $this->timeout);
-            }
-            else//if zkEVM
-            {
-                $blocks = requester_single($this->select_node(),
-                    params: ['jsonrpc' => '2.0',
-                             'method'  => 'zkevm_getBatchByNumber',
-                             'params'  => [to_0xhex_from_int64($block_id), true],
-                             'id'      => 0,
+                $blocks = requester_single(
+                    $this->select_node(),
+                    params: [
+                        'jsonrpc' => '2.0',
+                        'method' => 'zkevm_getBatchByNumber',
+                        'params' => [to_0xhex_from_int64($block_id), true],
+                        'id' => 0,
                     ],
                     result_in: 'result',
-                    timeout: $this->timeout);
+                    timeout: $this->timeout
+                );
 
                 if (!$blocks['transactions'])
                 {
@@ -97,32 +85,102 @@ abstract class EVMTraceModule extends CoreModule
 
                     foreach ($blocks['transactions'] as $transaction)
                     {
-                        $multi_curl[] = requester_multi_prepare($this->select_node(),
-                            params: ['method'  => 'eth_getBlockByNumber',
-                                     'params'  => [$transaction['blockNumber'], false],
-                                     'id'      => $this_i++,
-                                     'jsonrpc' => '2.0',
-                            ], timeout: $this->timeout);
+                        $multi_curl[] = requester_multi_prepare(
+                            $this->select_node(),
+                            params: [
+                                'method' => 'eth_getBlockByNumber',
+                                'params' => [$transaction['blockNumber'], false],
+                                'id' => $this_i++,
+                                'jsonrpc' => '2.0',
+                            ],
+                            timeout: $this->timeout
+                        );
 
-                        $multi_curl[] = requester_multi_prepare($this->select_node(),
-                            params: ['method'  => 'debug_traceBlockByNumber',
-                                     'params'  => [$transaction['blockNumber'], ['tracer' => 'callTracer']],
-                                     'id'      => $this_i++,
-                                     'jsonrpc' => '2.0',
-                            ], timeout: $this->timeout);
+                        $multi_curl[] = requester_multi_prepare(
+                            $this->select_node(),
+                            params: [
+                                'method' => 'debug_traceBlockByNumber',
+                                'params' => [$transaction['blockNumber'], ['tracer' => 'callTracer']],
+                                'id' => $this_i++,
+                                'jsonrpc' => '2.0',
+                            ],
+                            timeout: $this->timeout
+                        );
                     }
                 }
             }
-
-            $curl_results = requester_multi($multi_curl,
-                limit: envm($this->module, 'REQUESTER_THREADS'),
-                timeout: $this->timeout);
-
-            $curl_results_prepared = [];
-
-            foreach ($curl_results as $curl_result)
+            else if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
             {
-                $curl_results_prepared[] = requester_multi_process($curl_result);
+                // Rootstock have only debug_traceBlockByHash and there are other responce format.
+                $block = requester_single(
+                    $this->select_node(),
+                    params: [
+                        'jsonrpc' => '2.0',
+                        'method' => 'eth_getBlockByNumber',
+                        'params' => [to_0xhex_from_int64($block_id), false],
+                        'id' => 0,
+                    ],
+                    timeout: $this->timeout
+                );
+
+                $block_trace = requester_single(
+                    $this->select_node(),
+                    params: [
+                        'jsonrpc' => '2.0',
+                        'method' => 'debug_traceBlockByHash',
+                        'params' => [
+                            $block['result']['hash'],
+                            [
+                                'tracer' => 'callTracer',
+                                'disableStorage' => true,
+                                'disableMemory' => true,
+                                'disableStack' => true
+                                ]
+                            ],
+                        'id' => 1,
+                    ],
+                    timeout: $this->timeout
+                );
+
+                $curl_results_prepared[] = $block;
+                $curl_results_prepared[] = $block_trace;
+            }
+            else // if normal EVM
+            {
+                $multi_curl[] = requester_multi_prepare(
+                    $this->select_node(),
+                    params: [
+                        'method' => 'eth_getBlockByNumber',
+                        'params' => [to_0xhex_from_int64($block_id), false],
+                        'id' => 0,
+                        'jsonrpc' => '2.0',
+                    ],
+                    timeout: $this->timeout
+                );
+
+                $multi_curl[] = requester_multi_prepare(
+                    $this->select_node(),
+                    params: [
+                        'method' => 'debug_traceBlockByNumber',
+                        'params' => [to_0xhex_from_int64($block_id), ['tracer' => 'callTracer']],
+                        'id' => 1,
+                        'jsonrpc' => '2.0',
+                    ],
+                    timeout: $this->timeout
+                );
+            }
+
+            if (!in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+            {
+                $curl_results = requester_multi(
+                    $multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
+                    timeout: $this->timeout
+                );
+                foreach ($curl_results as $curl_result)
+                {
+                    $curl_results_prepared[] = requester_multi_process($curl_result);
+                }
             }
 
             reorder_by_id($curl_results_prepared);
@@ -147,15 +205,29 @@ abstract class EVMTraceModule extends CoreModule
                 {
                     $this_transaction_hash = $transaction_hashes[$this_i++];
 
-                    if (!isset($this_trace['result']['calls']))
-                        continue; // No internal txs
-
-                    if (isset($this_trace['result']['error']))
-                        continue; // Root failed
+                    if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                    {
+                        if (!isset($this_trace['subtraces']))
+                            continue;
+                    }
+                    else // normal EVM and zkEVM
+                    {
+                        if (!isset($this_trace['result']['calls']))
+                            continue; // No internal txs
+                        if (isset($this_trace['result']['error']))
+                            continue; // Root failed
+                    }
 
                     $this_calls = [];
 
-                    evm_trace($this_trace['result']['calls'], $this_calls);
+                    if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                    {
+                        rsk_trace($this_trace['subtraces'], $this_calls);
+                    }
+                    else
+                    {
+                        evm_trace($this_trace['result']['calls'], $this_calls);
+                    }
 
                     foreach ($this_calls as $this_call)
                     {

@@ -33,6 +33,7 @@ enum EVMSpecialFeatures
     case zkEVM;
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
+    case rskEVM; // Rootstock has different traces and deferred validators rewards (in N+4000 block).
 }
 
 trait EVMTraits
@@ -261,5 +262,37 @@ function evm_trace($calls, &$this_calls)
 
         if (isset($call['calls']))
             evm_trace($call['calls'], $this_calls);
+    }
+}
+
+function rsk_trace($calls, &$this_calls)
+{
+    foreach ($calls as $call)
+    {
+        if (!in_array($call['callType'], ['CALL']))
+            throw new ModuleError("Unknown call type: {$call['type']}");
+        if (!isset($call['invokeData']))
+            throw new ModuleError("invokeData is not set");
+
+        switch ($call['callType'])
+        {
+            case 'CALL':
+                $this_type = null;
+                $from = $call['invokeData']['callerAddress'];
+                if ($from === '0000000000000000000000000000000000000000000000000000000001000008')
+                {
+                    $this_type = EVMSpecialTransactions::BlockReward->value;
+                }
+
+                $this_calls[] = [
+                    'from' => to_0x_zeroes_trimmed_address($from),
+                    'to' => to_0x_zeroes_trimmed_address($call['invokeData']['ownerAddress']),
+                    'type' => $this_type,
+                    'value' => to_int256_from_hex($call['invokeData']['callValue']),
+                ];
+
+                break;
+        }
+
     }
 }

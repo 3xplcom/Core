@@ -67,7 +67,7 @@ abstract class EVMMainModule extends CoreModule
 
         if (is_null($this->reward_function))
             throw new DeveloperError("`reward_function` is not set (developer error)");
-      
+
         if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
             throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
 
@@ -447,15 +447,31 @@ abstract class EVMMainModule extends CoreModule
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
 
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => $miner,
-                    'sort_in_block' => $ijk,
-                    'sort_in_transaction' => 3,
-                    'effect' => $this_to_miner,
-                    'failed' => false,
-                    'extra' => EVMSpecialTransactions::FeeToMiner->value,
-                ];
+                if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                {
+                    // At RSK fee collects in special address and distributes for miners after 4000 confirmations.
+                    $events[] = [
+                        'transaction' => $transaction_hash,
+                        'address' => '0x0000000000000000000000000000000001000008',
+                        'sort_in_block' => $ijk,
+                        'sort_in_transaction' => 3,
+                        'effect' => $this_to_miner,
+                        'failed' => false,
+                        'extra' => EVMSpecialTransactions::FeeToMiner->value,
+                    ];
+                }
+                else
+                {
+                    $events[] = [
+                        'transaction' => $transaction_hash,
+                        'address' => $miner,
+                        'sort_in_block' => $ijk,
+                        'sort_in_transaction' => 3,
+                        'effect' => $this_to_miner,
+                        'failed' => false,
+                        'extra' => EVMSpecialTransactions::FeeToMiner->value,
+                    ];
+                }
             }
 
             // The transfer itself
