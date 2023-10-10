@@ -165,7 +165,7 @@ function to_0x_zeroes_trimmed_address(?string $value): ?string
     // to   0x14d3065c8eb89895f4df12450ec6b130049f8034
     if (is_null($value)) return null;
     if (strlen($value) <= 40) return $value;
-    return '0x' . substr($value, 24);
+    return '0x' . substr($value, -40);
 }
 
 // Reordering JSON-RPC 2.0 response by id

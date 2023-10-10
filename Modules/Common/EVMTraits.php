@@ -278,15 +278,23 @@ function rsk_trace($calls, &$this_calls)
         {
             case 'CALL':
                 $this_type = null;
-                $from = $call['invokeData']['callerAddress'];
-                if ($from === '0000000000000000000000000000000000000000000000000000000001000008')
+
+                $from = to_0x_zeroes_trimmed_address($call['invokeData']['callerAddress']);
+                if (is_null($from))
+                    throw new ModuleException("Invalid from address (null) in rsk_trace.");
+
+                $to = to_0x_zeroes_trimmed_address($call['invokeData']['ownerAddress']);
+                if (is_null($to))
+                    throw new ModuleException("Invalid to address (null) in rsk_trace.");
+
+                if ($from === '0x0000000000000000000000000000000001000008')
                 {
                     $this_type = EVMSpecialTransactions::BlockReward->value;
                 }
 
                 $this_calls[] = [
-                    'from' => to_0x_zeroes_trimmed_address($from),
-                    'to' => to_0x_zeroes_trimmed_address($call['invokeData']['ownerAddress']),
+                    'from' => $from,
+                    'to' => $to,
                     'type' => $this_type,
                     'value' => to_int256_from_hex($call['invokeData']['callValue']),
                 ];
