@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the core module. When you create a custom module, it inherits everything from this core module.
  *  The post_initialize() function helps to check whether all the properties are set correctly, that there are
@@ -34,8 +34,7 @@ abstract class CoreModule
 
     public ?bool $mempool_implemented = null; // Will this module process mempool transactions?
     public ?bool $forking_implemented = null; // Can blocks be orphaned on this blockchain?
-    public ?bool $hidden_values_only = null; // Set to true if it's not to possible to know transferred values (this is true
-    // for example for MWEB in Litecoin or for Monero)
+    public ?PrivacyModel $privacy_model = null; // Sets whether there can be unknown values (`-?` and `+?`)
 
     // Entity formats
 
@@ -291,8 +290,8 @@ abstract class CoreModule
         if ($this->extra_data_model === ExtraDataModel::Identifier && !is_null($this->extra_data_details))
             throw new DeveloperError("`extra_data_model` is `Identifier` and `extra_data_details` is not null");
 
-        if (is_null($this->hidden_values_only))
-            throw new DeveloperError("`hidden_values_only` is not set");
+        if (is_null($this->privacy_model))
+            throw new DeveloperError("`privacy_model` is not set");
 
         if ($this->currency_format === CurrencyFormat::Static && in_array('currency', $this->events_table_fields))
             throw new DeveloperError("`currency_format` is `Static`, but `currency` is listed among `events_table_fields`");
@@ -513,15 +512,20 @@ abstract class CoreModule
 
                     if ($field === 'effect')
                     {
-                        if (!$this->hidden_values_only)
+                        if ($this->privacy_model === PrivacyModel::Transparent)
                         {
                             if (!preg_match('/^-?\d+$/D', $value))
-                                throw new DeveloperError('`effect` is not a valid number');
+                                throw new DeveloperError("`effect` is not a valid number for `Transparent`: {$value}");
                         }
-                        else
+                        elseif ($this->privacy_model === PrivacyModel::Mixed)
+                        {
+                            if (!preg_match('/^-?\d+$/D', $value) && !in_array($value, ['-?', '+?']))
+                                throw new DeveloperError("`effect` is not a valid number for `Mixed`: {$value}");
+                        }
+                        else // Shielded
                         {
                             if (!in_array($value, ['-?', '+?']))
-                                throw new DeveloperError('`-?`, `+?` are the only variants for `effect` when `hidden_values_only` is true');
+                                throw new DeveloperError('`-?`, `+?` are the only variants for `effect` when `privacy_model` is `Shielded`');
                         }
                     }
 
