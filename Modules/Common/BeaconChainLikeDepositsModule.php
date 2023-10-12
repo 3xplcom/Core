@@ -8,7 +8,7 @@
  *  This is the main module for Beacon Chain as it should have at least 1 event for every validator, thus it implements `api_get_balance()`
  *  It requires a Prysm-like node to run. And additional API for getting deposit address */
 
-abstract class BeaconChainLikeMainModule extends CoreModule
+abstract class BeaconChainLikeDepositsModule extends CoreModule
 {
     use BeaconChainLikeTraits;
 
@@ -113,16 +113,17 @@ abstract class BeaconChainLikeMainModule extends CoreModule
                 $address = $d['data']['withdrawal_credentials'];
                 $amount = $d['data']['amount'];
 
-                try
-                {
-                    $index = requester_single($this->select_node(),
+                $validator_info = requester_single($this->select_node(),
                     endpoint: "eth/v1/beacon/states/{$slot_id}/validators/{$pubkey}",
                     timeout: $this->timeout,
-                    result_in: 'data')['index'];
-                } catch (RequesterException) 
-                {
+                    valid_codes: [200, 404]);
+
+                if (isset($validator_info['code']) && $validator_info['code'] === '404')
                     $index = 'the-looser';
-                }
+                elseif (isset($slot_info['code']))
+                    throw new ModuleError('Unexpected response code');
+                else
+                    $index = $validator_info['data']['index'];
                 
                 $deposit_address = requester_single(
                     $deposit_endpoint[0],

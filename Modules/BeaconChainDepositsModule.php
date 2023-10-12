@@ -6,13 +6,13 @@
 
 /*  This is the Deposits & Withdrawals (main) module for Beacon Chain. It requires a Prysm or a Lighthouse node to run.  */
 
-final class BeaconChainMainModule extends BeaconChainLikeMainModule implements Module
+final class BeaconChainDepositsModule extends BeaconChainLikeDepositsModule implements Module
 {
     function initialize()
     {
         // CoreModule
         $this->blockchain = 'beacon-chain';
-        $this->module = 'beacon-chain-main';
+        $this->module = 'beacon-chain-deposits';
         $this->is_main = true;
         $this->first_block_date = '2020-12-01';
         $this->first_block_id = 0;
