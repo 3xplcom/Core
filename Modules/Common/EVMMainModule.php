@@ -285,6 +285,9 @@ abstract class EVMMainModule extends CoreModule
                 {
                     foreach ($transactions as $transaction)
                     {
+                        if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                            $transaction = $transaction[0]; // For some reason, there's a different format in RSK
+
                         if (!isset($this->processed_transactions[($transaction['hash'])]))
                         {
                             $transaction_data[($transaction['hash'])] =
