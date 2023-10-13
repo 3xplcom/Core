@@ -447,31 +447,20 @@ abstract class EVMMainModule extends CoreModule
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
 
-                if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
-                {
-                    // At RSK fee collects in special address and distributes for miners after 4000 confirmations.
-                    $events[] = [
-                        'transaction' => $transaction_hash,
-                        'address' => '0x0000000000000000000000000000000001000008',
-                        'sort_in_block' => $ijk,
-                        'sort_in_transaction' => 3,
-                        'effect' => $this_to_miner,
-                        'failed' => false,
-                        'extra' => EVMSpecialTransactions::FeeToMiner->value,
-                    ];
-                }
-                else
-                {
-                    $events[] = [
-                        'transaction' => $transaction_hash,
-                        'address' => $miner,
-                        'sort_in_block' => $ijk,
-                        'sort_in_transaction' => 3,
-                        'effect' => $this_to_miner,
-                        'failed' => false,
-                        'extra' => EVMSpecialTransactions::FeeToMiner->value,
-                    ];
-                }
+                // In RSK, the fees are collected into a special address and distributed to miners after 4000 confirmations.
+                $fee_recipient = (!in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                    ? $miner
+                    : '0x0000000000000000000000000000000001000008';
+
+                $events[] = [
+                    'transaction' => $transaction_hash,
+                    'address' => $fee_recipient,
+                    'sort_in_block' => $ijk,
+                    'sort_in_transaction' => 3,
+                    'effect' => $this_to_miner,
+                    'failed' => false,
+                    'extra' => EVMSpecialTransactions::FeeToMiner->value,
+                ];
             }
 
             // The transfer itself
