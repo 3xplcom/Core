@@ -5,5 +5,7 @@
     - Core, UTXO modules, EVM modules
 * [Yulian Volianskyi](https://github.com/jzethar)
     - Beacon Chain modules
+* [Kirill Kuzminykh](https://github.com/Oskal174)
+    - Energi modules
 * [Oleg Makaussov](https://github.com/Lorgansar)
     - Cardano Tokens modules

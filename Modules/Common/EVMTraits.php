@@ -33,6 +33,7 @@ enum EVMSpecialFeatures
     case zkEVM;
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
+    case FeesToTreasury;
 }
 
 trait EVMTraits
@@ -250,6 +251,9 @@ function evm_trace($calls, &$this_calls)
                     'CREATE2' => EVMSpecialTransactions::ContractCreation->value,
                     'SELFDESTRUCT' => EVMSpecialTransactions::ContractDestruction->value,
                 };
+
+                if (!isset($call['from']) || !isset($call['to']) || !isset($call['value']))
+                    continue;
 
                 $this_calls[] = ['from'  => $call['from'],
                                  'to'    => $call['to'],
