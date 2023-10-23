@@ -403,6 +403,11 @@ abstract class EVMMainModule extends CoreModule
                         $this_burned = $this_to_miner = '0';
                     }
                 }
+                if (in_array(EVMSpecialFeatures::NoEIP1559BurnFee, $this->extra_features))
+                {
+                    $this_to_miner = (string)($this_burned + $this_to_miner);
+                    $this_burned = '0';
+                }
             }
             else
             {
