@@ -53,7 +53,7 @@ abstract class MoonbeamLikeRewardsModule extends CoreModule
 
     final public function inquire_latest_block()
     {
-        return (int)requester_single($this->select_node(), endpoint: 'blocks/head/header', result_in: 'number', timeout: $this->timeout);
+        return (int)requester_single($this->select_node(), endpoint: 'blocks/head/header?finalized=false', result_in: 'number', timeout: $this->timeout);
     }
 
     final public function ensure_block($block_id, $break_on_first = false)

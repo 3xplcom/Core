@@ -26,7 +26,7 @@ final class MoonbeamMainModule extends EVMMainModule implements Module
         $this->extra_features = [EVMSpecialFeatures::FeesToTreasury];
         $this->special_addresses = ['the-void', 'treasury'];
         $this->mempool_implemented = true;
-        $this->forking_implemented = false;
+        $this->forking_implemented = true;
         $this->reward_function = function($block_id)
         {
             return '0';
