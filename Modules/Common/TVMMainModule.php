@@ -343,6 +343,7 @@ abstract class TVMMainModule extends CoreModule
                                 ];
                             break; // only inside if, because we need to process the fee if this is not a trx dex transfer
                         }
+                        goto fee_process; // don't iterate over other cases just go to default case
                     case "ExchangeTransactionContract":
                         $exchange = $this->get_exchange_by_id($data['exchange_id']);
                         if ($exchange['has_trx'] && $data['token_id'] != "_") // buying trx for token 4067933
@@ -373,6 +374,7 @@ abstract class TVMMainModule extends CoreModule
                                 ];
                             break; // only inside if, because we need to process the fee if this is not a trx dex transfer
                         }
+                        goto fee_process;
                     case "ExchangeWithdrawContract":
                         if ($data['token_id'] == "_") {
                             $transaction_data[($general_data[$i]['txID'])] =
@@ -387,6 +389,7 @@ abstract class TVMMainModule extends CoreModule
                                 ];
                             break; // only inside if, because we need to process the fee if this is not a trx dex transfer
                         }
+                        goto fee_process; // fail case in 5969073
                     case "ExchangeCreateContract":
                         if (($data['first_token_id'] == "_") || ($data['second_token_id'] == "_"))
                             $value = $data['first_token_id'] == '_' ? $data['first_token_balance'] : ($data['second_token_id'] == "_" ? $data['second_token_balance'] : null);
@@ -404,6 +407,7 @@ abstract class TVMMainModule extends CoreModule
                                 ];
                             break; // only inside if, because we need to process the fee if this is not a trx dex transfer
                         }
+                        goto fee_process;
                     case "ParticipateAssetIssueContract":
                         $transaction_data[($general_data[$i]['txID'])] =
                             [
@@ -422,24 +426,25 @@ abstract class TVMMainModule extends CoreModule
                     case "CustomContract":
                     case "GetContract":
                     default:
-                        $from = $this->encode_address_to_base58($evm_transaction_data[$i]['from']);
-                        $to = $this->encode_address_to_base58($evm_transaction_data[$i]['to']);
-                        $value = to_int256_from_0xhex($evm_transaction_data[$i]['value']);
-                        if ($transaction_type === "TriggerSmartContract")
-                            $value = 0; // exclude double transfer, as it will be processed in internal module
-                        // ShieldedTransferContract has additional fee in `shielded_transaction_fee` key
-                        $fee = ($receipt_data[$i]["fee"] ?? 0) + ($receipt_data[$i]['shielded_transaction_fee'] ?? 0);
-                        $transaction_data[($general_data[$i]['txID'])] =
-                                [
-                                    'from' => $from,
-                                    'to' => $to,
-                                    'value' => $value,
-                                    'contractAddress' => null,
-                                    'fee' => $fee,
-                                    'status' => ($general_data[$i]['ret'][0]['contractRet'] ?? "SUCCESS") != "SUCCESS",
-                                    'extra' => TVMSpecialTransactions::fromName($transaction_type)
-                                ];
-                        break;
+                        fee_process:
+                            $from = $this->encode_address_to_base58($evm_transaction_data[$i]['from']);
+                            $to = $this->encode_address_to_base58($evm_transaction_data[$i]['to']);
+                            $value = to_int256_from_0xhex($evm_transaction_data[$i]['value']);
+                            if ($transaction_type === "TriggerSmartContract")
+                                $value = 0; // exclude double transfer, as it will be processed in internal module
+                            // ShieldedTransferContract has additional fee in `shielded_transaction_fee` key
+                            $fee = ($receipt_data[$i]["fee"] ?? 0) + ($receipt_data[$i]['shielded_transaction_fee'] ?? 0);
+                            $transaction_data[($general_data[$i]['txID'])] =
+                                    [
+                                        'from' => $from,
+                                        'to' => $to,
+                                        'value' => $value,
+                                        'contractAddress' => null,
+                                        'fee' => $fee,
+                                        'status' => ($general_data[$i]['ret'][0]['contractRet'] ?? "SUCCESS") != "SUCCESS",
+                                        'extra' => TVMSpecialTransactions::fromName($transaction_type)
+                                    ];
+                            break;
                 }
 
             }

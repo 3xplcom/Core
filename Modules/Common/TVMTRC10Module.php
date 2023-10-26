@@ -526,9 +526,17 @@ abstract class TVMTRC10Module extends CoreModule
             }
             else
             {
-                $asset_by_name = requester_single($this->select_node(),
-                    endpoint: "/wallet/getassetissuelistbyname?value=$asset_name_or_id",
-                    result_in: 'assetIssue', timeout: $this->timeout);
+                try {
+                    $asset_by_name = requester_single($this->select_node(),
+                        endpoint: "/wallet/getassetissuelistbyname?value=$asset_name_or_id",
+                        result_in: 'assetIssue', timeout: $this->timeout);
+                }catch (RequesterEmptyArrayInResponseException){
+                    // unpredicted behaviour in block 5535307 token_id was the number instead of symbol
+                    $asset_by_name = requester_single($this->select_node(),
+                        endpoint: "/wallet/getassetissuelistbyname?value=" . hex2bin($asset_name_or_id),
+                        result_in: 'assetIssue', timeout: $this->timeout);
+                }
+
                 if (!isset($asset_by_name) || count($asset_by_name) < 1)
                     throw new DeveloperError(" Could not get id of asset {$asset_name_or_id}: $asset_by_name");
                 usort($asset_by_name, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
