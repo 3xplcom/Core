@@ -156,13 +156,15 @@ abstract class AptosLikeMainModule extends CoreModule
                             $trx['payload']['type_arguments'][0] === '0x1::aptos_coin::AptosCoin')
                     )
                     {
+                        $effect = $this->try_convert_hex($trx['payload']['arguments'][1]);
+
                         $events[] = [
                             'block' => $block['block_height'],
                             'transaction' => $trx['hash'],
                             'time' => $this->block_time,
                             'address' => $trx['sender'],
                             'sort_key' => $sort_key++,
-                            'effect' => '-' . $trx['payload']['arguments'][1],
+                            'effect' => '-' . $effect,
                             'failed' => $failed,
                             'extra' => null,
                         ];
@@ -173,7 +175,7 @@ abstract class AptosLikeMainModule extends CoreModule
                             'time' => $this->block_time,
                             'address' => $trx['payload']['arguments'][0],
                             'sort_key' => $sort_key++,
-                            'effect' => $trx['payload']['arguments'][1],
+                            'effect' => $effect,
                             'failed' => $failed,
                             'extra' => null,
                         ];

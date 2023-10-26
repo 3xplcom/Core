@@ -48,4 +48,13 @@ trait AptosTraits
             }
         }
     }
+
+    function try_convert_hex(string $str): string
+    {
+        if (str_starts_with($str, '0x'))
+        {
+            return hex2dec(substr($str, 2));
+        }
+        return $str;
+    }
 }
