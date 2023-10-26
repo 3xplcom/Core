@@ -526,29 +526,44 @@ abstract class TVMTRC10Module extends CoreModule
             }
             else
             {
+                $asset_by_id = null;
                 try {
                     $asset_by_name = requester_single($this->select_node(),
                         endpoint: "/wallet/getassetissuelistbyname?value=$asset_name_or_id",
                         result_in: 'assetIssue', timeout: $this->timeout);
                 }catch (RequesterEmptyArrayInResponseException){
                     // unpredicted behaviour in block 5535307 token_id was the number instead of symbol
-                    $asset_by_name = requester_single($this->select_node(),
-                        endpoint: "/wallet/getassetissuelistbyname?value=" . hex2bin($asset_name_or_id),
-                        result_in: 'assetIssue', timeout: $this->timeout);
+                    $asset_by_id = requester_single($this->select_node(),
+                        endpoint: "/wallet/getassetissuebyid?value=" . hex2bin($asset_name_or_id), timeout: $this->timeout);
                 }
 
-                if (!isset($asset_by_name) || count($asset_by_name) < 1)
-                    throw new DeveloperError(" Could not get id of asset {$asset_name_or_id}: $asset_by_name");
-                usort($asset_by_name, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
-                // if the $asset_name_or_id is name of the token, then this was the firstly created token
-                $result = [
-                    'id' => $asset_by_name[0]['id'],
-                    'name' => $asset_by_name[0]['name'],
-                    'symbol' => $asset_by_name[0]['abbr'],
-                    'decimals' => $asset_by_name[0]['precision'] ?? 1,
-                    'num' => $asset_by_name[0]['num'] ?? 1,
-                    'trx_num' => $asset_by_name[0]['trx_num'] ?? 1
-                ];
+                if (is_null($asset_by_id))
+                {
+                    if (!isset($asset_by_name) || count($asset_by_name) < 1)
+                        throw new DeveloperError(" Could not get id of asset {$asset_name_or_id}: $asset_by_name");
+                    // if the $asset_name_or_id is name of the token, then this was the firstly created token
+                    usort($asset_by_name, fn($a, $b) => (int)$a['id'] <=> (int)$b['id']);
+                    $result = [
+                        'id' => $asset_by_name[0]['id'],
+                        'name' => $asset_by_name[0]['name'],
+                        'symbol' => $asset_by_name[0]['abbr'] ?? '',
+                        'decimals' => $asset_by_name[0]['precision'] ?? 1,
+                        'num' => $asset_by_name[0]['num'] ?? 1,
+                        'trx_num' => $asset_by_name[0]['trx_num'] ?? 1
+                    ];
+                }
+                else
+                {
+                    $result = [
+                        'id' => $asset_by_id['id'],
+                        'name' => hex2bin($asset_by_id['name']),
+                        'symbol' => hex2bin($asset_by_id['abbr'] ?? ''),
+                        'decimals' => $asset_by_id['precision'] ?? 1,
+                        'num' => $asset_by_id['num'] ?? 1,
+                        'trx_num' => $asset_by_id['trx_num'] ?? 1
+                    ];
+                }
+
             }
 
             // populate cache
