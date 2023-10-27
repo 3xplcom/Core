@@ -496,7 +496,7 @@ abstract class TVMTRC10Module extends CoreModule
         {
             if ($block_id > 5537806)
             {
-                if (strlen($asset_name_or_id) % 2 ==0)
+                if (strlen($asset_name_or_id) % 2 == 0)
                     $asset = hex2bin($asset_name_or_id);
                 else
                     $asset = $asset_name_or_id;
@@ -532,9 +532,13 @@ abstract class TVMTRC10Module extends CoreModule
                         endpoint: "/wallet/getassetissuelistbyname?value=$asset_name_or_id",
                         result_in: 'assetIssue', timeout: $this->timeout);
                 }catch (RequesterEmptyArrayInResponseException){
-                    // unpredicted behaviour in block 5535307 token_id was the number instead of symbol
+                    // unpredicted behaviour in block 5535307 token_id was the number instead of symbol in ExchangeWithdrawContract
+                    if (strlen($asset_name_or_id) % 2 ==0)
+                        $asset = hex2bin($asset_name_or_id);
+                    else
+                        $asset = $asset_name_or_id;
                     $asset_by_id = requester_single($this->select_node(),
-                        endpoint: "/wallet/getassetissuebyid?value=" . hex2bin($asset_name_or_id), timeout: $this->timeout);
+                        endpoint: "/wallet/getassetissuebyid?value=" . $asset, timeout: $this->timeout);
                 }
 
                 if (is_null($asset_by_id))
