@@ -7,3 +7,5 @@
     - Beacon Chain modules
 * [alexqrid](https://github.com/alexqrid)
   - TVM modules
+* [Oleg Makaussov](https://github.com/Lorgansar)
+    - Cardano Tokens modules
