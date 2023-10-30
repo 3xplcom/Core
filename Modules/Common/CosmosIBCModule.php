@@ -565,7 +565,7 @@ abstract class CosmosIBCModule extends CoreModule
         {
             // Not possible to get IBC token info from Tendermint API.
             $ibc_hash = explode("_", $currency)[1];
-            $denom_trace = requester_single($this->rpc_node, endpoint: "/ibc/apps/transfer/v1/denom_traces/{$ibc_hash}", timeout: $this->timeout);
+            $denom_trace = requester_single($this->rpc_node, endpoint: "ibc/apps/transfer/v1/denom_traces/{$ibc_hash}", timeout: $this->timeout);
             $currencies[] = [
                 'id' => $currency,
                 'name' => $denom_trace['denom_trace']['base_denom'],
