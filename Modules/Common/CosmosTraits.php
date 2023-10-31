@@ -61,7 +61,21 @@ trait CosmosTraits
         if (count($tx_events) === 0)
             return $fee_info;
 
-        foreach ($tx_events as $tx_event) {
+        foreach ($tx_events as $tx_event)
+        {
+            if ($tx_event['type'] === 'use_feegrant')
+            {
+                foreach ($tx_event['attributes'] as $attr)
+                {
+                    switch ($attr['key'])
+                    {
+                        case 'Z3JhbnRlcg==': // granter
+                            $fee_info['fee_payer'] = base64_decode($attr['value']);
+                            break;
+                    }
+                }
+            }
+
             if ($tx_event['type'] === 'tx')
             {
                 foreach ($tx_event['attributes'] as $attr)
@@ -75,11 +89,13 @@ trait CosmosTraits
                             break;
 
                         case 'ZmVlX3BheWVy': // fee_payer
-                            $fee_info['fee_payer'] = base64_decode($attr['value']);
+                            if (is_null($fee_info['fee_payer']))
+                                $fee_info['fee_payer'] = base64_decode($attr['value']);
                             break;
 
                         case 'YWNjX3NlcQ==': // acc_seq in format {addr}/{num}
-                            $fee_info['fee_payer'] = explode('/', base64_decode($attr['value']))[0];
+                            if (is_null($fee_info['fee_payer']))
+                                $fee_info['fee_payer'] = explode('/', base64_decode($attr['value']))[0];
                             break;
                     }
                 }
@@ -100,7 +116,21 @@ trait CosmosTraits
         if (count($tx_events) === 0)
             return $fee_info;
 
-        foreach ($tx_events as $tx_event) {
+        foreach ($tx_events as $tx_event)
+        {
+            if ($tx_event['type'] === 'use_feegrant')
+            {
+                foreach ($tx_event['attributes'] as $attr)
+                {
+                    switch ($attr['key'])
+                    {
+                        case 'Z3JhbnRlcg==': // granter
+                            $fee_info['fee_payer'] = base64_decode($attr['value']);
+                            break;
+                    }
+                }
+            }
+
             if ($tx_event['type'] === 'tx')
             {
                 foreach ($tx_event['attributes'] as $attr)
@@ -119,11 +149,13 @@ trait CosmosTraits
                             break;
 
                         case 'ZmVlX3BheWVy': // fee_payer
-                            $fee_info['fee_payer'] = base64_decode($attr['value']);
+                            if (is_null($fee_info['fee_payer']))
+                                $fee_info['fee_payer'] = base64_decode($attr['value']);
                             break;
 
                         case 'YWNjX3NlcQ==': // acc_seq in format {addr}/{num}
-                            $fee_info['fee_payer'] = explode('/', base64_decode($attr['value']))[0];
+                            if (is_null($fee_info['fee_payer']))
+                                $fee_info['fee_payer'] = explode('/', base64_decode($attr['value']))[0];
                             break;
                     }
                 }
