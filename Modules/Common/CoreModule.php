@@ -500,9 +500,14 @@ abstract class CoreModule
 
             $check_sums = [];
             $check_sort_key = 0;
+            $last_checked_transaction_hash = '';
+            $had_positive_effects = false;
 
             foreach ($this->return_events as $ekey => $event)
             {
+                if ($event['transaction'] !== $last_checked_transaction_hash)
+                    $had_positive_effects = false;
+
                 foreach ($event as $field => $value)
                 {
                     if (is_bool($value))
@@ -580,6 +585,12 @@ abstract class CoreModule
 
                 if ($this->block_id !== MEMPOOL && $event['sort_key'] !== $check_sort_key++)
                     throw new DeveloperError("Sort key is out of order for {$event['sort_key']}");
+
+                if (!str_contains($event['effect'], '-'))
+                    $had_positive_effects = true;
+                elseif ($this->transaction_render_model === TransactionRenderModel::UTXO && $had_positive_effects)
+                    throw new DeveloperError('Wrong order for the UTXO model');
+                // TODO: Add a similar check for the Even model
             }
 
             if (!$this->ignore_sum_of_all_effects)
