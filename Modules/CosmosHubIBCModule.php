@@ -14,7 +14,7 @@ final class CosmosHubIBCModule extends CosmosIBCModule implements Module
         $this->blockchain = 'cosmoshub';
         $this->module = 'cosmoshub-ibc';
         $this->is_main = false;
-        $this->first_block_date = '2019-11-12';
+        $this->first_block_date = '2019-12-11';
 
         // Cosmos-specific
         $this->cosmos_special_addresses = [];
