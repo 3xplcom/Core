@@ -42,8 +42,8 @@ abstract class CosmosMainModule extends CoreModule
     // Cosmos-specific
     public ?string $rpc_node = null;
     public ?array $cosmos_special_addresses = null;
+    // [denom => exponent] ex. [uatom => 0] means 123uatom = 123 * 10^0 ATOM
     public ?array $cosmos_known_denoms = null;
-    public ?array $cosmos_known_denoms_exp = null;
 
     // Since this block appeared coin_spent/coin_received events in x/bank module
     // value 0 if there is no such fork
@@ -63,10 +63,6 @@ abstract class CosmosMainModule extends CoreModule
 
         if (is_null($this->cosmos_known_denoms))
             throw new DeveloperError("`cosmos_known_denoms` is not set (developer error)");
-        if (is_null($this->cosmos_known_denoms_exp))
-            throw new DeveloperError("`cosmos_known_denoms_exp` is not set (developer error)");
-        if (count($this->cosmos_known_denoms) !== count($this->cosmos_known_denoms_exp))
-            throw new DeveloperError("`cosmos_known_denoms` and `cosmos_known_denoms_exp` count mismatch (developer error)");
 
         if (is_null($this->cosmos_coin_events_fork))
             throw new DeveloperError("`cosmos_coin_events_fork` is not set (deleloper error)");

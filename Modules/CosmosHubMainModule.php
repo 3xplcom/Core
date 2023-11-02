@@ -23,8 +23,7 @@ final class CosmosHubMainModule extends CosmosMainModule implements Module
             // At each block, all fees received are transferred to fee_collector.
             'fee_collector' => 'cosmos17xpfvakm2amg962yls6f84z3kell8c5lserqta'
         ];
-        $this->cosmos_known_denoms = ['uatom'];
-        $this->cosmos_known_denoms_exp = [0];
+        $this->cosmos_known_denoms = ['uatom' => 0];
         // https://github.com/cosmos/cosmos-sdk/pull/8656
         $this->cosmos_coin_events_fork = 8695000;
     }

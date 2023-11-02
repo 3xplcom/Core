@@ -568,8 +568,8 @@ abstract class CosmosIBCModule extends CoreModule
             $denom_trace = requester_single($this->rpc_node, endpoint: "ibc/apps/transfer/v1/denom_traces/{$ibc_hash}", timeout: $this->timeout);
             $currencies[] = [
                 'id' => $currency,
-                'name' => $denom_trace['denom_trace']['base_denom'],
-                'description' => $denom_trace['denom_trace']['path'],
+                'name' => $denom_trace['denom_trace']['base_denom'] ?? '',
+                'description' => $denom_trace['denom_trace']['path'] ?? '',
                 'decimals' => 6, // IBC tokens == native tokens from other cosmos sdk chains
             ];
         }

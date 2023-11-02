@@ -313,7 +313,7 @@ trait CosmosTraits
         return false;
     }
 
-    // Parse the knowning denoms from $this->cosmos_known_denoms_exp
+    // Parse the knowning denoms from $this->cosmos_known_denoms
     // denom_amount format: {amount}{denom} (ex. 1234uatom)
     function denom_amount_to_amount(?string $denom_amount): ?string
     {
@@ -324,12 +324,10 @@ trait CosmosTraits
         if (!is_numeric($parts[0]))
             throw new ModuleException("Invalid denom amount format (not numeric): {$denom_amount}");
 
-        $exp_ind = array_search($parts[1], $this->cosmos_known_denoms);
-        if ($exp_ind === false)
+        if (!array_key_exists($parts[1], $this->cosmos_known_denoms))
             return null;
 
-        $exp = $this->cosmos_known_denoms_exp[$exp_ind];
-        return $parts[0] . str_repeat('0', $exp);
+        return $parts[0] . str_repeat('0', $this->cosmos_known_denoms[$parts[1]]);
     }
 
     // Parse {amount}ibc/{denom} to null|array('amount' => string, 'currency' => string)
