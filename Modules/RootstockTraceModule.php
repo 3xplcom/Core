@@ -6,7 +6,7 @@
 
 /*  This module processes internal Rootstock transactions (using block tracing). */
 
-final class RootstockTraceModule extends EVMTraceModule implements Module
+final class RootstockTraceModule extends RSKTraceModule implements Module
 {
     function initialize()
     {
@@ -19,6 +19,5 @@ final class RootstockTraceModule extends EVMTraceModule implements Module
 
         // EVMTraceModule
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::rskEVM];
     }
 }

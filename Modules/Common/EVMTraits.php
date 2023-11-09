@@ -302,5 +302,7 @@ function rsk_trace($calls, &$this_calls)
                 break;
         }
 
+        if (isset($call['subtraces']))
+            evm_trace($call['subtraces'], $this_calls);
     }
 }
