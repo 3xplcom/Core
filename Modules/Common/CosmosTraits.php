@@ -6,6 +6,11 @@
 
 /*  Common Cosmos SDK functions and enums  */
 
+enum CosmosSpecialFeatures
+{
+    case HasDoublesTxEvents;
+}
+
 trait CosmosTraits
 {
     public function inquire_latest_block()
@@ -80,7 +85,8 @@ trait CosmosTraits
             {
                 foreach ($tx_event['attributes'] as $attr)
                 {
-                    switch ($attr['key']) {
+                    switch ($attr['key'])
+                    {
                         case 'ZmVl': // fee
                             if (is_null($attr['value'])) // zero fee for tx
                                 $fee_info['fee'] = '0';
@@ -345,5 +351,28 @@ trait CosmosTraits
 
         // Replace ibc/ to ibc_
         return ['amount' => $parts[0], 'currency' => str_replace('/', '_', $parts[1])];
+    }
+
+    // In some chains may be doubled events for fee paying.
+    function erase_double_fee_events(&$events) {
+        if (empty($events))
+            return;
+
+        // Check 'tx' events in the end of the list exists
+        if ($events[count($events) - 1]['type'] !== 'tx')
+            return;
+
+        $erase_index = null;
+        for ($i = count($events) - 1; $i >= 0; $i--)
+        {
+            if ($events[$i]['type'] === 'coin_spent')
+            {
+                $erase_index = count($events) - $i;
+                break;
+            }
+        }
+
+        // Erase the exact events from end of list
+        $events = array_slice($events, 0, -$erase_index);
     }
 }
