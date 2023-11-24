@@ -17,6 +17,8 @@ final class MoonbeamTraceModule extends EVMTraceModule implements Module
         $this->is_main = false;
         $this->first_block_date = '2021-12-18';
 
+        $this->transaction_hash_format = TransactionHashFormat::AlphaNumeric; // extrinsics may have hash collisions, need a different id
+
         // EVMTraceModule
         $this->evm_implementation = EVMImplementation::geth;
         $this->extra_features = [EVMSpecialFeatures::FlattenedTraces];

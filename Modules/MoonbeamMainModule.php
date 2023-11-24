@@ -4,9 +4,9 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This is the main Moonbeam parachain module. It requires a moonbeam node to run. 
+/*  This is the main Moonbeam parachain module. It requires a moonbeam node to run.
  *  This module only handles EVM-like activity; moonbeam components, that can
- *  only be accessed via Substrate API (such as staking & validator rewards) 
+ *  only be accessed via Substrate API (such as staking & validator rewards)
  *  are processed by a separate module. */
 
 final class MoonbeamMainModule extends EVMMainModule implements Module
@@ -20,6 +20,8 @@ final class MoonbeamMainModule extends EVMMainModule implements Module
         $this->first_block_date = '2021-12-18';
         $this->currency = 'glimmer';
         $this->currency_details = ['name' => 'Glimmer', 'symbol' => 'GLMR', 'decimals' => 18, 'description' => null];
+
+        $this->transaction_hash_format = TransactionHashFormat::AlphaNumeric; // extrinsics may have hash collisions, need a different id
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;

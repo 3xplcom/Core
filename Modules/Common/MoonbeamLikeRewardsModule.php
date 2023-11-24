@@ -10,7 +10,7 @@ abstract class MoonbeamLikeRewardsModule extends CoreModule
 {
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWith0x;
     public ?AddressFormat $address_format = AddressFormat::HexWith0x;
-    public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWith0x;
+    public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric; // extrinsics may have hash collisions, need a different id
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['treasury'];
@@ -104,8 +104,12 @@ abstract class MoonbeamLikeRewardsModule extends CoreModule
             }
         }
 
+        $extrinsic_number = 0;
         foreach ($extrinsics as $extrinsic)
         {
+            $tx_id = $block_id . '-' . $extrinsic_number;
+            $extrinsic_number++;
+
             if ($extrinsic['success'] !== true)
                 continue;
 
@@ -118,40 +122,40 @@ abstract class MoonbeamLikeRewardsModule extends CoreModule
                 {
                     case 'JoinedCollatorCandidates':
                     case 'CandidateBondedMore':
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: $e['data'][0], dst: 'treasury', amt: $e['data'][1], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: $e['data'][0], dst: 'treasury', amt: $e['data'][1], sort_key: $i);
                         $sub['extra'] = 's';
                         array_push($events, $sub, $add);
                         break;
 
                     case 'CandidateLeft':
                     case 'CandidateBondedLess':
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: 'treasury', dst: $e['data'][0], amt: $e['data'][1], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: 'treasury', dst: $e['data'][0], amt: $e['data'][1], sort_key: $i);
                         $add['extra'] = 'u';
                         array_push($events, $sub, $add);
                         break;
 
                     case 'Delegation':
                         // delegator -> candidate (collator)
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: $e['data'][0], dst: $e['data'][2], amt: $e['data'][1], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: $e['data'][0], dst: $e['data'][2], amt: $e['data'][1], sort_key: $i);
                         $sub['extra'] = 's';
                         $add['extra'] = 'd';
                         array_push($events, $sub, $add);
 
                         // collator -> treasury
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: $e['data'][2], dst: 'treasury', amt: $e['data'][1], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: $e['data'][2], dst: 'treasury', amt: $e['data'][1], sort_key: $i);
                         $sub['extra'] = 'd';
                         array_push($events, $sub, $add);
                         break;
 
                     case 'DelegationIncreased':
                         // delegator -> candidate (collator)
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: $e['data'][0], dst: $e['data'][1], amt: $e['data'][2], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: $e['data'][0], dst: $e['data'][1], amt: $e['data'][2], sort_key: $i);
                         $sub['extra'] = 's';
                         $add['extra'] = 'd';
                         array_push($events, $sub, $add);
 
                         // collator -> treasury
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: $e['data'][1], dst: 'treasury', amt: $e['data'][2], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: $e['data'][1], dst: 'treasury', amt: $e['data'][2], sort_key: $i);
                         $sub['extra'] = 'd';
                         array_push($events, $sub, $add);
                         break;
@@ -160,12 +164,12 @@ abstract class MoonbeamLikeRewardsModule extends CoreModule
                     case 'DelegationKicked':
                     case 'DelegationRevoked':
                         // treasury -> collator
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: 'treasury', dst: $e['data'][1], amt: $e['data'][2], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: 'treasury', dst: $e['data'][1], amt: $e['data'][2], sort_key: $i);
                         $add['extra'] = 'd';
                         array_push($events, $sub, $add);
 
                         // collator -> delegator
-                        [$sub, $add, $i] = $this->generate_event_pair(tx: $extrinsic['hash'], src: $e['data'][1], dst: $e['data'][0], amt: $e['data'][2], sort_key: $i);
+                        [$sub, $add, $i] = $this->generate_event_pair(tx: $tx_id, src: $e['data'][1], dst: $e['data'][0], amt: $e['data'][2], sort_key: $i);
                         $sub['extra'] = 'd';
                         $add['extra'] = 'u';
                         array_push($events, $sub, $add);
@@ -174,9 +178,9 @@ abstract class MoonbeamLikeRewardsModule extends CoreModule
                     default:
                         break;
                 }
-
             }
         }
+
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;
