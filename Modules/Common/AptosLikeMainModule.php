@@ -153,32 +153,38 @@ abstract class AptosLikeMainModule extends CoreModule
                     if (
                         $trx['payload']['function'] === '0x1::aptos_account::transfer' ||
                         ($trx['payload']['function'] === '0x1::coin::transfer' &&
-                            $trx['payload']['type_arguments'][0] === '0x1::aptos_coin::AptosCoin')
+                            ($trx['payload']['type_arguments'][0] ?? '') === '0x1::aptos_coin::AptosCoin')
                     )
                     {
-                        $effect = $this->try_convert_hex($trx['payload']['arguments'][1]);
+                        $to = $trx['payload']['arguments'][0] ?? null;
+                        $amount = $trx['payload']['arguments'][1] ?? null;
 
-                        $events[] = [
-                            'block' => $block['block_height'],
-                            'transaction' => $trx['hash'],
-                            'time' => $this->block_time,
-                            'address' => $trx['sender'],
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $effect,
-                            'failed' => $failed,
-                            'extra' => null,
-                        ];
+                        if (!is_null($to) && !is_null($amount))
+                        {
+                            $effect = $this->try_convert_hex($amount);
 
-                        $events[] = [
-                            'block' => $block['block_height'],
-                            'transaction' => $trx['hash'],
-                            'time' => $this->block_time,
-                            'address' => $trx['payload']['arguments'][0],
-                            'sort_key' => $sort_key++,
-                            'effect' => $effect,
-                            'failed' => $failed,
-                            'extra' => null,
-                        ];
+                            $events[] = [
+                                'block' => $block['block_height'],
+                                'transaction' => $trx['hash'],
+                                'time' => $this->block_time,
+                                'address' => $trx['sender'],
+                                'sort_key' => $sort_key++,
+                                'effect' => '-' . $effect,
+                                'failed' => $failed,
+                                'extra' => null,
+                            ];
+
+                            $events[] = [
+                                'block' => $block['block_height'],
+                                'transaction' => $trx['hash'],
+                                'time' => $this->block_time,
+                                'address' => $to,
+                                'sort_key' => $sort_key++,
+                                'effect' => $effect,
+                                'failed' => $failed,
+                                'extra' => null,
+                            ];
+                        }
                     }
                     else
                     {
