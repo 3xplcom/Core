@@ -9,8 +9,8 @@ final class RippleNFTModule extends RippleLikeNFTModule implements Module
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'ripple';
-        $this->module = 'ripple-nft';
+        $this->blockchain = 'xrp-ledger';
+        $this->module = 'xrp-ledger-nft';
         $this->is_main = false;
         $this->first_block_date = '2013-01-01';
         $this->first_block_id = 32570;

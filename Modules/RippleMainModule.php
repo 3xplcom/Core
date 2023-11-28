@@ -9,8 +9,8 @@ final class RippleMainModule extends RippleLikeMainModule implements Module
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'ripple';
-        $this->module = 'ripple-main';
+        $this->blockchain = 'xrp-ledger';
+        $this->module = 'xrp-ledger-main';
         $this->is_main = true;
         $this->currency = 'xrp';
         $this->currency_details = ['name' => 'XRP', 'symbol' => 'XRP', 'decimals' => 6, 'description' => null];
