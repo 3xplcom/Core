@@ -100,7 +100,7 @@ enum RippleSpecialTransactions: string
     case AMMCreate = 'ac';
 
     /** This transaction type deposits into an AMM instance */
-    case AMMDeposit = 'ad';
+    case AMMDeposit = 'aa';
 
     /** This transaction type withdraws from an AMM instance */
     case AMMWithdraw = 'aw';
