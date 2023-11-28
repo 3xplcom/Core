@@ -13,7 +13,7 @@ final class BeaconChainPenaltiesModule extends BeaconChainLikePenaltiesModule im
         // CoreModule
         $this->blockchain = 'beacon-chain';
         $this->module = 'beacon-chain-penalties';
-        $this->complements = 'beacon-chain-main';
+        $this->complements = 'beacon-chain-deposits';
         $this->is_main = false;
         $this->first_block_date = '2020-12-01';
         $this->first_block_id = 0;
