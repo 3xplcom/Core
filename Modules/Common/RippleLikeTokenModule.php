@@ -469,6 +469,7 @@ abstract class RippleLikeTokenModule extends CoreModule
         {
             $event['block'] = $block_id;
             $event['time'] = $this->block_time;
+            $event['transaction'] = strtolower($event['transaction']);
         }
 
         $this->set_return_events($events);
