@@ -173,6 +173,8 @@ abstract class RippleLikeMainModule extends CoreModule
                                     }
                                 }
                             }
+                            if (is_null($amount))
+                                $amount = '0';
                         } else {
                             throw new ModuleError("Incorrect flow for AccountDelete");
                         }
