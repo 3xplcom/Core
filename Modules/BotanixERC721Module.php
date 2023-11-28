@@ -14,7 +14,7 @@ final class BotanixERC721Module extends EVMERC721Module implements Module
         $this->blockchain = 'botanix';
         $this->module = 'botanix-erc-721';
         $this->is_main = false;
-        $this->first_block_date = '2023-10-05';
+        $this->first_block_date = '2023-11-22';
         $this->first_block_id = 0;
     }
 }

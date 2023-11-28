@@ -15,7 +15,7 @@ final class BotanixTraceModule extends EVMTraceModule implements Module
         $this->module = 'botanix-trace';
         $this->complements = 'botanix-main';
         $this->is_main = false;
-        $this->first_block_date = '2023-10-05';
+        $this->first_block_date = '2023-11-22';
 
         // EVMTraceModule
         $this->evm_implementation = EVMImplementation::geth;

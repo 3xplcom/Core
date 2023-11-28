@@ -14,7 +14,7 @@ final class BotanixERC1155Module extends EVMERC1155Module implements Module
         $this->blockchain = 'botanix';
         $this->module = 'botanix-erc-1155';
         $this->is_main = false;
-        $this->first_block_date = '2023-10-05';
+        $this->first_block_date = '2023-11-22';
         $this->first_block_id = 0;
     }
 }
