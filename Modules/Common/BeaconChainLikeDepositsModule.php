@@ -20,7 +20,7 @@ abstract class BeaconChainLikeDepositsModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
-    public ?array $special_addresses = ['the-looser']; // For validators whose deposit was included in Beacon slot, but depositor didn't become a validator (doesn't have an index)
+    public ?array $special_addresses = ['-1']; // For validators whose deposit was included in Beacon slot, but depositor didn't become a validator (doesn't have an index)
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra_indexed'];
     public ?array $events_table_nullable_fields = [];
@@ -119,7 +119,7 @@ abstract class BeaconChainLikeDepositsModule extends CoreModule
                     valid_codes: [200, 404]);
 
                 if (isset($validator_info['code']) && $validator_info['code'] === '404')
-                    $index = 'the-looser';
+                    $index = '-1';
                 elseif (isset($slot_info['code']))
                     throw new ModuleError('Unexpected response code');
                 else
