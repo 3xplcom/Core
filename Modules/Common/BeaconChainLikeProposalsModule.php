@@ -18,7 +18,7 @@ abstract class BeaconChainLikeProposalsModule extends CoreModule
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed'];
     public ?array $events_table_nullable_fields = [];
 
     public ?bool $should_return_events = true;
@@ -29,10 +29,6 @@ abstract class BeaconChainLikeProposalsModule extends CoreModule
     public ?bool $forking_implemented = false;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
-    public ?array $extra_data_details = [
-        'p' => 'Proposer reward',
-        'o' => 'Orphaned or missed block (no rewards for proposer)',
-    ];
 
     public ?bool $must_complement = true; // The main module is "Deposits"
 
@@ -60,8 +56,6 @@ abstract class BeaconChainLikeProposalsModule extends CoreModule
     final public function pre_process_block($block) // $block here is an epoch number
     {
         $events = [];
-        $rq_blocks = [];
-        $rq_blocks_data = [];
         $rq_slot_time = [];
         $rewards_slots = [];        // [slot] -> [validator, reward]
         $slot_data = [];
@@ -119,6 +113,7 @@ abstract class BeaconChainLikeProposalsModule extends CoreModule
                 endpoint: "eth/v1/beacon/rewards/blocks/{$slot}",
                 timeout: $this->timeout,
                 valid_codes: [200, 404]);
+
             if (isset($rq_block['code']) && $rq_block['code'] === '404')
                 continue;
             elseif (isset($rq_block['code']))
@@ -131,24 +126,14 @@ abstract class BeaconChainLikeProposalsModule extends CoreModule
 
         foreach ($rewards_slots as $slot => [$validator, $reward])
         {
-            $extra = 'p';
-
-            if ($slots[$slot] === null)
-                $extra = 'o';
-
-            $effect = $reward;
-
-            if (is_null($effect))
-                $effect = '0';
-
             $events[] = [
                 'block' => $block,
                 'transaction' => $slot,
                 'sort_key' => $key_tes++,
                 'time' => $this->block_time,
                 'address' => (string)$validator,
-                'effect' => $effect,
-                'extra' => $extra,
+                'effect' => ($reward ?? '0'),
+                'failed' => ($slots[$slot] === null),
             ];
         }
 
