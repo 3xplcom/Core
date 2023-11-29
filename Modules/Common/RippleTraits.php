@@ -114,6 +114,8 @@ enum RippleSpecialTransactions: string
     /** This transaction type deletes AMM in the empty state */
     case AMMDelete = 'ae';
 
+    case UNLModify = 'um';
+
     // /** This transactions creates a crosschain sequence number */
     // ttXCHAIN_CREATE_CLAIM_ID = 41,
 
@@ -147,10 +149,6 @@ enum RippleSpecialTransactions: string
     // This system-generated transaction type is used to update the network's fee settings.    
     // For details, see: https://xrpl.org/fee-voting.html
     // ttFEE = 101,
-
-    // This system-generated transaction type is used to update the network's negative UNL
-    // For details, see: https://xrpl.org/negative-unl.html
-    // ttUNL_MODIFY = 102,
 
     public static function fromName(string $name): string
     {

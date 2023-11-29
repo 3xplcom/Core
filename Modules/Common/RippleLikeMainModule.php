@@ -562,6 +562,7 @@ abstract class RippleLikeMainModule extends CoreModule
                 case 'SignerListSet':
                 case 'TicketCreate':
                 case 'TrustSet': 
+                case 'UNLModify':
                    FEES: {
                         $events[] = [
                             'transaction' => $tx['hash'],
