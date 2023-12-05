@@ -155,10 +155,9 @@ abstract class RippleLikeTokenModule extends CoreModule
         {
             $tx = $tx['result'];
             $currency = null;
-            $amount = null;
+            $amount = '0';
             $issuer = null;
             $account = $tx['Account'];
-            $fee = $tx['Fee'];
             $tx_result = $tx['meta']['TransactionResult'] === 'tesSUCCESS' ? false : true; // yes, it's success but for is_failed it will be correct
 
             switch($tx['TransactionType']) {
@@ -254,11 +253,11 @@ abstract class RippleLikeTokenModule extends CoreModule
                         // here we have a suitable transfer, but it ends with error and doesn't contain meta any offers
                         // so we need to make a third wheel for bike ;(0)
                         $broker_op = isset($tx['NFTokenBrokerFee']);
-                        $prev_pay = null;
-                        $pay = null;
+                        $prev_pay = '0';
+                        $pay = '0';
                         $new_owner = null;
                         $prev_owner = null;
-                        $broker_fee = null;
+                        $broker_fee = '0';
                         $flag_assets = 0;
                         if ($broker_op)
                         {
@@ -345,6 +344,22 @@ abstract class RippleLikeTokenModule extends CoreModule
                         if($broker_op && is_null($prev_owner) && is_null($new_owner))
                         {   // this is for situation when the transaction fallen
                             // mostly in this situations we don't need to pay anything in Token module
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => $tx['Account'],
+                                'sort_key' => $sort_key++,
+                                'effect' => '-0',
+                                'failed' => $tx_result,
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => 'the-void',
+                                'sort_key' => $sort_key++,
+                                'effect' => '0',
+                                'failed' => $tx_result,
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
                             $currency = null;
                             break;
                         }

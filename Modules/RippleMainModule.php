@@ -16,6 +16,7 @@ final class RippleMainModule extends RippleLikeMainModule implements Module
         $this->currency_details = ['name' => 'XRP', 'symbol' => 'XRP', 'decimals' => 6, 'description' => null];
         $this->first_block_date = '2013-01-01';
         $this->first_block_id = 32570;
+        $this->extra_data_details = RippleSpecialTransactions::to_assoc_array();
 
     }
 }

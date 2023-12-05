@@ -149,7 +149,7 @@ abstract class RippleLikeMainModule extends CoreModule
         foreach ($tx_data as $tx) 
         {
             $tx = $tx['result'];
-            $amount = null;
+            $amount = '0';
             $account = $tx['Account'];
             $fee = $tx['Fee'];
             
@@ -173,8 +173,6 @@ abstract class RippleLikeMainModule extends CoreModule
                                     }
                                 }
                             }
-                            if (is_null($amount))
-                                $amount = '0';
                         } else {
                             throw new ModuleError("Incorrect flow for AccountDelete");
                         }
@@ -416,9 +414,10 @@ abstract class RippleLikeMainModule extends CoreModule
                         // - p2p
                         // - brokers
                         $broker_op = isset($tx['NFTokenBrokerFee']); 
-                        $prev_pay = null;
-                        $pay = null;
+                        $prev_pay = '0';
+                        $pay = '0';
                         $new_owner = null;
+                        $broker_fee = '0';
                         $prev_owner = null;
                         if ($broker_op)
                         {
@@ -482,12 +481,44 @@ abstract class RippleLikeMainModule extends CoreModule
                         {   // this is for situation when the transaction is fallen
                             // mostly in this situations we don't need to pay
                             // 83084012 - here is error
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => $tx['Account'],
+                                'sort_key' => $sort_key++,
+                                'effect' => '-0',
+                                'failed' => $tx_result,
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => 'the-void',
+                                'sort_key' => $sort_key++,
+                                'effect' => '0',
+                                'failed' => $tx_result,
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
                             goto FEES;
                             break;
                         } elseif(!$broker_op && is_null($prev_owner))
                         {   // this is for situation when the transaction is fallen
                             // mostly in this situations we don't need to pay
                             // 83083328 - here is a second
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => $tx['Account'],
+                                'sort_key' => $sort_key++,
+                                'effect' => '-0',
+                                'failed' => $tx_result,
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => 'the-void',
+                                'sort_key' => $sort_key++,
+                                'effect' => '0',
+                                'failed' => $tx_result,
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
                             goto FEES;
                             break;
                         }
@@ -569,7 +600,7 @@ abstract class RippleLikeMainModule extends CoreModule
                             'address' => $tx['Account'],
                             'sort_key' => $sort_key++,
                             'effect' => '-' . $fee,
-                            'failed' => $tx_result,
+                            'failed' => false,
                             'extra' => 'f',
                         ];
 
@@ -578,7 +609,7 @@ abstract class RippleLikeMainModule extends CoreModule
                             'address' => 'the-void',
                             'sort_key' => $sort_key++,
                             'effect' => $fee,
-                            'failed' => $tx_result,
+                            'failed' => false,
                             'extra' => 'f',
                         ];
                         break;
