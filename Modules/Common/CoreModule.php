@@ -498,11 +498,19 @@ abstract class CoreModule
                 }
             }
 
+            $previous_transaction_hash = null;
+            $check_sign = '-';
             $check_sums = [];
             $check_sort_key = 0;
 
             foreach ($this->return_events as $ekey => $event)
             {
+                if (isset($event['transaction']) && $event['transaction'] !== $previous_transaction_hash)
+                {
+                    if ($this->transaction_render_model === TransactionRenderModel::UTXO)
+                        $check_sign = '-';
+                }
+
                 foreach ($event as $field => $value)
                 {
                     if (is_bool($value))
@@ -526,6 +534,40 @@ abstract class CoreModule
                         {
                             if (!in_array($value, ['-?', '+?']))
                                 throw new DeveloperError('`-?`, `+?` are the only variants for `effect` when `privacy_model` is `Shielded`');
+                        }
+
+                        if ($this->transaction_render_model === TransactionRenderModel::UTXO)
+                        {
+                            // `UTXO` model transactions should first contain negative events, then positive
+                            if (str_contains($value, '-'))
+                            {
+                                if ($check_sign === '+')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `UTXO`');
+                            }
+                            else // +
+                            {
+                                if ($check_sign === '-')
+                                    $check_sign = '+';
+                            }
+                        }
+
+                        if ($this->transaction_render_model === TransactionRenderModel::Even)
+                        {
+                            // `Even` model transactions should contain "negative-positive" pairs only
+                            if (str_contains($value, '-'))
+                            {
+                                if ($check_sign !== '-')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `Even`');
+                                else
+                                    $check_sign = '+';
+                            }
+                            else // +
+                            {
+                                if ($check_sign !== '+')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `Even`');
+                                else
+                                    $check_sign = '-';
+                            }
                         }
                     }
 
