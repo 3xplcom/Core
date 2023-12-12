@@ -7,3 +7,7 @@
     - Beacon Chain modules
 * [Kirill Kuzminykh](https://github.com/Oskal174)
     - Aptos modules
+* [alexqrid](https://github.com/alexqrid)
+  - TVM modules
+* [Oleg Makaussov](https://github.com/Lorgansar)
+    - Cardano Tokens modules
