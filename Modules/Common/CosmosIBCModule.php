@@ -17,7 +17,7 @@ abstract class CosmosIBCModule extends CoreModule
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::EvenOrMixed;
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
