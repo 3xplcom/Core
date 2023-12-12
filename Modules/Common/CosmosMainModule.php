@@ -17,7 +17,7 @@ abstract class CosmosMainModule extends CoreModule
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::EvenOrMixed;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
@@ -285,6 +285,12 @@ abstract class CosmosMainModule extends CoreModule
                         'extra' => null,
                     ];
 
+                    // We need to keep correct order of events
+                    // Coinbase always after coin_received so we swap it
+                    [$events[$sort_key-2], $events[$sort_key-1]] = [$events[$sort_key-1], $events[$sort_key-2]];
+                    $events[$sort_key-2]['sort_key'] = $sort_key-2;
+                    $events[$sort_key-1]['sort_key'] = $sort_key-1;
+
                     break;
 
                 case 'burn':
@@ -412,6 +418,12 @@ abstract class CosmosMainModule extends CoreModule
                         'failed' => false,
                         'extra' => null,
                     ];
+
+                    // We need to keep correct order of events
+                    // Coinbase always after coin_received so we swap it
+                    [$events[$sort_key-2], $events[$sort_key-1]] = [$events[$sort_key-1], $events[$sort_key-2]];
+                    $events[$sort_key-2]['sort_key'] = $sort_key-2;
+                    $events[$sort_key-1]['sort_key'] = $sort_key-1;
 
                     break;
 
