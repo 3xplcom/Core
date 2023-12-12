@@ -75,13 +75,14 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     }
 
     curl_close($curl);
-
     if (is_null($output))
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is `null`");
     if ($output === '')
         throw new RequesterEmptyResponseException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is an empty string");
     if ($output === false)
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is false (timeout?)");
+    if (trim($output) === '{}' || trim($output) === '[]')
+        throw new RequesterEmptyArrayInResponseException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is an empty array");
 
     // Here we add quotes to all numeric values not to lose precision if some are larger than int64.
     // Note that this doesn't work good with values like `2.5e-8`, so there's the IgnoreAddingQuotesToNumbers option
