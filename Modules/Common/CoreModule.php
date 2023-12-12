@@ -505,10 +505,12 @@ abstract class CoreModule
 
             foreach ($this->return_events as $ekey => $event)
             {
-                if (isset($event['transaction']) && $event['transaction'] !== $previous_transaction_hash)
+                if ($this->transaction_render_model === TransactionRenderModel::UTXO
+                    && isset($event['transaction'])
+                    && $event['transaction'] !== $previous_transaction_hash)
                 {
-                    if ($this->transaction_render_model === TransactionRenderModel::UTXO)
-                        $check_sign = '-';
+                    $previous_transaction_hash = $event['transaction'];
+                    $check_sign = '-';
                 }
 
                 foreach ($event as $field => $value)
@@ -539,16 +541,10 @@ abstract class CoreModule
                         if ($this->transaction_render_model === TransactionRenderModel::UTXO)
                         {
                             // `UTXO` model transactions should first contain negative events, then positive
-                            if (str_contains($value, '-'))
-                            {
-                                if ($check_sign === '+')
-                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `UTXO`');
-                            }
+                            if (str_contains($value, '-') && $check_sign === '+')
+                                throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `UTXO`');
                             else // +
-                            {
-                                if ($check_sign === '-')
-                                    $check_sign = '+';
-                            }
+                                $check_sign = '+';
                         }
 
                         if ($this->transaction_render_model === TransactionRenderModel::Even)
