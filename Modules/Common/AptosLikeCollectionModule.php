@@ -71,8 +71,6 @@ abstract class AptosLikeCollectionModule extends CoreModule
                 $failed = true;
             }
 
-            $currencies_in_trx = [];
-
             foreach ($trx['events'] as $trx_event)
             {
                 if (!str_starts_with($trx_event['type'], '0x3::token'))
@@ -90,24 +88,27 @@ abstract class AptosLikeCollectionModule extends CoreModule
                     continue; // skip not interested 0x3::token events.
                 }
 
-                $currency_process_id = $creator . '::' . bin2hex($collection) . '::' . bin2hex($name);
                 $currency_id = $creator . '::' . bin2hex($collection);
 
-                if (!array_key_exists($currency_process_id, $currencies_in_trx))
-                {
-                    $currencies_in_trx[$currency_process_id] = [
-                        'id' => $currency_id,
-                        'name' => $name,
-                        'collection' => $collection,
-                        'deposit_count' => 0,
-                        'withdraw_count' => 0,
-                    ];
-                }
-
+                // All NFT transfers parse through the contract
                 switch ($trx_event['type'])
                 {
                     // Process only Deposit/Withdraw events because other events duplicates this.
                     case '0x3::token::DepositEvent':
+                        $currencies_to_process[] = $currency_id;
+
+                        $events[] = [
+                            'block' => $block['block_height'],
+                            'transaction' => $trx['hash'],
+                            'time' => $this->block_time,
+                            'currency' => $currency_id,
+                            'address' => 'the-offered',
+                            'sort_key' => $sort_key++,
+                            'effect' => '-1',
+                            'failed' => $failed,
+                            'extra' => $name,
+                        ];
+
                         $events[] = [
                             'block' => $block['block_height'],
                             'transaction' => $trx['hash'],
@@ -120,10 +121,11 @@ abstract class AptosLikeCollectionModule extends CoreModule
                             'extra' => $name,
                         ];
 
-                        $currencies_in_trx[$currency_process_id]['deposit_count']++;
                         break;
 
                     case '0x3::token::WithdrawEvent':
+                        $currencies_to_process[] = $currency_id;
+
                         $events[] = [
                             'block' => $block['block_height'],
                             'transaction' => $trx['hash'],
@@ -136,41 +138,19 @@ abstract class AptosLikeCollectionModule extends CoreModule
                             'extra' => $name,
                         ];
 
-                        $currencies_in_trx[$currency_process_id]['withdraw_count']++;
+                        $events[] = [
+                            'block' => $block['block_height'],
+                            'transaction' => $trx['hash'],
+                            'time' => $this->block_time,
+                            'currency' => $currency_id,
+                            'address' => 'the-offered',
+                            'sort_key' => $sort_key++,
+                            'effect' => '1',
+                            'failed' => $failed,
+                            'extra' => $name,
+                        ];
+
                         break;
-                }
-            }
-
-            foreach ($currencies_in_trx as $data)
-            {
-                // Save for final currencies array.
-                $currencies_to_process[] = $data['id'];
-
-                // Process Tokens from nowhere (Mint/Claim/Offer).
-                $count_diff = $data['deposit_count'] - $data['withdraw_count'];
-                // For a specific TokenId must be only one transfer with 'the-offered' address.
-                assert(abs($count_diff) === 1 || $count_diff === 0);
-                if ($count_diff !== 0)
-                {
-                    if ($count_diff > 0)
-                    {
-                        $effect = '-1';
-                    }
-                    else
-                    {
-                        $effect = '1';
-                    }
-                    $events[] = [
-                        'block' => $block['block_height'],
-                        'transaction' => $trx['hash'],
-                        'time' => $this->block_time,
-                        'currency' => $data['id'],
-                        'address' => 'the-offered',
-                        'sort_key' => $sort_key++,
-                        'effect' => $effect,
-                        'failed' => $failed,
-                        'extra' => $data['name'],
-                    ];
                 }
             }
         }

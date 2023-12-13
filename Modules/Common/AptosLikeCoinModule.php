@@ -70,8 +70,6 @@ abstract class AptosLikeCoinModule extends CoreModule
                 $failed = true;
             }
 
-            $diff_sum = [];
-
             foreach ($trx['changes'] as $change)
             {
                 $changed_resource = $change['data']['type'] ?? '';
@@ -118,39 +116,61 @@ abstract class AptosLikeCoinModule extends CoreModule
                     continue;
                 }
 
-                $diff_sum[$coin] = bcadd($diff_sum[$coin] ?? '0', $diff);
-
-                $events[] = [
-                    'block' => $block['block_height'],
-                    'transaction' => $trx['hash'],
-                    'time' => $this->block_time,
-                    'currency' => $coin,
-                    'address' => $address,
-                    'sort_key' => $sort_key++,
-                    'effect' => $diff,
-                    'failed' => $failed,
-                    'extra' => null,
-                ];
-
                 $currencies_to_process[] = $coin;
-            }
 
-            foreach ($diff_sum as $coin => $diff_coin)
-            {
-                if ($diff_coin === '0')
-                    continue;
+                // All the transfers inside smart contracts moved through the contract
+                if ($diff[0] === '-')
+                {
+                    $events[] = [
+                        'block' => $block['block_height'],
+                        'transaction' => $trx['hash'],
+                        'time' => $this->block_time,
+                        'currency' => $coin,
+                        'address' => $address,
+                        'sort_key' => $sort_key++,
+                        'effect' => $diff,
+                        'failed' => $failed,
+                        'extra' => null,
+                    ];
 
-                $events[] = [
-                    'block' => $block['block_height'],
-                    'transaction' => $trx['hash'],
-                    'time' => $this->block_time,
-                    'currency' => $coin,
-                    'address' => 'the-contract',
-                    'sort_key' => $sort_key++,
-                    'effect' => bcmul($diff_coin, '-1'),
-                    'failed' => $failed,
-                    'extra' => null,
-                ];
+                    $events[] = [
+                        'block' => $block['block_height'],
+                        'transaction' => $trx['hash'],
+                        'time' => $this->block_time,
+                        'currency' => $coin,
+                        'address' => 'the-contract',
+                        'sort_key' => $sort_key++,
+                        'effect' => bcmul($diff, '-1'),
+                        'failed' => $failed,
+                        'extra' => null,
+                    ];
+                }
+                else
+                {
+                    $events[] = [
+                        'block' => $block['block_height'],
+                        'transaction' => $trx['hash'],
+                        'time' => $this->block_time,
+                        'currency' => $coin,
+                        'address' => 'the-contract',
+                        'sort_key' => $sort_key++,
+                        'effect' => bcmul($diff, '-1'),
+                        'failed' => $failed,
+                        'extra' => null,
+                    ];
+
+                    $events[] = [
+                        'block' => $block['block_height'],
+                        'transaction' => $trx['hash'],
+                        'time' => $this->block_time,
+                        'currency' => $coin,
+                        'address' => $address,
+                        'sort_key' => $sort_key++,
+                        'effect' => $diff,
+                        'failed' => $failed,
+                        'extra' => null,
+                    ];
+                }
             }
         }
 

@@ -89,9 +89,9 @@ abstract class AptosLikeMainModule extends CoreModule
                             'block' => $block['block_height'],
                             'transaction' => $trx['hash'],
                             'time' => $this->block_time,
-                            'address' => $address,
+                            'address' => '0x00', // the-void
                             'sort_key' => $sort_key++,
-                            'effect' => $balance,
+                            'effect' => '-' . $balance,
                             'failed' => $failed,
                             'extra' => null,
                         ];
@@ -100,9 +100,9 @@ abstract class AptosLikeMainModule extends CoreModule
                             'block' => $block['block_height'],
                             'transaction' => $trx['hash'],
                             'time' => $this->block_time,
-                            'address' => '0x00', // the-void
+                            'address' => $address,
                             'sort_key' => $sort_key++,
-                            'effect' => '-' . $balance,
+                            'effect' => $balance,
                             'failed' => $failed,
                             'extra' => null,
                         ];
@@ -121,9 +121,9 @@ abstract class AptosLikeMainModule extends CoreModule
                                 'block' => $block['block_height'],
                                 'transaction' => $trx['hash'],
                                 'time' => $this->block_time,
-                                'address' => $trx_event['data']['pool_address'],
+                                'address' => '0x00', // the-void
                                 'sort_key' => $sort_key++,
-                                'effect' => $trx_event['data']['rewards_amount'],
+                                'effect' => '-' . $trx_event['data']['rewards_amount'],
                                 'failed' => $failed,
                                 'extra' => AptosSpecialTransactions::ValidatorReward->value,
                             ];
@@ -132,9 +132,9 @@ abstract class AptosLikeMainModule extends CoreModule
                                 'block' => $block['block_height'],
                                 'transaction' => $trx['hash'],
                                 'time' => $this->block_time,
-                                'address' => '0x00', // the-void
+                                'address' => $trx_event['data']['pool_address'],
                                 'sort_key' => $sort_key++,
-                                'effect' => '-' . $trx_event['data']['rewards_amount'],
+                                'effect' => $trx_event['data']['rewards_amount'],
                                 'failed' => $failed,
                                 'extra' => AptosSpecialTransactions::ValidatorReward->value,
                             ];
@@ -188,8 +188,7 @@ abstract class AptosLikeMainModule extends CoreModule
                     }
                     else
                     {
-                        $diff_sum = '0';
-
+                        // For smart contracts internal transfers we parse the resource changes.
                         foreach ($trx['changes'] as $change)
                         {
                             $changed_resource = $change['data']['type'] ?? null;
@@ -236,32 +235,55 @@ abstract class AptosLikeMainModule extends CoreModule
                                 continue;
                             }
 
-                            $diff_sum = bcadd($diff_sum, $diff);
+                            // All the transfers inside smart contracts moved through the contract
+                            if ($diff[0] === '-')
+                            {
+                                $events[] = [
+                                    'block' => $block['block_height'],
+                                    'transaction' => $trx['hash'],
+                                    'time' => $this->block_time,
+                                    'address' => $address,
+                                    'sort_key' => $sort_key++,
+                                    'effect' => $diff,
+                                    'failed' => $failed,
+                                    'extra' => null,
+                                ];
 
-                            $events[] = [
-                                'block' => $block['block_height'],
-                                'transaction' => $trx['hash'],
-                                'time' => $this->block_time,
-                                'address' => $address,
-                                'sort_key' => $sort_key++,
-                                'effect' => $diff,
-                                'failed' => $failed,
-                                'extra' => null,
-                            ];
-                        }
+                                $events[] = [
+                                    'block' => $block['block_height'],
+                                    'transaction' => $trx['hash'],
+                                    'time' => $this->block_time,
+                                    'address' => '0x01', // the-contract
+                                    'sort_key' => $sort_key++,
+                                    'effect' => bcmul($diff, '-1'),
+                                    'failed' => $failed,
+                                    'extra' => null,
+                                ];
+                            }
+                            else
+                            {
+                                $events[] = [
+                                    'block' => $block['block_height'],
+                                    'transaction' => $trx['hash'],
+                                    'time' => $this->block_time,
+                                    'address' => '0x01', // the-contract
+                                    'sort_key' => $sort_key++,
+                                    'effect' => bcmul($diff, '-1'),
+                                    'failed' => $failed,
+                                    'extra' => null,
+                                ];
 
-                        if ($diff_sum !== '0')
-                        {
-                            $events[] = [
-                                'block' => $block['block_height'],
-                                'transaction' => $trx['hash'],
-                                'time' => $this->block_time,
-                                'address' => '0x01', // the-contract
-                                'sort_key' => $sort_key++,
-                                'effect' => bcmul($diff_sum, '-1'),
-                                'failed' => $failed,
-                                'extra' => null,
-                            ];
+                                $events[] = [
+                                    'block' => $block['block_height'],
+                                    'transaction' => $trx['hash'],
+                                    'time' => $this->block_time,
+                                    'address' => $address,
+                                    'sort_key' => $sort_key++,
+                                    'effect' => $diff,
+                                    'failed' => $failed,
+                                    'extra' => null,
+                                ];
+                            }
                         }
                     }
 
