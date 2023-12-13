@@ -217,6 +217,9 @@ abstract class CosmosMainModule extends CoreModule
 
         // Block header events parsing
 
+        // For header events may be not correct order for coin_spent/received events
+        $sub = [];
+        $add = [];
         foreach ($block_results['begin_block_events'] ?? [] as $bb_event)
         {
             switch ($bb_event['type'])
@@ -232,13 +235,9 @@ abstract class CosmosMainModule extends CoreModule
                         if (is_null($amount))
                             continue; // In main module skip unknown denoms
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $sub[] = [
                             'address' => $coin_spent_data['from'],
-                            'effect' => '-' . $amount,
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $amount,
                         ];
                     }
 
@@ -255,13 +254,9 @@ abstract class CosmosMainModule extends CoreModule
                         if (is_null($amount))
                             continue; // In main module skip unknown denoms
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $add[] = [
                             'address' => $coin_received_data['to'],
-                            'effect' => $amount,
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $amount,
                         ];
                     }
 
@@ -276,20 +271,10 @@ abstract class CosmosMainModule extends CoreModule
                     if (is_null($amount))
                         break;
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $sub[] = [
                         'address' => 'the-void',
-                        'effect' => '-' . $amount,
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $amount,
                     ];
-
-                    // We need to keep correct order of events
-                    // Coinbase always after coin_received so we swap it
-                    [$events[$sort_key-2], $events[$sort_key-1]] = [$events[$sort_key-1], $events[$sort_key-2]];
-                    $events[$sort_key-2]['sort_key'] = $sort_key-2;
-                    $events[$sort_key-1]['sort_key'] = $sort_key-1;
 
                     break;
 
@@ -302,13 +287,9 @@ abstract class CosmosMainModule extends CoreModule
                     if (is_null($amount))
                         break;
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $add[] = [
                         'address' => 'the-void',
-                        'effect' => $amount,
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $amount,
                     ];
 
                     break;
@@ -350,6 +331,36 @@ abstract class CosmosMainModule extends CoreModule
             }
         }
 
+        // To keep right events order
+        if (count($sub) !== count($add))
+            throw new ModuleException("Deposits and withdrawals counts missmatch (end block events).");
+
+        for ($event_i = 0; $event_i < count($sub); $event_i++)
+        {
+            if ($sub[$event_i]['amount'] !== $add[$event_i]['amount'])
+                throw new ModuleException("Sub and add amount missmatch.");
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $sub[$event_i]['address'],
+                'effect' => '-' . $sub[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $add[$event_i]['address'],
+                'effect' => $add[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
+        }
+
+        $sub = [];
+        $add = [];
         $swap_detected = $this->detect_swap_events($block_results['end_block_events'] ?? []);
         foreach ($block_results['end_block_events'] ?? [] as $eb_event)
         {
@@ -366,13 +377,9 @@ abstract class CosmosMainModule extends CoreModule
                         if (is_null($amount))
                             continue; // In main module skip unknown denoms
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $sub[] = [
                             'address' => $coin_spent_data['from'],
-                            'effect' => '-' . $amount,
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $amount,
                         ];
                     }
 
@@ -389,13 +396,9 @@ abstract class CosmosMainModule extends CoreModule
                         if (is_null($amount))
                             continue; // In main module skip unknown denoms
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $add[] = [
                             'address' => $coin_received_data['to'],
-                            'effect' => $amount,
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $amount,
                         ];
                     }
 
@@ -410,20 +413,10 @@ abstract class CosmosMainModule extends CoreModule
                     if (is_null($amount))
                         break;
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $sub[] = [
                         'address' => 'the-void',
-                        'effect' => '-' . $amount,
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $amount,
                     ];
-
-                    // We need to keep correct order of events
-                    // Coinbase always after coin_received so we swap it
-                    [$events[$sort_key-2], $events[$sort_key-1]] = [$events[$sort_key-1], $events[$sort_key-2]];
-                    $events[$sort_key-2]['sort_key'] = $sort_key-2;
-                    $events[$sort_key-1]['sort_key'] = $sort_key-1;
 
                     break;
 
@@ -436,13 +429,9 @@ abstract class CosmosMainModule extends CoreModule
                     if (is_null($amount))
                         break;
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $add[] = [
                         'address' => 'the-void',
-                        'effect' => $amount,
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $amount,
                     ];
 
                 case 'transfer':
@@ -483,6 +472,34 @@ abstract class CosmosMainModule extends CoreModule
 
                     break;
             }
+        }
+
+        // To keep right events order
+        if (count($sub) !== count($add))
+            throw new ModuleException("Deposits and withdrawals counts missmatch (end block events).");
+
+        for ($event_i = 0; $event_i < count($sub); $event_i++)
+        {
+            if ($sub[$event_i]['amount'] !== $add[$event_i]['amount'])
+                throw new ModuleException("Sub and add amount missmatch.");
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $sub[$event_i]['address'],
+                'effect' => '-' . $sub[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $add[$event_i]['address'],
+                'effect' => $add[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
         }
 
         foreach ($events as &$event)
