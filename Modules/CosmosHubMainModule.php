@@ -11,8 +11,8 @@ final class CosmosHubMainModule extends CosmosMainModule implements Module
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'cosmoshub';
-        $this->module = 'cosmoshub-main';
+        $this->blockchain = 'cosmos-hub';
+        $this->module = 'cosmos-hub-main';
         $this->is_main = true;
         $this->first_block_date = '2019-12-11';
         $this->currency = 'atom';

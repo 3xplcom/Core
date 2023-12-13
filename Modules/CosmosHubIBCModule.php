@@ -11,8 +11,8 @@ final class CosmosHubIBCModule extends CosmosIBCModule implements Module
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'cosmoshub';
-        $this->module = 'cosmoshub-ibc';
+        $this->blockchain = 'cosmos-hub';
+        $this->module = 'cosmos-hub-ibc';
         $this->is_main = false;
         $this->first_block_date = '2019-12-11';
 

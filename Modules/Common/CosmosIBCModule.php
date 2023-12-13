@@ -17,7 +17,7 @@ abstract class CosmosIBCModule extends CoreModule
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::EvenOrMixed;
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
@@ -102,6 +102,13 @@ abstract class CosmosIBCModule extends CoreModule
                 $this->erase_double_fee_events($tx_result['events']);
             }
 
+            if (in_array(CosmosSpecialFeatures::HasDoublesTxEvents, $this->extra_features))
+            {
+                $this->erase_double_fee_events($tx_result['events']);
+            }
+
+            $sub = [];
+            $add = [];
             foreach ($tx_result['events'] as $tx_event)
             {
                 switch ($tx_event['type'])
@@ -130,13 +137,10 @@ abstract class CosmosIBCModule extends CoreModule
                                 }
                             }
 
-                            $events[] = [
-                                'transaction' => $tx_hash,
-                                'sort_key' => $sort_key++,
+                            $sub[] = [
                                 'address' => $coin_spent_data['from'],
                                 'currency' => $ibc_amount['currency'],
-                                'effect' => '-' . $ibc_amount['amount'],
-                                'failed' => $failed,
+                                'amount' => $ibc_amount['amount'],
                                 'extra' => $extra,
                             ];
                         }
@@ -166,14 +170,11 @@ abstract class CosmosIBCModule extends CoreModule
                                 }
                             }
 
-                            $events[] = [
-                                'transaction' => $tx_hash,
-                                'sort_key' => $sort_key++,
+                            $add[] = [
                                 'address' => $coin_received_data['to'],
                                 'currency' => $ibc_amount['currency'],
-                                'effect' => $ibc_amount['amount'],
-                                'failed' => $failed,
-                                'extra' => null,
+                                'amount' => $ibc_amount['amount'],
+                                'extra' => $extra,
                             ];
                         }
 
@@ -190,13 +191,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                         $currencies_to_process[] = $ibc_amount['currency'];
 
-                        $events[] = [
-                            'transaction' => $tx_hash,
-                            'sort_key' => $sort_key++,
+                        $sub[] = [
                             'address' => 'the-ibc-channel',
                             'currency' => $ibc_amount['currency'],
-                            'effect' => '-' . $ibc_amount['amount'],
-                            'failed' => $failed,
+                            'amount' => $ibc_amount['amount'],
                             'extra' => null,
                         ];
 
@@ -213,13 +211,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                         $currencies_to_process[] = $ibc_amount['currency'];
 
-                        $events[] = [
-                            'transaction' => $tx_hash,
-                            'sort_key' => $sort_key++,
+                        $add[] = [
                             'address' => 'the-ibc-channel',
                             'currency' => $ibc_amount['currency'],
-                            'effect' => $ibc_amount['amount'],
-                            'failed' => $failed,
+                            'amount' => $ibc_amount['amount'],
                             'extra' => null,
                         ];
 
@@ -265,10 +260,44 @@ abstract class CosmosIBCModule extends CoreModule
                         break;
                 }
             }
+
+            // To keep right events order
+            if (count($sub) !== count($add))
+                throw new ModuleException("Deposits and withdrawals counts missmatch (tx: {$tx_hash}.");
+
+            for ($event_i = 0; $event_i < count($sub); $event_i++)
+            {
+                if ($sub[$event_i]['currency'] !== $add[$event_i]['currency'])
+                    throw new ModuleException("Sub and add currency missmatch.");
+                if ($sub[$event_i]['amount'] !== $add[$event_i]['amount'])
+                    throw new ModuleException("Sub and add amount missmatch.");
+
+                $events[] = [
+                    'transaction' => $tx_hash,
+                    'sort_key' => $sort_key++,
+                    'address' => $sub[$event_i]['address'],
+                    'currency' => $sub[$event_i]['currency'],
+                    'effect' => '-' . $sub[$event_i]['amount'],
+                    'failed' => $failed,
+                    'extra' => $sub[$event_i]['extra'],
+                ];
+
+                $events[] = [
+                    'transaction' => $tx_hash,
+                    'sort_key' => $sort_key++,
+                    'address' => $add[$event_i]['address'],
+                    'currency' => $add[$event_i]['currency'],
+                    'effect' => $add[$event_i]['amount'],
+                    'failed' => $failed,
+                    'extra' => $add[$event_i]['extra'],
+                ];
+            }
         }
 
         // Block header events parsing
 
+        $sub = [];
+        $add = [];
         foreach ($block_results['begin_block_events'] ?? [] as $bb_event)
         {
             switch ($bb_event['type'])
@@ -286,14 +315,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                         $currencies_to_process[] = $ibc_amount['currency'];
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $sub[] = [
                             'address' => $coin_spent_data['from'],
                             'currency' => $ibc_amount['currency'],
-                            'effect' => '-' . $ibc_amount['amount'],
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $ibc_amount['amount'],
                         ];
                     }
 
@@ -312,14 +337,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                         $currencies_to_process[] = $ibc_amount['currency'];
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $add[] = [
                             'address' => $coin_received_data['to'],
                             'currency' => $ibc_amount['currency'],
-                            'effect' => $ibc_amount['amount'],
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $ibc_amount['amount'],
                         ];
                     }
 
@@ -336,14 +357,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                     $currencies_to_process[] = $ibc_amount['currency'];
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $sub[] = [
                         'address' => 'the-void',
                         'currency' => $ibc_amount['currency'],
-                        'effect' => '-' . $ibc_amount['amount'],
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $ibc_amount['amount'],
                     ];
 
                     break;
@@ -359,14 +376,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                     $currencies_to_process[] = $ibc_amount['currency'];
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $add[] = [
                         'address' => 'the-void',
                         'currency' => $ibc_amount['currency'],
-                        'effect' => $ibc_amount['amount'],
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $ibc_amount['amount'],
                     ];
 
                     break;
@@ -412,6 +425,40 @@ abstract class CosmosIBCModule extends CoreModule
             }
         }
 
+        // To keep right events order
+        if (count($sub) !== count($add))
+            throw new ModuleException("Deposits and withdrawals counts missmatch (begin block events).");
+
+        for ($event_i = 0; $event_i < count($sub); $event_i++)
+        {
+            if ($sub[$event_i]['currency'] !== $add[$event_i]['currency'])
+                throw new ModuleException("Sub and add currency missmatch.");
+            if ($sub[$event_i]['amount'] !== $add[$event_i]['amount'])
+                throw new ModuleException("Sub and add amount missmatch.");
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $sub[$event_i]['address'],
+                'currency' => $sub[$event_i]['currency'],
+                'effect' => '-' . $sub[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $add[$event_i]['address'],
+                'currency' => $add[$event_i]['currency'],
+                'effect' => $add[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
+        }
+
+        $sub = [];
+        $add = [];
         $swap_detected = $swap_detected = $this->detect_swap_events($block_results['end_block_events'] ?? []);
         foreach ($block_results['end_block_events'] ?? [] as $eb_event)
         {
@@ -430,14 +477,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                         $currencies_to_process[] = $ibc_amount['currency'];
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $sub[] = [
                             'address' => $coin_spent_data['from'],
                             'currency' => $ibc_amount['currency'],
-                            'effect' => '-' . $ibc_amount['amount'],
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $ibc_amount['amount'],
                         ];
                     }
 
@@ -456,14 +499,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                         $currencies_to_process[] = $ibc_amount['currency'];
 
-                        $events[] = [
-                            'transaction' => null,
-                            'sort_key' => $sort_key++,
+                        $add[] = [
                             'address' => $coin_received_data['to'],
                             'currency' => $ibc_amount['currency'],
-                            'effect' => $ibc_amount['amount'],
-                            'failed' => false,
-                            'extra' => null,
+                            'amount' => $ibc_amount['amount'],
                         ];
                     }
 
@@ -480,14 +519,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                     $currencies_to_process[] = $ibc_amount['currency'];
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $sub[] = [
                         'address' => 'the-void',
                         'currency' => $ibc_amount['currency'],
-                        'effect' => '-' . $ibc_amount['amount'],
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $ibc_amount['amount'],
                     ];
 
                     break;
@@ -503,14 +538,10 @@ abstract class CosmosIBCModule extends CoreModule
 
                     $currencies_to_process[] = $ibc_amount['currency'];
 
-                    $events[] = [
-                        'transaction' => null,
-                        'sort_key' => $sort_key++,
+                    $add[] = [
                         'address' => 'the-void',
                         'currency' => $ibc_amount['currency'],
-                        'effect' => $ibc_amount['amount'],
-                        'failed' => false,
-                        'extra' => null,
+                        'amount' => $ibc_amount['amount'],
                     ];
 
                     break;
@@ -557,6 +588,38 @@ abstract class CosmosIBCModule extends CoreModule
 
                     break;
             }
+        }
+
+        // To keep right events order
+        if (count($sub) !== count($add))
+            throw new ModuleException("Deposits and withdrawals counts missmatch (end block events).");
+
+        for ($event_i = 0; $event_i < count($sub); $event_i++)
+        {
+            if ($sub[$event_i]['currency'] !== $add[$event_i]['currency'])
+                throw new ModuleException("Sub and add currency missmatch.");
+            if ($sub[$event_i]['amount'] !== $add[$event_i]['amount'])
+                throw new ModuleException("Sub and add amount missmatch.");
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $sub[$event_i]['address'],
+                'currency' => $sub[$event_i]['currency'],
+                'effect' => '-' . $sub[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
+
+            $events[] = [
+                'transaction' => null,
+                'sort_key' => $sort_key++,
+                'address' => $add[$event_i]['address'],
+                'currency' => $add[$event_i]['currency'],
+                'effect' => $add[$event_i]['amount'],
+                'failed' => false,
+                'extra' => null,
+            ];
         }
 
         foreach ($events as &$event)
