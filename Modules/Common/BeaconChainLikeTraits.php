@@ -79,7 +79,7 @@ trait BeaconChainLikeTraits
     }   
 
     private function get_epoch_time($block, $slots) 
-    {
+    { 
         $block_time = 0;
         $this_slot_times = array_reverse($slots);
 
@@ -93,37 +93,9 @@ trait BeaconChainLikeTraits
         }
 
         if ($block < $this->chain_config['BELLATRIX_FORK_EPOCH'] || $block_time === 0)
-        {
-            $last_slot = 0;
-            $reversed = array_reverse($slots, true);
-            foreach($reversed as $slt => $arrValue)
-            {
-                if($arrValue !== null)
-                {
-                    $last_slot = $slt;
-                    break;
-                }
-            }
-
-            $last_slot_info = requester_single(
-                $this->select_node(),
-                endpoint: "eth/v1/beacon/blocks/{$last_slot}",
-                timeout: $this->timeout,
-                result_in: 'data',
-            );
-
-            $block_hash = $last_slot_info['message']['body']['eth1_data']['block_hash'];
-            $execution_layers = envm($this->module, 'EXECUTION_LAYER_NODES');
-            $execution_layer = $execution_layers[array_rand($execution_layers)];
-
-            $last_block_time = requester_single(
-                $execution_layer,
-                params: ['jsonrpc' => '2.0', 'method' => 'eth_getBlockByHash', 'params' => [$block_hash, false], 'id' => 0],
-                timeout: $this->timeout,
-                result_in: 'result'
-            );
-
-            $block_time = hexdec($last_block_time['timestamp']);
+        {   // 1606824023 - zero epoch time, 12 - seconds between slots, 384 = 32 (amount of slots in epoch) * 12
+            $this->block_time = date('Y-m-d H:i:s', ($block + 1) * 384 + 1606824023 - 12);
+            return;
         }
 
         $this->block_time = date('Y-m-d H:i:s', $block_time);
