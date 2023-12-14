@@ -6,7 +6,7 @@
 
 /*  This module works with assets in Ripple. Requires a Ripple node.  */
 
-abstract class RippleLikeTokenModule extends CoreModule
+abstract class RippleLikeFTModule extends CoreModule
 {
     use RippleTraits;
 
