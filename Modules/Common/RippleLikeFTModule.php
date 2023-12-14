@@ -13,7 +13,7 @@ abstract class RippleLikeFTModule extends CoreModule
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::None;
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
@@ -21,7 +21,7 @@ abstract class RippleLikeFTModule extends CoreModule
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'failed', 'extra'];
-    public ?array $events_table_nullable_fields = [];  // , 'extra_indexed'
+    public ?array $events_table_nullable_fields = [];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol', 'decimals'];
     public ?array $currencies_table_nullable_fields = [];

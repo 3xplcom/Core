@@ -14,7 +14,7 @@ abstract class RippleLikeNFTModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::NFT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
