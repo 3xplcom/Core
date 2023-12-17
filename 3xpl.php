@@ -305,7 +305,7 @@ elseif ($chosen_option === 'B')
         {
             if ((!is_null($event['transaction']) && str_contains($event['transaction'], $filter)) ||
                 (!is_null($event['address']) && str_contains($event['address'], $filter)))
-                    $output_events[] = $event;
+                $output_events[] = $event;
         }
 
         ddd($output_events);
@@ -331,31 +331,29 @@ elseif ($chosen_option === 'PB')
         echo cli_format_bold('Processing blocks from latest down to genesis...');
     else
         echo cli_format_bold("Processing blocks from {$start_block_id} up to genesis...");
-        for ($i = $start_block_id; $i != 0; $i--)
+    for ($i = $start_block_id; $i != 0; $i--)
+    {
+        echo "\nProcessing block #{$i} ";
+
+        $t0 = microtime(true);
+
+        try
         {
-            pb_range:
-            echo "\nProcessing block #{$i} ";
-
-            $t0 = microtime(true);
-
-            try
-            {
-                $module->process_block($i);
-            }
-            catch (RequesterException)
-            {
-                echo cli_format_error('Requested exception');
-                usleep(250000);
-                goto pb_range;
-            }
-
-            $event_count = count($module->get_return_events() ?? []);
-            $currency_count = count($module->get_return_currencies() ?? []);
-
-            $time = number_format(microtime(true) - $t0, 4);
-
-            echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+            $module->process_block($i);
         }
+        catch (RequesterException)
+        {
+            echo cli_format_error('Requested exception');
+            usleep(250000);
+        }
+
+        $event_count = count($module->get_return_events() ?? []);
+        $currency_count = count($module->get_return_currencies() ?? []);
+
+        $time = number_format(microtime(true) - $t0, 4);
+
+        echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+    }
 }
 elseif ($chosen_option === 'PR')
 {
@@ -386,30 +384,28 @@ elseif ($chosen_option === 'PR')
     echo cli_format_bold('Processing range of blocks...');
     $increment = $start_block_id > $end_block_id ? -1 : 1;
     for ($i = $start_block_id; $i != $end_block_id; $i=$i+$increment)
+    {
+        echo "\nProcessing block #{$i} ";
+
+        $t0 = microtime(true);
+
+        try
         {
-            pr_range:
-            echo "\nProcessing block #{$i} ";
-
-            $t0 = microtime(true);
-
-            try
-            {
-                $module->process_block($i);
-            }
-            catch (RequesterException)
-            {
-                echo cli_format_error('Requested exception');
-                usleep(250000);
-                goto pr_range;
-            }
-
-            $event_count = count($module->get_return_events() ?? []);
-            $currency_count = count($module->get_return_currencies() ?? []);
-
-            $time = number_format(microtime(true) - $t0, 4);
-
-            echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+            $module->process_block($i);
         }
+        catch (RequesterException)
+        {
+            echo cli_format_error('Requested exception');
+            usleep(250000);
+        }
+
+        $event_count = count($module->get_return_events() ?? []);
+        $currency_count = count($module->get_return_currencies() ?? []);
+
+        $time = number_format(microtime(true) - $t0, 4);
+
+        echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+    }
 
 }
 
