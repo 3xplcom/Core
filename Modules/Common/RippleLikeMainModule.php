@@ -152,6 +152,9 @@ abstract class RippleLikeMainModule extends CoreModule
             $amount = '0';
             $account = $tx['Account'];
             $fee = $tx['Fee'];
+
+            if (!isset($tx['meta']))
+                throw new ModuleException("Transactions haven't been fully processed by the node yet");
             
             // As we have 'failed' in events - so for us tesSUCCESS ~ false, because it means not 'failed'
             $tx_result = $tx['meta']['TransactionResult'] === 'tesSUCCESS' ? false : true;

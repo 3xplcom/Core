@@ -158,6 +158,10 @@ abstract class RippleLikeFTModule extends CoreModule
             $amount = '0';
             $issuer = null;
             $account = $tx['Account'];
+
+            if (!isset($tx['meta']))
+                throw new ModuleException("Transactions haven't been fully processed by the node yet");
+
             $tx_result = $tx['meta']['TransactionResult'] === 'tesSUCCESS' ? false : true; // yes, it's success but for is_failed it will be correct
 
             switch($tx['TransactionType']) {

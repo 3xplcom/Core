@@ -142,6 +142,9 @@ abstract class RippleLikeNFTModule extends CoreModule
 
         foreach ($tx_data as $tx) 
         {
+            if (!isset($tx['meta']))
+                throw new ModuleException("Transactions haven't been fully processed by the node yet");
+
             switch ($tx['TransactionType']) 
             {
                 case 'NFTokenAcceptOffer': 
