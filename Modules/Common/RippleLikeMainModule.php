@@ -372,8 +372,8 @@ abstract class RippleLikeMainModule extends CoreModule
                                     // really it's an interesting question that Claim can close and send money to the creator, but I don't have proofs
                                     if ($affection['DeletedNode']['LedgerEntryType'] === 'PayChannel') // it means deleting the channel, it can happened in  this type of transaction
                                     {
-                                        $amount = $affection['DeletedNode']['FinalFields']['Balance'] -
-                                            $affection['DeletedNode']['PreviousFields']['Balance'];
+                                        $amount = bcsub($affection['DeletedNode']['FinalFields']['Balance'],
+                                            $affection['DeletedNode']['PreviousFields']['Balance']);
                                         $account = $affection['DeletedNode']['FinalFields']['Destination'];
                                         break;
                                     }
@@ -382,8 +382,8 @@ abstract class RippleLikeMainModule extends CoreModule
                                 {
                                     if ($affection['ModifiedNode']['LedgerEntryType'] === 'PayChannel') 
                                     {
-                                        $amount = $affection['ModifiedNode']['FinalFields']['Balance'] -
-                                            $affection['ModifiedNode']['PreviousFields']['Balance'];
+                                        $amount = bcsub($affection['ModifiedNode']['FinalFields']['Balance'],
+                                            $affection['ModifiedNode']['PreviousFields']['Balance']);
                                         $account = $affection['ModifiedNode']['FinalFields']['Destination'];
                                         break;
                                     }
