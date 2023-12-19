@@ -12,8 +12,9 @@ final class RippleNFTModule extends RippleLikeNFTModule implements Module
         $this->blockchain = 'xrp-ledger';
         $this->module = 'xrp-ledger-nft';
         $this->is_main = false;
+        $this->currency = 'xrp-nft';
+        $this->currency_details = ['name' => 'XRP NFT', 'symbol' => 'NFT', 'decimals' => 0, 'description' => null];
         $this->first_block_date = '2013-01-01';
         $this->first_block_id = 32570;
-
     }
 }

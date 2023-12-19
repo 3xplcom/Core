@@ -12,25 +12,20 @@ abstract class RippleLikeNFTModule extends CoreModule
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
-    public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
+    public ?CurrencyFormat $currency_format = CurrencyFormat::Static; // XRPL doesn't have contracts for NFTs
     public ?CurrencyType $currency_type = CurrencyType::NFT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'extra'];
-    public ?array $events_table_nullable_fields = ['currency'];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
+    public ?array $events_table_nullable_fields = [];
 
-    public ?array $currencies_table_fields = ['id', 'name', 'decimals', 'description'];
-    public ?array $currencies_table_nullable_fields = [];
-
-    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
-    public ?array $extra_data_details = [];
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Identifier;
 
     public ?bool $should_return_events = true;
-    public ?bool $should_return_currencies = true;
+    public ?bool $should_return_currencies = false;
     public ?bool $allow_empty_return_events = true;
-    public ?bool $allow_empty_return_currencies = true;
 
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = true;
@@ -98,7 +93,6 @@ abstract class RippleLikeNFTModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        $currencies = [];
         $events = [];
         $sort_key = 0;
 
@@ -185,21 +179,18 @@ abstract class RippleLikeNFTModule extends CoreModule
                         {   // this is for situation when the transaction fallen
                             // mostly in this situations we don't need to pay
                             // anything in Token module
-                            $currency = null;
                             break;
                         }
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'currency'    => null,           // what to add as a currency
                             'address'     => $prev_owner,
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
-                            'extra'       => $nft,   // index NFT
+                            'extra'       => $nft,
                         ];
 
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'currency'    => null,
                             'address'     => $new_owner,
                             'sort_key'    => $sort_key++,
                             'effect'      => '1',
@@ -213,16 +204,14 @@ abstract class RippleLikeNFTModule extends CoreModule
                         // https://xrpl.org/nftokenmint.html#issuing-on-behalf-of-another-account
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'currency'    => null,           // what to add as a currency
                             'address'     => 'the-void',
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
-                            'extra'       => $tx['meta']['nftoken_id'],   // index NFT
+                            'extra'       => $tx['meta']['nftoken_id'],
                         ];
 
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'currency'    => null,
                             'address'     => $tx['Account'],
                             'sort_key'    => $sort_key++,
                             'effect'      => '1',
@@ -234,16 +223,14 @@ abstract class RippleLikeNFTModule extends CoreModule
                     {
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'currency'    => null,           // what to add as a currency
                             'address'     => $tx['Account'],
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
-                            'extra'       => $tx['NFTokenID'],   // index NFT
+                            'extra'       => $tx['NFTokenID'],
                         ];
 
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'currency'    => null,
                             'address'     => 'the-void',
                             'sort_key'    => $sort_key++,
                             'effect'      => '1',
@@ -252,7 +239,6 @@ abstract class RippleLikeNFTModule extends CoreModule
                         break;
                     }
             };
-            
         }
 
         ////////////////
@@ -267,7 +253,5 @@ abstract class RippleLikeNFTModule extends CoreModule
         }
 
         $this->set_return_events($events);
-        $this->set_return_currencies($currencies);
     }
-
 }
