@@ -384,7 +384,7 @@ abstract class RippleLikeMainModule extends CoreModule
                                     {
                                         $amount = $affection['ModifiedNode']['FinalFields']['Balance'] -
                                             $affection['ModifiedNode']['PreviousFields']['Balance'];
-                                        $account = $affection['DeletedNode']['FinalFields']['Destination'];
+                                        $account = $affection['ModifiedNode']['FinalFields']['Destination'];
                                         break;
                                     }
                                 }
@@ -395,7 +395,7 @@ abstract class RippleLikeMainModule extends CoreModule
                             'transaction' => $tx['hash'],
                             'address' => 'payment-channels',
                             'sort_key' => $sort_key++,
-                            'effect' => '-' . $amount,
+                            'effect' => '-' . (string)$amount,
                             'failed' => $tx_result,
                             'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
                         ];
@@ -404,7 +404,7 @@ abstract class RippleLikeMainModule extends CoreModule
                             'transaction' => $tx['hash'],
                             'address' => $account,
                             'sort_key' => $sort_key++,
-                            'effect' => $amount,
+                            'effect' => (string)$amount,
                             'failed' => $tx_result,
                             'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
                         ];
