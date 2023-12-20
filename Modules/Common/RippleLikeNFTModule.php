@@ -18,8 +18,8 @@ abstract class RippleLikeNFTModule extends CoreModule
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
-    public ?array $events_table_nullable_fields = [];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed' ,'extra'];
+    public ?array $events_table_nullable_fields = ['extra'];
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Identifier;
 
@@ -139,6 +139,8 @@ abstract class RippleLikeNFTModule extends CoreModule
             if (!isset($tx['meta']))
                 throw new ModuleException("Transactions haven't been fully processed by the node yet");
 
+            $tx_result = $tx['meta']['TransactionResult'] === 'tesSUCCESS' ? false : true;
+
             switch ($tx['TransactionType']) 
             {
                 case 'NFTokenAcceptOffer': 
@@ -186,6 +188,7 @@ abstract class RippleLikeNFTModule extends CoreModule
                             'address'     => $prev_owner,
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
+                            'failed'      => $tx_result,
                             'extra'       => $nft,
                         ];
 
@@ -194,20 +197,24 @@ abstract class RippleLikeNFTModule extends CoreModule
                             'address'     => $new_owner,
                             'sort_key'    => $sort_key++,
                             'effect'      => '1',
+                            'failed'      => $tx_result,
                             'extra'       => $nft,
                         ];
                         break;
                     }
                 case 'NFTokenMint':
                     {
-                        // what to do with issuer in docs?
-                        // https://xrpl.org/nftokenmint.html#issuing-on-behalf-of-another-account
+                        $nft = null;
+                        if (isset($tx['meta']['nftoken_id']))
+                            $nft = $tx['meta']['nftoken_id'];
+
                         $events[] = [
                             'transaction' => $tx['hash'],
                             'address'     => 'the-void',
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
-                            'extra'       => $tx['meta']['nftoken_id'],
+                            'failed'      => $tx_result,
+                            'extra'       => $nft,
                         ];
 
                         $events[] = [
@@ -215,7 +222,8 @@ abstract class RippleLikeNFTModule extends CoreModule
                             'address'     => $tx['Account'],
                             'sort_key'    => $sort_key++,
                             'effect'      => '1',
-                            'extra'       => $tx['meta']['nftoken_id'],
+                            'failed'      => $tx_result,
+                            'extra'       => $nft,
                         ];
                         break;
                     }
@@ -226,6 +234,7 @@ abstract class RippleLikeNFTModule extends CoreModule
                             'address'     => $tx['Account'],
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
+                            'failed'      => $tx_result,
                             'extra'       => $tx['NFTokenID'],
                         ];
 
@@ -234,6 +243,7 @@ abstract class RippleLikeNFTModule extends CoreModule
                             'address'     => 'the-void',
                             'sort_key'    => $sort_key++,
                             'effect'      => '1',
+                            'failed'      => $tx_result,
                             'extra'       => $tx['NFTokenID'],
                         ];
                         break;
