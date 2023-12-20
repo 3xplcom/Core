@@ -264,4 +264,46 @@ abstract class RippleLikeNFTModule extends CoreModule
 
         $this->set_return_events($events);
     }
+
+    // Getting balances from the node
+    function api_get_balance(string $address)
+    {
+        $nft_amount = "0";
+        $marker = null;
+
+        do {
+            if($marker === null) {
+                $params = [
+                    'method' => 'account_nfts',
+                    'params' => [[
+                        'account' => "{$address}",
+                        'ledger_index' => 'closed',
+                        'strict' => true,
+                        'limit' => 100,
+                    ]]
+                    ];
+            } else {
+                $params = [
+                    'method' => 'account_nfts',
+                    'params' => [[
+                        'account' => "{$address}",
+                        'ledger_index' => 'closed',
+                        'strict' => true,
+                        'limit' => 100,
+                        'marker' => $marker,
+                    ]]
+                    ];
+            }
+            $account_nfts = requester_single(
+                $this->select_node(),
+                params: $params,
+                result_in: 'result',
+                timeout: $this->timeout
+            );
+            $nft_amount = bcadd($nft_amount, (string)count($account_nfts['account_nfts']));
+            $marker = $account_nfts['marker'] ?? null;
+        }while($marker);
+
+        return $nft_amount;
+    }
 }
