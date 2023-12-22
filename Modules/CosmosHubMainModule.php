@@ -15,6 +15,8 @@ final class CosmosHubMainModule extends CosmosMainModule implements Module
         $this->module = 'cosmos-hub-main';
         $this->is_main = true;
         $this->first_block_date = '2019-12-11';
+        // cosmoshub-4 started with 5200791
+        $this->first_block_id = 5200791;
         $this->currency = 'atom';
         $this->currency_details = ['name' => 'Atom', 'symbol' => 'ATOM', 'decimals' => 6, 'description' => null];
 
