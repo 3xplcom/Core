@@ -146,16 +146,28 @@ abstract class EVMTraceModule extends CoreModule
                 foreach ($curl_results_prepared[$gi+1]['result'] as $this_trace)
                 {
                     $this_transaction_hash = $transaction_hashes[$this_i++];
-
-                    if (!isset($this_trace['result']['calls']))
-                        continue; // No internal txs
-
-                    if (isset($this_trace['result']['error']))
-                        continue; // Root failed
-
                     $this_calls = [];
 
-                    evm_trace($this_trace['result']['calls'], $this_calls);
+                    if (in_array(EVMSpecialFeatures::FlattenedTraces, $this->extra_features))
+                    {
+                        if (!isset($this_trace['calls']))
+                            continue; // No internal txs
+
+                        if (isset($this_trace['error']))
+                            continue; // Root failed
+
+                        evm_trace($this_trace['calls'], $this_calls);
+                    }
+                    else
+                    {
+                        if (!isset($this_trace['result']['calls']))
+                            continue; // No internal txs
+
+                        if (isset($this_trace['result']['error']))
+                            continue; // Root failed
+
+                        evm_trace($this_trace['result']['calls'], $this_calls);
+                    }
 
                     foreach ($this_calls as $this_call)
                     {
