@@ -22,7 +22,6 @@ final class AstarEVMMainModule extends EVMMainModule implements Module
         $this->transaction_hash_format = TransactionHashFormat::AlphaNumeric;
 
         // EVM-specific
-        // TODO: checks params
         $this->evm_implementation = EVMImplementation::geth;
         $this->extra_features = [];
         $this->reward_function = function($block_id)
