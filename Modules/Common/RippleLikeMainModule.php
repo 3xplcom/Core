@@ -639,19 +639,24 @@ abstract class RippleLikeMainModule extends CoreModule
     // Getting balances from the node
     public function api_get_balance($address)
     {
-        return (string)requester_single(
+        $request = requester_single(
             $this->select_node(),
             params: [
                 'method' => 'account_info',
                 'params' => [[
-                    'account' => "{$address}",
-                    'strict' => false,
-			        'ledger_index' => "closed",
-			        'queue' => false
-                ]]
+                                 'account' => "{$address}",
+                                 'strict' => false,
+                                 'ledger_index' => "closed",
+                                 'queue' => false
+                             ]]
             ],
             result_in: 'result',
             timeout: $this->timeout
-        )['account_data']['Balance'];
+        );
+
+        if (!isset($request['account_data']))
+            return '0';
+        else
+            return (string)$request['account_data']['Balance'];
     }
 }
