@@ -349,6 +349,7 @@ abstract class RippleLikeFTModule extends CoreModule
                         {   // this is for situation when the transaction fallen
                             // mostly in this situations we don't need to pay anything in Token module
                             $events[] = [
+                                'currency' => $currency . '.' . $issuer,
                                 'transaction' => $tx['hash'],
                                 'address' => $tx['Account'],
                                 'sort_key' => $sort_key++,
@@ -357,6 +358,7 @@ abstract class RippleLikeFTModule extends CoreModule
                                 'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
                             ];
                             $events[] = [
+                                'currency' => $currency . '.' . $issuer,
                                 'transaction' => $tx['hash'],
                                 'address' => 'the-void',
                                 'sort_key' => $sort_key++,
