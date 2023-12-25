@@ -233,6 +233,7 @@ function evm_trace($calls, &$this_calls)
 {
     foreach ($calls as $call)
     {
+        $call['type'] = strtoupper($call['type']); // was made for zkSync
         if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CALLCODE', 'CREATE', 'CREATE2', 'SELFDESTRUCT', 'INVALID']))
             throw new ModuleError("Unknown call type: {$call['type']}");
 
