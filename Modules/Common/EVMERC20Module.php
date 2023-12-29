@@ -60,6 +60,14 @@ abstract class EVMERC20Module extends CoreModule
 
         if ((!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features)))
         {
+            // Filecoin may have empty tipsets (ex. 3508881)
+            if (in_array(EVMSpecialFeatures::fEVM, $this->extra_features) && $this->block_hash === '')
+            {
+                $this->set_return_events([]);
+                $this->set_return_currencies([]);
+                return;
+            }
+
             $logs = requester_single($this->select_node(),
                 params: ['jsonrpc' => '2.0',
                          'method'  => 'eth_getLogs',

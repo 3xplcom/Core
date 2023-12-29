@@ -7,7 +7,7 @@
 /*  Various curl functions for requesting data from nodes  */
 
 // Just a single curl request
-function requester_single($daemon, $endpoint = '', $params = [], $result_in = '', $timeout = 600, $valid_codes = [200], $no_json_encode = false, $flags = [])
+function requester_single($daemon, $endpoint = '', $params = [], $result_in = '', $ignore_errors = false, $timeout = 600, $valid_codes = [200], $no_json_encode = false, $flags = [])
 {
     static $curl = null;
 
@@ -106,7 +106,7 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: bad JSON; preg error: {$e_preg}, json error: {$e_json}"); //  . print_r($output, true)
     }
 
-    if (isset($output['error']))
+    if (isset($output['error']) && !$ignore_errors)
     {
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) errored: " . print_r($output['error'], true));
     }

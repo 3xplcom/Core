@@ -33,6 +33,7 @@ enum EVMSpecialFeatures
     case zkEVM;
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
+    case fEVM; // Filecoin EVM
 }
 
 trait EVMTraits
@@ -87,7 +88,32 @@ trait EVMTraits
             throw new RequesterException("ensure_block(block_id: {$block_id}): no connection, previously: " . $e->getMessage());
         }
 
-        $result0 = requester_multi_process($curl_results[0], result_in: 'result');
+        $ignore_errors = false;
+        $result_in = 'result';
+        if (in_array(EVMSpecialFeatures::fEVM, $this->extra_features))
+        {
+            $ignore_errors = true;
+            $result_in = '';
+        }
+
+        $result0 = requester_multi_process($curl_results[0], ignore_errors: $ignore_errors, result_in: $result_in);
+
+        // Filecoin may have empty tipsets (ex. 3508881)
+        if (in_array(EVMSpecialFeatures::fEVM, $this->extra_features))
+        {
+            if (isset($result0['error']))
+            {
+                if ($result0['error']['message'] === 'requested epoch was a null round')
+                {
+                    $this->block_hash = '';
+                    $this->block_time = date('Y-m-d H:i:s', 0);
+                    return;
+                }
+                throw new ModuleException("requester_multi_process errored: " . print_r($result0['error'], true));
+            }
+
+            $result0 = $result0['result'];
+        }
 
         $hash_key = (!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
             ? 'hash'
