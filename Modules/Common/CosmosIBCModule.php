@@ -102,11 +102,6 @@ abstract class CosmosIBCModule extends CoreModule
                 $this->erase_double_fee_events($tx_result['events']);
             }
 
-            if (in_array(CosmosSpecialFeatures::HasDoublesTxEvents, $this->extra_features))
-            {
-                $this->erase_double_fee_events($tx_result['events']);
-            }
-
             $sub = [];
             $add = [];
             foreach ($tx_result['events'] as $tx_event)
