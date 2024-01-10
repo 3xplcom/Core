@@ -25,5 +25,6 @@ final class NeutronMainModule extends CosmosMainModule implements Module
         ];
         $this->cosmos_known_denoms = ['untrn' => 0];
         $this->cosmos_coin_events_fork = 0;
+        $this->extra_features = [CosmosSpecialFeatures::HasDecodedValues];
     }
 }

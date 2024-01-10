@@ -20,5 +20,6 @@ final class NeutronIBCModule extends CosmosIBCModule implements Module
         $this->cosmos_special_addresses = [];
         // TODO: need to check early blocks on archive node
         $this->cosmos_coin_events_fork = 0;
+        $this->extra_features = [CosmosSpecialFeatures::HasDecodedValues];
     }
 }
