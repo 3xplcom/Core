@@ -19,6 +19,6 @@ final class OsmosisIBCModule extends CosmosIBCModule implements Module
         // Cosmos-specific
         $this->cosmos_special_addresses = [];
         $this->cosmos_coin_events_fork = 0;
-        $this->extra_features = [CosmosSpecialFeatures::HasDoublesTxEvents];
+        $this->extra_features = [CosmosSpecialFeatures::HasDoublesTxEvents, CosmosSpecialFeatures::HasDecodedValues];
     }
 }

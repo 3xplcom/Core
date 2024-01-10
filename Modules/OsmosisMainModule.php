@@ -26,6 +26,6 @@ final class OsmosisMainModule extends CosmosMainModule implements Module
         ];
         $this->cosmos_known_denoms = ['uosmo' => 0];
         $this->cosmos_coin_events_fork = 0;
-        $this->extra_features = [CosmosSpecialFeatures::HasDoublesTxEvents];
+        $this->extra_features = [CosmosSpecialFeatures::HasDoublesTxEvents, CosmosSpecialFeatures::HasDecodedValues];
     }
 }
