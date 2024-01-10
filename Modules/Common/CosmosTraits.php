@@ -8,7 +8,16 @@
 
 enum CosmosSpecialFeatures
 {
+    // If the tx_results array has double tx events at the end.
     case HasDoublesTxEvents;
+    // If the tx_results not base64 encoded.
+    case HasDecodedValues;
+}
+
+enum CosmosSpecialTransactions: string
+{
+    case Mint = 'm';
+    case Burn = 'b';
 }
 
 trait CosmosTraits
@@ -74,8 +83,9 @@ trait CosmosTraits
                 {
                     switch ($attr['key'])
                     {
+                        case 'granter':
                         case 'Z3JhbnRlcg==': // granter
-                            $fee_info['fee_payer'] = base64_decode($attr['value']);
+                            $fee_info['fee_payer'] = $this->try_base64_decode($attr['value']);
                             break;
                     }
                 }
@@ -87,21 +97,24 @@ trait CosmosTraits
                 {
                     switch ($attr['key'])
                     {
+                        case 'fee':
                         case 'ZmVl': // fee
                             if (is_null($attr['value'])) // zero fee for tx
                                 $fee_info['fee'] = '0';
                             else
-                                $fee_info['fee'] = $this->denom_amount_to_amount(base64_decode($attr['value']));
+                                $fee_info['fee'] = $this->denom_amount_to_amount($this->try_base64_decode($attr['value']));
                             break;
 
+                        case 'fee_payer':
                         case 'ZmVlX3BheWVy': // fee_payer
                             if (is_null($fee_info['fee_payer']))
-                                $fee_info['fee_payer'] = base64_decode($attr['value']);
+                                $fee_info['fee_payer'] = $this->try_base64_decode($attr['value']);
                             break;
 
+                        case 'acc_seq':
                         case 'YWNjX3NlcQ==': // acc_seq in format {addr}/{num}
                             if (is_null($fee_info['fee_payer']))
-                                $fee_info['fee_payer'] = explode('/', base64_decode($attr['value']))[0];
+                                $fee_info['fee_payer'] = explode('/', $this->try_base64_decode($attr['value']))[0];
                             break;
                     }
                 }
@@ -130,8 +143,9 @@ trait CosmosTraits
                 {
                     switch ($attr['key'])
                     {
+                        case 'granter':
                         case 'Z3JhbnRlcg==': // granter
-                            $fee_info['fee_payer'] = base64_decode($attr['value']);
+                            $fee_info['fee_payer'] = $this->try_base64_decode($attr['value']);
                             break;
                     }
                 }
@@ -142,10 +156,11 @@ trait CosmosTraits
                 foreach ($tx_event['attributes'] as $attr)
                 {
                     switch ($attr['key']) {
+                        case 'fee':
                         case 'ZmVl': // fee
                             if (!is_null($attr['value']))
                             {
-                                $ibc_amount = $this->denom_amount_to_ibc_amount(base64_decode($attr['value']));
+                                $ibc_amount = $this->denom_amount_to_ibc_amount($this->try_base64_decode($attr['value']));
                                 if (!is_null($ibc_amount))
                                 {
                                     $fee_info['fee'] = $ibc_amount['amount'];
@@ -154,14 +169,16 @@ trait CosmosTraits
                             }
                             break;
 
+                        case 'fee_payer':
                         case 'ZmVlX3BheWVy': // fee_payer
                             if (is_null($fee_info['fee_payer']))
-                                $fee_info['fee_payer'] = base64_decode($attr['value']);
+                                $fee_info['fee_payer'] = $this->try_base64_decode($attr['value']);
                             break;
 
+                        case 'acc_seq':
                         case 'YWNjX3NlcQ==': // acc_seq in format {addr}/{num}
                             if (is_null($fee_info['fee_payer']))
-                                $fee_info['fee_payer'] = explode('/', base64_decode($attr['value']))[0];
+                                $fee_info['fee_payer'] = explode('/', $this->try_base64_decode($attr['value']))[0];
                             break;
                     }
                 }
@@ -189,11 +206,14 @@ trait CosmosTraits
 
             switch ($attr['key'])
             {
+                case 'spender':
                 case 'c3BlbmRlcg==': // spender
-                    $result['from'] = base64_decode($attr['value']);
+                    $result['from'] = $this->try_base64_decode($attr['value']);
                     break;
+
+                case 'amount':
                 case 'YW1vdW50': // amount
-                    $result['amount'] = explode(',', base64_decode($attr['value']));
+                    $result['amount'] = explode(',', $this->try_base64_decode($attr['value']));
                     break;
             }
         }
@@ -215,11 +235,14 @@ trait CosmosTraits
 
             switch ($attr['key'])
             {
+                case 'receiver':
                 case 'cmVjZWl2ZXI=': // receiver
-                    $result['to'] = base64_decode($attr['value']);
+                    $result['to'] = $this->try_base64_decode($attr['value']);
                     break;
+
+                case 'amount':
                 case 'YW1vdW50': // amount
-                    $result['amount'] = explode(',', base64_decode($attr['value']));
+                    $result['amount'] = explode(',', $this->try_base64_decode($attr['value']));
                     break;
             }
         }
@@ -238,11 +261,14 @@ trait CosmosTraits
         {
             switch ($attr['key'])
             {
+                case 'minter':
                 case 'bWludGVy': // minter
-                    $result['from'] = base64_decode($attr['value']);
+                    $result['from'] = $this->try_base64_decode($attr['value']);
                     break;
+
+                case 'amount':
                 case 'YW1vdW50': // amount
-                    $result['amount'] = base64_decode($attr['value']);
+                    $result['amount'] = $this->try_base64_decode($attr['value']);
                     break;
             }
         }
@@ -261,11 +287,14 @@ trait CosmosTraits
         {
             switch ($attr['key'])
             {
+                case 'burner':
                 case 'YnVybmVy': // burner
-                    $return['from'] = base64_decode($attr['value']);
+                    $return['from'] = $this->try_base64_decode($attr['value']);
                     break;
+
+                case 'amount':
                 case 'YW1vdW50': // amount
-                    $return['amount'] = base64_decode($attr['value']);
+                    $return['amount'] = $this->try_base64_decode($attr['value']);
                     break;
             }
         }
@@ -287,17 +316,196 @@ trait CosmosTraits
 
             switch ($attr['key'])
             {
+                case 'sender':
                 case 'c2VuZGVy': // sender
-                    $result['from'] = base64_decode($attr['value']);
+                    $result['from'] = $this->try_base64_decode($attr['value']);
                     break;
+
+                case 'recipient':
                 case 'cmVjaXBpZW50': // recipient
-                    $result['to'] = base64_decode($attr['value']);
+                    $result['to'] = $this->try_base64_decode($attr['value']);
                     break;
+
+                case 'amount':
                 case 'YW1vdW50': // amount
-                    $result['amount'] = explode(',', base64_decode($attr['value']));
+                    $result['amount'] = explode(',', $this->try_base64_decode($attr['value']));
                     break;
             }
         }
+
+        return $result;
+    }
+
+    // Returns null|array('from' => addr, 'to' => addr, 'amount' => string, 'currency' => addr, 'extra' => string)
+    function parse_wasm_cw20_event(?array $attributes): ?array
+    {
+        if (is_null($attributes))
+            throw new ModuleException('Invalid `attributes` for wasm parsing (is null)!');
+
+        $result = ['from' => null, 'to' => null, 'amount' => null, 'currency' => null, 'extra' => null];
+        $action = null;
+        foreach ($attributes as $attr)
+        {
+            switch ($attr['key'])
+            {
+                case '_contract_address':
+                case 'X2NvbnRyYWN0X2FkZHJlc3M=': // _contract_address
+                    $result['currency'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'action':
+                case 'YWN0aW9u': // action
+                    $action = $this->try_base64_decode($attr['value']);
+                    switch ($action)
+                    {
+                        case 'transfer':
+                        case 'send':
+                        case 'transfer_from':
+                            break;
+
+                        case 'mint':
+                            $result['extra'] = CosmosSpecialTransactions::Mint->value;
+                            $result['from'] = 'the-void';
+                            break;
+
+                        case 'burn':
+                        case 'burn_from':
+                            $result['extra'] = CosmosSpecialTransactions::Burn->value;
+                            $result['to'] = 'the-void';
+                            break;
+
+                        default:
+                            return null; // Skips not cw20 actions
+                    }
+
+                    break;
+
+                case 'from':
+                case 'ZnJvbQ==': // from
+                    $result['from'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'to':
+                case 'dG8=': // to
+                    $result['to'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'amount':
+                case 'YW1vdW50': // amount
+                    $result['amount'] = $this->try_base64_decode($attr['value']);
+                    break;
+            }
+        }
+
+        // 'action' is necessary field
+        if (is_null($action))
+            return null;
+
+        // Check for cw721 mint/burn events and skip
+        if ($result['from'] === 'the-void' && is_null($result['amount']))
+            return null;
+        if ($result['to'] === 'the-void' && is_null($result['amount']))
+            return null;
+
+        // Additional checks for not cw20 events
+        if (is_null($result['from']) || is_null($result['to']) || is_null($result['currency']))
+            return null;
+
+        return $result;
+    }
+
+    // Returns null|array('from' => addr, 'to' => addr, 'currency' => addr, 'extra' => token_id_string)
+    function parse_wasm_cw721_event(?array $attributes): ?array
+    {
+        if (is_null($attributes))
+            throw new ModuleException('Invalid `attributes` for wasm parsing (is null)!');
+
+        $result = ['from' => null, 'to' => null, 'currency' => null, 'extra' => null];
+        $action = null;
+        $minter = null;
+        $owner = null;
+        $amount_presents = false;
+        foreach ($attributes as $attr)
+        {
+            switch ($attr['key'])
+            {
+                case '_contract_address':
+                case 'X2NvbnRyYWN0X2FkZHJlc3M=': // _contract_address
+                    $result['currency'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'action':
+                case 'YWN0aW9u': // action
+                    $action = $this->try_base64_decode($attr['value']);
+                    switch ($action)
+                    {
+                        case 'transfer_nft':
+                        case 'send_nft':
+                            break;
+
+                        case 'mint':
+                            $result['from'] = 'the-void';
+                            break;
+
+                        case 'burn':
+                            $result['to'] = 'the-void';
+                            break;
+
+                        default:
+                            return null; // Skips not cw721 actions
+                    }
+
+                    break;
+
+                case 'minter':
+                case 'bWludGVy': // minter
+                    $minter = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'owner':
+                case 'b3duZXI=': // owner
+                    $owner = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'sender':
+                case 'c2VuZGVy': // sender
+                    $result['from'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'recipient':
+                case 'cmVjaXBpZW50': // recipient
+                    $result['to'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'token_id':
+                case 'dG9rZW5faWQ=': // token_id
+                    $result['extra'] = $this->try_base64_decode($attr['value']);
+                    break;
+
+                case 'amount':
+                case 'YW1vdW50': // amount
+                    $amount_presents = true;
+                    break;
+            }
+        }
+
+        // 'action' is necessary field
+        if (is_null($action))
+            return null;
+
+        // Check for cw20 mint/burn events and skip
+        if ($result['from'] === 'the-void' && $amount_presents)
+            return null;
+        if ($result['to'] === 'the-void' && $amount_presents)
+            return null;
+
+        // Clarifies 'to' for mint event
+        if ($result['from'] === 'the-void')
+            $result['to'] = is_null($owner) ? $minter : $owner;
+
+        // Additional checks for not documented cw721 event
+        if (is_null($result['from']) || is_null($result['to']) || is_null($result['currency']) || is_null($result['extra']))
+            return null;
 
         return $result;
     }
@@ -323,6 +531,9 @@ trait CosmosTraits
     // denom_amount format: {amount}{denom} (ex. 1234uatom)
     function denom_amount_to_amount(?string $denom_amount): ?string
     {
+        if ($denom_amount === '')
+            return '0';
+
         if (str_contains($denom_amount, ','))
             throw new ModuleException("Expected single denom amount, array detected.");
 
@@ -339,6 +550,9 @@ trait CosmosTraits
     // Parse {amount}ibc/{denom} to null|array('amount' => string, 'currency' => string)
     function denom_amount_to_ibc_amount(?string $denom_amount): ?array
     {
+        if ($denom_amount === '')
+            return null;
+
         if (str_contains($denom_amount, ','))
             throw new ModuleException("Expected single denom amount, array detected.");
 
@@ -374,5 +588,10 @@ trait CosmosTraits
 
         // Erase the exact events from end of list
         $events = array_slice($events, 0, -$erase_index);
+    }
+
+    function try_base64_decode($data): string
+    {
+        return in_array(CosmosSpecialFeatures::HasDecodedValues, $this->extra_features) ? $data : base64_decode($data);
     }
 }
