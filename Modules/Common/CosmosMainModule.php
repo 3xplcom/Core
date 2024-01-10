@@ -49,6 +49,8 @@ abstract class CosmosMainModule extends CoreModule
     // value 0 if there is no such fork
     public ?int $cosmos_coin_events_fork = null;
 
+    public array $extra_features = [];
+
     final public function pre_initialize()
     {
         $this->version = 1;
@@ -97,6 +99,11 @@ abstract class CosmosMainModule extends CoreModule
             // Need to collect fee and fee_payer before parsing events.
             $fee_event_detected = ['from' => false, 'to' => false]; // To avoid double extra
             $fee_info = $this->try_find_fee_info($tx_result['events']);
+
+            if (in_array(CosmosSpecialFeatures::HasDoublesTxEvents, $this->extra_features))
+            {
+                $this->erase_double_fee_events($tx_result['events']);
+            }
 
             foreach ($tx_result['events'] as $tx_event)
             {
@@ -167,6 +174,46 @@ abstract class CosmosMainModule extends CoreModule
                                 'extra' => $extra,
                             ];
                         }
+
+                        break;
+
+                        case 'burn':
+                            $burn_data = $this->parse_burn_event($tx_event['attributes']);
+                            if (is_null($burn_data))
+                                break;
+
+                            $amount = $this->denom_amount_to_amount($burn_data['amount']);
+                            if (is_null($amount))
+                                break;
+
+                            $events[] = [
+                                'transaction' => $tx_hash,
+                                'sort_key' => $sort_key++,
+                                'address' => 'the-void',
+                                'effect' => $amount,
+                                'failed' => $failed,
+                                'extra' => null,
+                            ];
+
+                            break;
+
+                    case 'coinbase':
+                        $coinbase_data = $this->parse_coinbase_event($tx_event['attributes']);
+                        if (is_null($coinbase_data))
+                            break;
+
+                        $amount = $this->denom_amount_to_amount($coinbase_data['amount']);
+                        if (is_null($amount))
+                            break;
+
+                        $events[] = [
+                            'transaction' => $tx_hash,
+                            'sort_key' => $sort_key++,
+                            'address' => 'the-void',
+                            'effect' => '-' . $amount,
+                            'failed' => $failed,
+                            'extra' => null,
+                        ];
 
                         break;
 
