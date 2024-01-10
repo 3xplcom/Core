@@ -51,6 +51,8 @@ abstract class CosmosIBCModule extends CoreModule
     // value 0 if there is no such fork
     public ?int $cosmos_coin_events_fork = null;
 
+    public array $extra_features = [];
+
     final public function pre_initialize()
     {
         $this->version = 1;
@@ -94,6 +96,11 @@ abstract class CosmosIBCModule extends CoreModule
             // Need to collect fee and fee_payer before parsing events.
             $fee_event_detected = ['from' => false, 'to' => false]; // To avoid double extra
             $fee_info = $this->try_find_ibc_fee_info($tx_result['events']);
+
+            if (in_array(CosmosSpecialFeatures::HasDoublesTxEvents, $this->extra_features))
+            {
+                $this->erase_double_fee_events($tx_result['events']);
+            }
 
             $sub = [];
             $add = [];

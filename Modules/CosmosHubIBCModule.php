@@ -15,6 +15,8 @@ final class CosmosHubIBCModule extends CosmosIBCModule implements Module
         $this->module = 'cosmos-hub-ibc';
         $this->is_main = false;
         $this->first_block_date = '2019-12-11';
+        // cosmoshub-4 started with 5200791
+        $this->first_block_id = 5200791;
 
         // Cosmos-specific
         $this->cosmos_special_addresses = [];
