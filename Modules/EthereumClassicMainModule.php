@@ -24,7 +24,7 @@ final class EthereumClassicMainModule extends EVMMainModule implements Module
         $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles];
         $this->reward_function = function($block_id)
         {
-            // https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1017.md
+            // https://ecips.ethereumclassic.org/ECIPs/ecip-1017
             // https://ethereumclassic.org/why-classic/sound-money#known-future-supply
 
             $base_reward = '5000000000000000000';
