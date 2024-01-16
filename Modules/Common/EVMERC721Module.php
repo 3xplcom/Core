@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module works with the ERC-721 NFT (BEP-721 and similar) standard, see
  *  https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md */
@@ -18,7 +18,7 @@ abstract class EVMERC721Module extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::HexWith0x;
     public ?CurrencyType $currency_type = CurrencyType::NFT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'extra'];
     public ?array $events_table_nullable_fields = [];
@@ -66,7 +66,7 @@ abstract class EVMERC721Module extends CoreModule
                 params: ['jsonrpc' => '2.0',
                          'method'  => 'eth_getLogs',
                          'params'  =>
-                             [['blockhash' => $this->block_hash,
+                             [['blockHash' => $this->block_hash,
                                'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
                               ],
                              ],
@@ -120,6 +120,9 @@ abstract class EVMERC721Module extends CoreModule
 
         foreach ($logs as $log)
         {
+            if ($log['blockHash'] !== $this->block_hash && !in_array(EVMSpecialFeatures::zkEVM, $this->extra_features))
+                throw new ModuleError("The node returned wrong data for {$this->block_hash}: {$log['blockHash']}");
+
             if (count($log['topics']) !== 4)
                 continue; // This is ERC-20
 
@@ -296,7 +299,8 @@ abstract class EVMERC721Module extends CoreModule
 
             foreach ($result as $bit)
             {
-                $return[] = to_int256_from_0xhex($bit['result'] ?? null);
+                $val = isset($bit['result']) ? substr($bit['result'],0,66): null;
+                $return[] = to_int256_from_0xhex($val);
             }
         }
 

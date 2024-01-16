@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Various useful functions  */
 
@@ -182,4 +182,18 @@ function remove_passwords($url)
 {
     $url = parse_url($url);
     return ($url['scheme'] ?? '').'://'.($url['host'] ?? '').($url['path'] ?? '').($url['query'] ?? '');
+}
+
+// Returns standard unixtime
+function to_timestamp_from_long_unixtime(string $long_unixtime): string
+{
+    // 1555400628000
+    return DateTime::createFromFormat('U.u', bcdiv($long_unixtime, '1000', 3))->format("Y-m-d H:i:s");
+}
+
+function remove_0x_safely(string $string): string
+{
+    if (substr($string, 0, 2) !== '0x')
+        throw new DeveloperError("remove_0x_safely({$string}): missing 0x");
+    return substr($string, 2);
 }

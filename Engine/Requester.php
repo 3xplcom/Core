@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Various curl functions for requesting data from nodes  */
 
@@ -75,13 +75,14 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     }
 
     curl_close($curl);
-
     if (is_null($output))
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is `null`");
     if ($output === '')
         throw new RequesterEmptyResponseException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is an empty string");
     if ($output === false)
         throw new RequesterException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is false (timeout?)");
+    if (trim($output) === '{}' || trim($output) === '[]')
+        throw new RequesterEmptyArrayInResponseException("requester_request(daemon:({$daemon_clean}), endpoint:({$endpoint}), params:({$params_log}), result_in:({$result_in})) failed: output is an empty array");
 
     // Here we add quotes to all numeric values not to lose precision if some are larger than int64.
     // Note that this doesn't work good with values like `2.5e-8`, so there's the IgnoreAddingQuotesToNumbers option
@@ -97,7 +98,7 @@ function requester_single($daemon, $endpoint = '', $params = [], $result_in = ''
     if (!in_array(RequesterOption::IgnoreAddingQuotesToNumbers, $flags))
         $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
-    if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
+    if (!($output = json_decode($output, associative: true, depth: 4096, flags: JSON_BIGINT_AS_STRING)))
     {
         $e_json = json_last_error_msg();
         $e_preg = preg_last_error_msg();
@@ -269,7 +270,10 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     if ($output === '')
         throw new RequesterEmptyResponseException("requester_multi_process(result_in:({$result_in})) failed: output is an empty string");
 
-    $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
+    if (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false))
+        $output_log = json_encode($output);
+    else
+        $output_log = substr(json_encode($output), 0, 100);
 
     if (in_array(RequesterOption::RecheckUTF8, $flags)) // Some nodes may return invalid UTF-8 sequences which lead to invalid JSON
         $output = mb_convert_encoding($output, 'UTF-8', 'UTF-8');
@@ -280,7 +284,7 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
     if (!in_array(RequesterOption::IgnoreAddingQuotesToNumbers, $flags))
         $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
-    if (!($output = json_decode($output, associative: true, flags: JSON_BIGINT_AS_STRING)))
+    if (!($output = json_decode($output, associative: true, depth: 4096, flags: JSON_BIGINT_AS_STRING)))
         throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: bad JSON");
 
     if (isset($output['error']) && !$ignore_errors)
@@ -311,7 +315,11 @@ function requester_multi_process_all(array $multi_results, string $result_in = '
     if ($result_in)
     {
         $result_output = [];
-        $output_log = (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false)) ? $output : 'scrapped';
+
+        if (env('DEBUG_REQUESTER_FULL_OUTPUT_ON_EXCEPTION', false))
+            $output_log = json_encode($output);
+        else
+            $output_log = substr(json_encode($output), 0, 100);
 
         foreach ($output as $o)
             if (!array_key_exists($result_in, $o))

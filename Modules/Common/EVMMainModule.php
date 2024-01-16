@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes "external" EVM transactions, block rewards, and withdrawals from the PoS chain.
  *  Supported nodes: geth and Erigon.  */
@@ -19,7 +19,7 @@ abstract class EVMMainModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
     public ?array $special_addresses = ['the-void'];
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
     public ?array $events_table_nullable_fields = ['transaction', 'extra'];
@@ -205,10 +205,8 @@ abstract class EVMMainModule extends CoreModule
 
                 $general_data = $r1['transactions'];
                 $base_fee_per_gas = to_int256_from_0xhex($r1['baseFeePerGas'] ?? null);
-                $receipt_data = [];
 
                 $multi_curl = [];
-
                 $ij = 0;
 
                 foreach ($r1['transactions'] as $transaction)
@@ -264,6 +262,9 @@ abstract class EVMMainModule extends CoreModule
                         'effectiveGasPrice' => $receipt_data[$i]['effectiveGasPrice'] ?? $general_data[$i]['gasPrice'], // There's no effectiveGasPrice in some chains
                         'status' => $receipt_data[$i]['status'],
                     ];
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                    $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
             }
         }
         else // Mempool processing
@@ -388,7 +389,20 @@ abstract class EVMMainModule extends CoreModule
                 $this_gas_used = to_int256_from_0xhex($transaction['gasUsed']);
                 $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
                 $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
+
+                if (in_array(EVMSpecialFeatures::EffectiveGasPriceCanBeZero, $this->extra_features))
+                    if ($transaction['effectiveGasPrice'] === '0x0')
+                        $this_to_miner = '0';
+
                 // The fee is $this_burned + $this_to_miner
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                {
+                    if ($transaction['type'] === '0x7e')
+                    {
+                        $this_burned = $this_to_miner = '0';
+                    }
+                }
             }
             else
             {

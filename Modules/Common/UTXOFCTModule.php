@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module process CashTokens transfers. Requires a Bitcoin Cash Node to function (https://gitlab.com/bitcoin-cash-node/bitcoin-cash-node)
  *  It processes FT transfers. For NFT transfers see the UTXONFCT module. CashTokens documentation: https://github.com/bitjson/cashtokens
@@ -34,7 +34,7 @@ abstract class UTXOFCTModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['the-void', 'script-*'];
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     //
 
