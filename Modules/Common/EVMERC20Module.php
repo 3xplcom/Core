@@ -324,7 +324,10 @@ abstract class EVMERC20Module extends CoreModule
 
             foreach ($result as $bit)
             {
-                $return[] = to_int256_from_0xhex($bit['result'] ?? null);
+                // example when this is needed cUSDT contract 0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9
+                // returns 64 bytes in response, but actual balance value is in first 32 bytes
+                $val = isset($bit['result']) ? substr($bit['result'],0,66): null;
+                $return[] = to_int256_from_0xhex($val);
             }
         }
 
