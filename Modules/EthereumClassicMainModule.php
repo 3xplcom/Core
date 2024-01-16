@@ -5,7 +5,8 @@
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Ethereum Classic module. It requires either a geth node to run. Please note that `status` is
- *  not available on geth for some older transactions when requesting receipts and a special fix is required.  */
+ *  not available on geth for some older transactions when requesting receipts and a special fix is required,
+ *  see https://github.com/3xplcom/ethereum-classic  */
 
 final class EthereumClassicMainModule extends EVMMainModule implements Module
 {
