@@ -541,8 +541,11 @@ abstract class CoreModule
                         if ($this->transaction_render_model === TransactionRenderModel::UTXO)
                         {
                             // `UTXO` model transactions should first contain negative events, then positive
-                            if (str_contains($value, '-') && $check_sign === '+')
-                                throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `UTXO`');
+                            if (str_contains($value, '-'))
+                            {
+                                if ($check_sign === '+')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `UTXO`');
+                            }
                             else // +
                                 $check_sign = '+';
                         }
