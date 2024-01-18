@@ -67,7 +67,7 @@ abstract class EVMMainModule extends CoreModule
 
         if (is_null($this->reward_function))
             throw new DeveloperError("`reward_function` is not set (developer error)");
-      
+
         if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
             throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
 
@@ -237,6 +237,9 @@ abstract class EVMMainModule extends CoreModule
             }
 
             // Data processing
+
+            if (in_array(EVMSpecialFeatures::FeesToTreasury, $this->extra_features))
+                $miner = 'treasury';
 
             $this->block_time = date('Y-m-d H:i:s', to_int64_from_0xhex($block_time));
 

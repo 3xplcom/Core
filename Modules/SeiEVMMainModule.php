@@ -1,0 +1,30 @@
+<?php declare(strict_types = 1);
+
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
+
+/*  This is the EVM main Sei module. */
+
+final class SeiEVMMainModule extends EVMMainModule implements Module
+{
+    function initialize()
+    {
+        // CoreModule
+        $this->blockchain = 'sei';
+        $this->module = 'sei-evm-main';
+        $this->is_main = true;
+        $this->first_block_date = '2023-12-26'; // TODO: this is block_date for Sei devnet
+        $this->first_block_id = 0;
+        $this->currency = 'sei';
+        $this->currency_details = ['name' => 'Sei', 'symbol' => 'SEI', 'decimals' => 18, 'description' => null];
+
+        // EVMMainModule
+        $this->evm_implementation = EVMImplementation::geth;
+        $this->extra_features = [EVMSpecialFeatures::FeesToTreasury];
+        $this->reward_function = function($block_id)
+        {
+            return '0';
+        };
+    }
+}
