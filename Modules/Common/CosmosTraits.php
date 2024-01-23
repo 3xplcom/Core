@@ -12,6 +12,10 @@ enum CosmosSpecialFeatures
     case HasDoublesTxEvents;
     // If the tx_results not base64 encoded.
     case HasDecodedValues;
+    // There is no code field in tx_results
+    case HasNotCodeField;
+    // There is no coin_received event for fee_collector
+    case HasNotFeeCollectorRecvEvent;
 }
 
 enum CosmosSpecialTransactions: string
@@ -25,7 +29,8 @@ trait CosmosTraits
     public function inquire_latest_block()
     {
         $response = requester_single($this->select_node(), endpoint: 'status', timeout: $this->timeout);
-        return (int) $response['result']['sync_info']['latest_block_height'];
+        $response = $response['result'] ?? $response;
+        return (int) $response['sync_info']['latest_block_height'];
     }
 
     public function ensure_block($block_id, $break_on_first = false)
@@ -47,12 +52,15 @@ trait CosmosTraits
 
         if (count($curl_results) !== 0)
         {
-            $result = requester_multi_process($curl_results[0], result_in: "result");
+            $result = requester_multi_process($curl_results[0]);
+            $result = $result['result'] ?? $result;
             $this->block_hash = $result['block_id']['hash'];
             $this->block_time = date('Y-m-d H:i:s', strtotime($result['block']['header']['time']));
             foreach ($curl_results as $curl_result)
             {
-                if (requester_multi_process($curl_result, result_in: "result")['block_id']['hash'] !== $this->block_hash)
+                $result1 = requester_multi_process($curl_result);
+                $result1 = $result1['result'] ?? $result1;
+                if ($result1['block_id']['hash'] !== $this->block_hash)
                 {
                     throw new ConsensusException("ensure_block(block_id: {$block_id}): no consensus");
                 }
@@ -567,8 +575,28 @@ trait CosmosTraits
         return ['amount' => $parts[0], 'currency' => str_replace('/', '_', $parts[1])];
     }
 
+    // Parse {amount}factory/{creator}/{denom} to null|array('amount' => string, 'currency' => string, 'name' => string)
+    function denom_amount_to_token_factory_amount(?string $denom_amount): ?array
+    {
+        if ($denom_amount === '')
+            return null;
+
+        if (str_contains($denom_amount, ','))
+            throw new ModuleException("Expected single denom amount, array detected.");
+
+        $parts = preg_split('/(?<=[0-9])(?=[a-z]+)/i', $denom_amount, limit: 2);
+
+        if (!is_numeric($parts[0]))
+            throw new ModuleException("Invalid denom amount format (not numeric): {$denom_amount}");
+
+        if (!str_contains($parts[1], 'factory/'))
+            return null;
+
+        return ['amount' => $parts[0], 'currency' => str_replace('/', '_', $parts[1])];
+    }
+
     // In some chains may be doubled events for fee paying.
-    function erase_double_fee_events(&$events) {
+    function erase_double_fee_events(array &$events) {
         if (empty($events))
             return;
 

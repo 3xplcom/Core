@@ -78,8 +78,10 @@ abstract class CosmosMainModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        $block_data = requester_single($this->select_node(), endpoint: "block?height={$block_id}", result_in: 'result', timeout: $this->timeout);
-        $block_results = requester_single($this->select_node(), endpoint: "block_results?height={$block_id}", result_in: 'result', timeout: $this->timeout);
+        $block_data = requester_single($this->select_node(), endpoint: "block?height={$block_id}", timeout: $this->timeout);
+        $block_data = $block_data['result'] ?? $block_data;
+        $block_results = requester_single($this->select_node(), endpoint: "block_results?height={$block_id}", timeout: $this->timeout);
+        $block_results = $block_results['result'] ?? $block_results;
 
         if (($tx_count = count($block_data['block']['data']['txs'] ?? [])) !== count($block_results['txs_results'] ?? []))
             throw new ModuleException("TXs count and TXs results count mismatch!");
@@ -94,18 +96,22 @@ abstract class CosmosMainModule extends CoreModule
         {
             $tx_hash = $this->get_tx_hash($block_data['block']['data']['txs'][$i]);
             $tx_result = $block_results['txs_results'][$i];
-            $failed = (int)$tx_result['code'] === 0 ? false : true;
+
+            if (in_array(CosmosSpecialFeatures::HasNotCodeField, $this->extra_features))
+                $failed = (int)isset($tx_result['code']) ? (int)$tx_result['code'] !== 0 : false;
+            else
+                $failed = (int)$tx_result['code'] === 0 ? false : true;
 
             // Need to collect fee and fee_payer before parsing events.
             $fee_event_detected = ['from' => false, 'to' => false]; // To avoid double extra
-            $fee_info = $this->try_find_fee_info($tx_result['events']);
+            $fee_info = $this->try_find_fee_info($tx_result['events'] ?? []);
 
             if (in_array(CosmosSpecialFeatures::HasDoublesTxEvents, $this->extra_features))
             {
                 $this->erase_double_fee_events($tx_result['events']);
             }
 
-            foreach ($tx_result['events'] as $tx_event)
+            foreach ($tx_result['events'] ?? [] as $tx_event)
             {
                 switch ($tx_event['type'])
                 {
@@ -139,6 +145,20 @@ abstract class CosmosMainModule extends CoreModule
                                 'failed' => $failed,
                                 'extra' => $extra,
                             ];
+
+                            // Additional event for fee_collector
+                            if (!is_null($fee_info) && in_array(CosmosSpecialFeatures::HasNotFeeCollectorRecvEvent, $this->extra_features) && $fee_event_detected['to'] == false)
+                            {
+                                $fee_event_detected['to'] = true;
+                                $events[] = [
+                                    'transaction' => $tx_hash,
+                                    'sort_key' => $sort_key++,
+                                    'address' => $this->cosmos_special_addresses['fee_collector'],
+                                    'effect' => $amount,
+                                    'failed' => $failed,
+                                    'extra' => $extra,
+                                ];
+                            }
                         }
 
                         break;
@@ -259,6 +279,28 @@ abstract class CosmosMainModule extends CoreModule
 
                         break;
                 }
+            }
+
+            // Additional events for zero fee transactions
+            if (!$fee_event_detected['from'] && !$fee_event_detected['to'])
+            {
+                $events[] = [
+                    'transaction' => $tx_hash,
+                    'sort_key' => $sort_key++,
+                    'address' => $fee_info['fee_payer'] ?? 'the-void',
+                    'effect' => '-0',
+                    'failed' => $failed,
+                    'extra' => 'f',
+                ];
+
+                $events[] = [
+                    'transaction' => $tx_hash,
+                    'sort_key' => $sort_key++,
+                    'address' => $this->cosmos_special_addresses['fee_collector'],
+                    'effect' => '0',
+                    'failed' => $failed,
+                    'extra' => 'f',
+                ];
             }
         }
 

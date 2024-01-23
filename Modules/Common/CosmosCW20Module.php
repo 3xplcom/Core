@@ -66,8 +66,10 @@ abstract class CosmosCW20Module extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        $block_data = requester_single($this->select_node(), endpoint: "block?height={$block_id}", result_in: 'result', timeout: $this->timeout);
-        $block_results = requester_single($this->select_node(), endpoint: "block_results?height={$block_id}", result_in: 'result', timeout: $this->timeout);
+        $block_data = requester_single($this->select_node(), endpoint: "block?height={$block_id}", timeout: $this->timeout);
+        $block_data = $block_data['result'] ?? $block_data;
+        $block_results = requester_single($this->select_node(), endpoint: "block_results?height={$block_id}", timeout: $this->timeout);
+        $block_results = $block_results['result'] ?? $block_results;
 
         if (($tx_count = count($block_data['block']['data']['txs'] ?? [])) !== count($block_results['txs_results'] ?? []))
             throw new ModuleException("TXs count and TXs results count mismatch!");
@@ -82,9 +84,13 @@ abstract class CosmosCW20Module extends CoreModule
         {
             $tx_hash = $this->get_tx_hash($block_data['block']['data']['txs'][$i]);
             $tx_result = $block_results['txs_results'][$i];
-            $failed = (int)$tx_result['code'] === 0 ? false : true;
 
-            foreach ($tx_result['events'] as $tx_event)
+            if (in_array(CosmosSpecialFeatures::HasNotCodeField, $this->extra_features))
+                $failed = (int)isset($tx_result['code']) ? true : false;
+            else
+                $failed = (int)$tx_result['code'] === 0 ? false : true;
+
+            foreach ($tx_result['events'] ?? [] as $tx_event)
             {
                 switch ($tx_event['type'])
                 {

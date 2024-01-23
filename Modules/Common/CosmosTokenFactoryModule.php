@@ -4,13 +4,14 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes Cosmos SDK IBC transfers.
+/*  This module processes the TokenFactory tokens transfers for Cosmos SDK blockchains.
+ *  TokenFactory Docs: https://docs.sei.io/advanced/token-standard/tokenfactory
  *  Supported CometBFT API: https://docs.cometbft.com/main/rpc/
  *  Also supported Cosmos REST API:
  *    https://docs.cosmos.network/main/user/run-node/interact-node#using-the-rest-endpoints
  *    https://v1.cosmos.network/rpc/v0.41.4 */
 
-abstract class CosmosIBCModule extends CoreModule
+abstract class CosmosTokenFactoryModule extends CoreModule
 {
     use CosmosTraits;
 
@@ -21,15 +22,16 @@ abstract class CosmosIBCModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    // the-ibc-channel - from/to this special address transfers bridged ibc tokens
+
+    // the-void - special address for sending burnt amounts
     // swap-pool - from/to if swap_transacted event detected in header block
-    public ?array $special_addresses = ['the-ibc-channel', 'swap-pool'];
+    public ?array $special_addresses = ['the-void', 'swap-pool'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['transaction', 'block', 'time', 'sort_key', 'address', 'currency', 'effect', 'failed', 'extra'];
     public ?array $events_table_nullable_fields = ['transaction', 'extra'];
 
-    public ?array $currencies_table_fields = ['id', 'name', 'description', 'decimals'];
+    public ?array $currencies_table_fields = ['id', 'name', 'decimals'];
     public ?array $currencies_table_nullable_fields = [];
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
@@ -45,8 +47,6 @@ abstract class CosmosIBCModule extends CoreModule
     // Cosmos-specific
     public ?string $rpc_node = null;
 
-    public ?array $cosmos_special_addresses = null;
-
     // Since this block appeared coin_spent/coin_received events in x/bank module
     // value 0 if there is no such fork
     public ?int $cosmos_coin_events_fork = null;
@@ -60,9 +60,6 @@ abstract class CosmosIBCModule extends CoreModule
 
     final public function post_post_initialize()
     {
-        if (is_null($this->cosmos_special_addresses))
-            throw new DeveloperError("`cosmos_special_addresses` is not set (deleloper error)");
-
         if (is_null($this->cosmos_coin_events_fork))
             throw new DeveloperError("`cosmos_coin_events_fork` is not set (deleloper error)");
 
@@ -99,15 +96,6 @@ abstract class CosmosIBCModule extends CoreModule
             else
                 $failed = (int)$tx_result['code'] === 0 ? false : true;
 
-            // Need to collect fee and fee_payer before parsing events.
-            $fee_event_detected = ['from' => false, 'to' => false]; // To avoid double extra
-            $fee_info = $this->try_find_ibc_fee_info($tx_result['events'] ?? []);
-
-            if (in_array(CosmosSpecialFeatures::HasDoublesTxEvents, $this->extra_features))
-            {
-                $this->erase_double_fee_events($tx_result['events']);
-            }
-
             $sub = [];
             $add = [];
             foreach ($tx_result['events'] ?? [] as $tx_event)
@@ -121,28 +109,17 @@ abstract class CosmosIBCModule extends CoreModule
 
                         foreach ($coin_spent_data['amount'] as $amount)
                         {
-                            $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                            if (is_null($ibc_amount))
-                                continue; // Skip none ibc amounts
+                            $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                            if (is_null($tf_amount))
+                                continue; // Skip none token factory amounts
 
-                            $currencies_to_process[] = $ibc_amount['currency'];
-
-                            $extra = null;
-                            if (!is_null($fee_info) && !$fee_event_detected['from'])
-                            {
-                                if ($coin_spent_data['from'] === $fee_info['fee_payer'] &&
-                                    $ibc_amount['amount'] === $fee_info['fee'])
-                                {
-                                    $extra = 'f';
-                                    $fee_event_detected['from'] = true;
-                                }
-                            }
+                            $currencies_to_process[] = $tf_amount['currency'];
 
                             $sub[] = [
                                 'address' => $coin_spent_data['from'],
-                                'currency' => $ibc_amount['currency'],
-                                'amount' => $ibc_amount['amount'],
-                                'extra' => $extra,
+                                'currency' => $tf_amount['currency'],
+                                'amount' => $tf_amount['amount'],
+                                'extra' => null,
                             ];
                         }
 
@@ -155,27 +132,17 @@ abstract class CosmosIBCModule extends CoreModule
 
                         foreach ($coin_received_data['amount'] as $amount)
                         {
-                            $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                            if (is_null($ibc_amount))
-                                continue; // Skip none ibc amounts
+                            $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                            if (is_null($tf_amount))
+                                continue; // Skip none token factory amounts
 
-                            $currencies_to_process[] = $ibc_amount['currency'];
-
-                            $extra = null;
-                            if (!is_null($fee_info) && !$fee_event_detected['to'])
-                            {
-                                if ($ibc_amount['amount'] === $fee_info['fee'])
-                                {
-                                    $extra = 'f';
-                                    $fee_event_detected['to'] = true;
-                                }
-                            }
+                            $currencies_to_process[] = $tf_amount['currency'];
 
                             $add[] = [
                                 'address' => $coin_received_data['to'],
-                                'currency' => $ibc_amount['currency'],
-                                'amount' => $ibc_amount['amount'],
-                                'extra' => $extra,
+                                'currency' => $tf_amount['currency'],
+                                'amount' => $tf_amount['amount'],
+                                'extra' => null,
                             ];
                         }
 
@@ -186,16 +153,16 @@ abstract class CosmosIBCModule extends CoreModule
                         if (is_null($coinbase_data))
                             break;
 
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($coinbase_data['amount']);
-                        if (is_null($ibc_amount))
-                            break; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($coinbase_data['amount']);
+                        if (is_null($tf_amount))
+                            break; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $sub[] = [
-                            'address' => 'the-ibc-channel',
-                            'currency' => $ibc_amount['currency'],
-                            'amount' => $ibc_amount['amount'],
+                            'address' => 'the-void',
+                            'currency' => $tf_amount['currency'],
+                            'amount' => $tf_amount['amount'],
                             'extra' => null,
                         ];
 
@@ -205,17 +172,19 @@ abstract class CosmosIBCModule extends CoreModule
                         $burn_data = $this->parse_burn_event($tx_event['attributes']);
                         if (is_null($burn_data))
                             break;
+                        if (is_null($burn_data['from'])) // In case Sei duplicates 'burn' events
+                            break;
 
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($burn_data['amount']);
-                        if (is_null($ibc_amount))
-                            break; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($burn_data['amount']);
+                        if (is_null($tf_amount))
+                            break; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $add[] = [
-                            'address' => 'the-ibc-channel',
-                            'currency' => $ibc_amount['currency'],
-                            'amount' => $ibc_amount['amount'],
+                            'address' => 'the-void',
+                            'currency' => $tf_amount['currency'],
+                            'amount' => $tf_amount['amount'],
                             'extra' => null,
                         ];
 
@@ -231,18 +200,18 @@ abstract class CosmosIBCModule extends CoreModule
 
                         foreach ($transfer_data['amount'] as $amount)
                         {
-                            $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                            if (is_null($ibc_amount))
-                                continue; // Skip none ibc amounts
+                            $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                            if (is_null($tf_amount))
+                                continue; // Skip none token factory amounts
 
-                            $currencies_to_process[] = $ibc_amount['currency'];
+                            $currencies_to_process[] = $tf_amount['currency'];
 
                             $events[] = [
                                 'transaction' => $tx_hash,
                                 'sort_key' => $sort_key++,
                                 'address' => $transfer_data['from'],
-                                'currency' => $ibc_amount['currency'],
-                                'effect' => '-' . $ibc_amount['amount'],
+                                'currency' => $tf_amount['currency'],
+                                'effect' => '-' . $tf_amount['amount'],
                                 'failed' => $failed,
                                 'extra' => null,
                             ];
@@ -251,8 +220,8 @@ abstract class CosmosIBCModule extends CoreModule
                                 'transaction' => $tx_hash,
                                 'sort_key' => $sort_key++,
                                 'address' => $transfer_data['to'],
-                                'currency' => $ibc_amount['currency'],
-                                'effect' => $ibc_amount['amount'],
+                                'currency' => $tf_amount['currency'],
+                                'effect' => $tf_amount['amount'],
                                 'failed' => $failed,
                                 'extra' => null,
                             ];
@@ -310,16 +279,16 @@ abstract class CosmosIBCModule extends CoreModule
 
                     foreach ($coin_spent_data['amount'] as $amount)
                     {
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                        if (is_null($ibc_amount))
-                            continue; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                        if (is_null($tf_amount))
+                            continue; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $sub[] = [
                             'address' => $coin_spent_data['from'],
-                            'currency' => $ibc_amount['currency'],
-                            'amount' => $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'amount' => $tf_amount['amount'],
                         ];
                     }
 
@@ -332,16 +301,16 @@ abstract class CosmosIBCModule extends CoreModule
 
                     foreach ($coin_received_data['amount'] as $amount)
                     {
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                        if (is_null($ibc_amount))
-                            continue; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                        if (is_null($tf_amount))
+                            continue; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $add[] = [
                             'address' => $coin_received_data['to'],
-                            'currency' => $ibc_amount['currency'],
-                            'amount' => $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'amount' => $tf_amount['amount'],
                         ];
                     }
 
@@ -352,16 +321,16 @@ abstract class CosmosIBCModule extends CoreModule
                     if (is_null($coinbase_data))
                         break;
 
-                    $ibc_amount = $this->denom_amount_to_ibc_amount($coinbase_data['amount']);
-                    if (is_null($ibc_amount))
+                    $tf_amount = $this->denom_amount_to_token_factory_amount($coinbase_data['amount']);
+                    if (is_null($tf_amount))
                         break;
 
-                    $currencies_to_process[] = $ibc_amount['currency'];
+                    $currencies_to_process[] = $tf_amount['currency'];
 
                     $sub[] = [
                         'address' => 'the-void',
-                        'currency' => $ibc_amount['currency'],
-                        'amount' => $ibc_amount['amount'],
+                        'currency' => $tf_amount['currency'],
+                        'amount' => $tf_amount['amount'],
                     ];
 
                     break;
@@ -371,16 +340,16 @@ abstract class CosmosIBCModule extends CoreModule
                     if (is_null($burn_data))
                         break;
 
-                    $ibc_amount = $this->denom_amount_to_ibc_amount($burn_data['amount']);
-                    if (is_null($ibc_amount))
+                    $tf_amount = $this->denom_amount_to_token_factory_amount($burn_data['amount']);
+                    if (is_null($tf_amount))
                         break;
 
-                    $currencies_to_process[] = $ibc_amount['currency'];
+                    $currencies_to_process[] = $tf_amount['currency'];
 
                     $add[] = [
                         'address' => 'the-void',
-                        'currency' => $ibc_amount['currency'],
-                        'amount' => $ibc_amount['amount'],
+                        'currency' => $tf_amount['currency'],
+                        'amount' => $tf_amount['amount'],
                     ];
 
                     break;
@@ -395,18 +364,18 @@ abstract class CosmosIBCModule extends CoreModule
 
                     foreach ($transfer_data['amount'] as $amount)
                     {
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                        if (is_null($ibc_amount))
-                            continue; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                        if (is_null($tf_amount))
+                            continue; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $events[] = [
                             'transaction' => null,
                             'sort_key' => $sort_key++,
                             'address' => $transfer_data['from'],
-                            'currency' => $ibc_amount['currency'],
-                            'effect' => '-' . $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'effect' => '-' . $tf_amount['amount'],
                             'failed' => false,
                             'extra' => null,
                         ];
@@ -415,8 +384,8 @@ abstract class CosmosIBCModule extends CoreModule
                             'transaction' => null,
                             'sort_key' => $sort_key++,
                             'address' => $transfer_data['to'],
-                            'currency' => $ibc_amount['currency'],
-                            'effect' => $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'effect' => $tf_amount['amount'],
                             'failed' => false,
                             'extra' => null,
                         ];
@@ -472,16 +441,16 @@ abstract class CosmosIBCModule extends CoreModule
 
                     foreach ($coin_spent_data['amount'] as $amount)
                     {
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                        if (is_null($ibc_amount))
-                            continue; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                        if (is_null($tf_amount))
+                            continue; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $sub[] = [
                             'address' => $coin_spent_data['from'],
-                            'currency' => $ibc_amount['currency'],
-                            'amount' => $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'amount' => $tf_amount['amount'],
                         ];
                     }
 
@@ -494,16 +463,16 @@ abstract class CosmosIBCModule extends CoreModule
 
                     foreach ($coin_received_data['amount'] as $amount)
                     {
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                        if (is_null($ibc_amount))
-                            continue; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                        if (is_null($tf_amount))
+                            continue; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $add[] = [
                             'address' => $coin_received_data['to'],
-                            'currency' => $ibc_amount['currency'],
-                            'amount' => $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'amount' => $tf_amount['amount'],
                         ];
                     }
 
@@ -514,16 +483,16 @@ abstract class CosmosIBCModule extends CoreModule
                     if (is_null($coinbase_data))
                         break;
 
-                    $ibc_amount = $this->denom_amount_to_ibc_amount($coinbase_data['amount']);
-                    if (is_null($ibc_amount))
+                    $tf_amount = $this->denom_amount_to_token_factory_amount($coinbase_data['amount']);
+                    if (is_null($tf_amount))
                         break;
 
-                    $currencies_to_process[] = $ibc_amount['currency'];
+                    $currencies_to_process[] = $tf_amount['currency'];
 
                     $sub[] = [
                         'address' => 'the-void',
-                        'currency' => $ibc_amount['currency'],
-                        'amount' => $ibc_amount['amount'],
+                        'currency' => $tf_amount['currency'],
+                        'amount' => $tf_amount['amount'],
                     ];
 
                     break;
@@ -533,16 +502,16 @@ abstract class CosmosIBCModule extends CoreModule
                     if (is_null($burn_data))
                         break;
 
-                    $ibc_amount = $this->denom_amount_to_ibc_amount($burn_data['amount']);
-                    if (is_null($ibc_amount))
+                    $tf_amount = $this->denom_amount_to_token_factory_amount($burn_data['amount']);
+                    if (is_null($tf_amount))
                         break;
 
-                    $currencies_to_process[] = $ibc_amount['currency'];
+                    $currencies_to_process[] = $tf_amount['currency'];
 
                     $add[] = [
                         'address' => 'the-void',
-                        'currency' => $ibc_amount['currency'],
-                        'amount' => $ibc_amount['amount'],
+                        'currency' => $tf_amount['currency'],
+                        'amount' => $tf_amount['amount'],
                     ];
 
                     break;
@@ -560,18 +529,18 @@ abstract class CosmosIBCModule extends CoreModule
 
                     foreach ($transfer_data['amount'] as $amount)
                     {
-                        $ibc_amount = $this->denom_amount_to_ibc_amount($amount);
-                        if (is_null($ibc_amount))
-                            continue; // Skip none ibc amounts
+                        $tf_amount = $this->denom_amount_to_token_factory_amount($amount);
+                        if (is_null($tf_amount))
+                            continue; // Skip none token factory amounts
 
-                        $currencies_to_process[] = $ibc_amount['currency'];
+                        $currencies_to_process[] = $tf_amount['currency'];
 
                         $events[] = [
                             'transaction' => null,
                             'sort_key' => $sort_key++,
                             'address' => $transfer_data['from'],
-                            'currency' => $ibc_amount['currency'],
-                            'effect' => '-' . $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'effect' => '-' . $tf_amount['amount'],
                             'failed' => false,
                             'extra' => null,
                         ];
@@ -580,8 +549,8 @@ abstract class CosmosIBCModule extends CoreModule
                             'transaction' => null,
                             'sort_key' => $sort_key++,
                             'address' => $transfer_data['to'],
-                            'currency' => $ibc_amount['currency'],
-                            'effect' => $ibc_amount['amount'],
+                            'currency' => $tf_amount['currency'],
+                            'effect' => $tf_amount['amount'],
                             'failed' => false,
                             'extra' => null,
                         ];
@@ -634,14 +603,10 @@ abstract class CosmosIBCModule extends CoreModule
 
         foreach ($currencies_to_process as $currency)
         {
-            // Not possible to get IBC token info from Tendermint API.
-            $ibc_hash = explode("_", $currency)[1];
-            $denom_trace = requester_single($this->rpc_node, endpoint: "ibc/apps/transfer/v1/denom_traces/{$ibc_hash}", timeout: $this->timeout);
             $currencies[] = [
                 'id' => $currency,
-                'name' => $denom_trace['denom_trace']['base_denom'] ?? '',
-                'description' => $denom_trace['denom_trace']['path'] ?? '',
-                'decimals' => 6, // IBC tokens == native tokens from other cosmos sdk chains
+                'name' => explode('_', $currency)[2],
+                'decimals' => 6, // TokenFactory tokens have same decimals with native tokens
             ];
         }
 
@@ -652,7 +617,7 @@ abstract class CosmosIBCModule extends CoreModule
     // Getting balances from the node
     public function api_get_balance(string $address, array $currencies): array
     {
-        // Input currencies should be in format like this: `{module}/ibc_E92E07E68705FAD13305EE9C73684B30A7B66A52F54C9890327E0A4C0F1D22E3`
+        // Input currencies should be in format like this: `{module}/factory_sei1e3gttzq5e5k49f9f5gzvrl0rltlav65xu6p9xc0aj7e84lantdjqp7cncc_isei`
         $denoms_to_find = [];
         foreach ($currencies as $currency)
         {
