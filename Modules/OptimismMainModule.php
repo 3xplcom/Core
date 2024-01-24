@@ -27,5 +27,28 @@ final class OptimismMainModule extends EVMMainModule implements Module
         {
             return '0';
         };
+
+        // Handles
+        $this->handles_implemented = true;
+        $this->handles_regex = '/(.*)\.box/';
+        $this->api_get_handle = function($handle)
+        {
+            if (!preg_match($this->handles_regex, $handle))
+                return null;
+
+            require_once __DIR__ . '/../Engine/Crypto/Keccak.php';
+
+            $hash = $this->ens_name_to_hash($handle);
+
+            if (is_null($hash) || $hash === '')
+                return null;
+
+            $address = $this->ens_get_data_from_resolver('0xf97aac6c8dbaebcb54ff166d79706e3af7a813c8', $hash, '0x3b3b57de', -40);
+
+            if ($address)
+                return '0x' . $address;
+            else
+                return null;
+        };
     }
 }
