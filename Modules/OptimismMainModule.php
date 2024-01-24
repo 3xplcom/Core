@@ -45,7 +45,7 @@ final class OptimismMainModule extends EVMMainModule implements Module
 
             $address = $this->ens_get_data_from_resolver('0xf97aac6c8dbaebcb54ff166d79706e3af7a813c8', $hash, '0x3b3b57de', -40);
 
-            if ($address)
+            if ($address && $address !== '0000000000000000000000000000000000000000')
                 return '0x' . $address;
             else
                 return null;
