@@ -46,7 +46,7 @@ final class OptimismMainModule extends EVMMainModule implements Module
             $address = $this->ens_get_data_from_resolver('0xf97aac6c8dbaebcb54ff166d79706e3af7a813c8', $hash, '0x3b3b57de', -40);
 
             if ($address === '0000000000000000000000000000000000000000') // try to call ownerOf on .box NFT contract
-                $address = $this->ens_get_data_from_resolver('0xBB7B805B257d7C76CA9435B3ffe780355E4C4B17', $hash, '0x6352211e', -40);
+                $address = $this->ens_get_data_from_resolver('0xbb7b805b257d7c76ca9435b3ffe780355e4c4b17', $hash, '0x6352211e', -40);
 
             if ($address && $address !== '0000000000000000000000000000000000000000')
                 return '0x' . $address;
