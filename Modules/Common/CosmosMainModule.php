@@ -256,6 +256,8 @@ abstract class CosmosMainModule extends CoreModule
                             {
                                 $extra = 'f';
                                 $fee_info['fee_payer'] = $transfer_data['from'];
+                                $fee_event_detected['from'] = true;
+                                $fee_event_detected['to'] = true;
                             }
 
                             $events[] = [
