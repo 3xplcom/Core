@@ -14,7 +14,7 @@ final class SeiEVMERC20Module extends EVMERC20Module implements Module
         $this->blockchain = 'sei-evm';
         $this->module = 'sei-evm-erc-20';
         $this->is_main = false;
-        $this->first_block_date = '2023-12-26'; // This is for the devnet
+        $this->first_block_date = '2024-01-25'; // This is for the devnet
         $this->first_block_id = 0;
     }
 }

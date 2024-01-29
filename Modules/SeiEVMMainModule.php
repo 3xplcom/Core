@@ -14,7 +14,7 @@ final class SeiEVMMainModule extends EVMMainModule implements Module
         $this->blockchain = 'sei-evm';
         $this->module = 'sei-evm-main';
         $this->is_main = true;
-        $this->first_block_date = '2023-12-26'; // This is for the devnet
+        $this->first_block_date = '2024-01-25'; // This is for the devnet
         $this->first_block_id = 0;
         $this->currency = 'sei-evm';
         $this->currency_details = ['name' => 'Sei', 'symbol' => 'SEI', 'decimals' => 18, 'description' => null];

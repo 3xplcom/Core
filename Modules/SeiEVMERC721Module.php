@@ -14,7 +14,7 @@ final class SeiEVMERC721Module extends EVMERC721Module implements Module
         $this->blockchain = 'sei-evm';
         $this->module = 'sei-evm-erc-721';
         $this->is_main = false;
-        $this->first_block_date = '2023-12-26'; // This is for the devnet
+        $this->first_block_date = '2024-01-25'; // This is for the devnet
         $this->first_block_id = 0;
     }
 }
