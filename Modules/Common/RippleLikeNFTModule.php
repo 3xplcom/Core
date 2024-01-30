@@ -29,6 +29,9 @@ abstract class RippleLikeNFTModule extends CoreModule
 
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = true;
+
+    public string $block_entity_name = 'ledger';
+    public string $address_entity_name = 'account';
     
     final public function pre_initialize()
     {
