@@ -116,6 +116,8 @@ enum RippleSpecialTransactions: string
 
     case UNLModify = 'um';
 
+    case EnableAmendment = 'em';
+
     // /** This transactions creates a crosschain sequence number */
     // ttXCHAIN_CREATE_CLAIM_ID = 41,
 
