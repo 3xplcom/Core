@@ -16,7 +16,7 @@ abstract class RippleLikeFTModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = [];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
