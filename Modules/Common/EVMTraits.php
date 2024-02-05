@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Common EVM functions and enums  */
@@ -34,6 +34,7 @@ enum EVMSpecialFeatures
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
     case rskEVM; // Rootstock has different traces and deferred validators rewards (in N+4000 block).
+    case TraceBlockSupport; // Support for `trace_block` in RPC API
 }
 
 trait EVMTraits
