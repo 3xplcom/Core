@@ -647,7 +647,8 @@ abstract class CoreModule
                         throw new DeveloperError("`{$field}` is a part of `currencies_table_fields`, but not present in currency");
 
                 if (str_contains((string)$currency['id'], '/'))
-                    throw new DeveloperError("Currency ids can't contain slashes");
+                    if ($this->currency_format !== CurrencyFormat::UnsafeAlphaNumeric)
+                        throw new DeveloperError("Currency ids can't contain slashes");
             }
         }
     }
