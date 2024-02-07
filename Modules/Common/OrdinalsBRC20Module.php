@@ -121,6 +121,7 @@ abstract class OrdinalsBRC20Module extends CoreModule
         }
         else
         {
+            $this->block_time = $true_block_time;
             $this->set_return_currencies([]);
             $this->set_return_events([]);
             return;
