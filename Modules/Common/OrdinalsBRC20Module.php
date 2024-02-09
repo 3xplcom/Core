@@ -104,9 +104,9 @@ abstract class OrdinalsBRC20Module extends CoreModule
     final public function pre_process_block($block_id)
     {
         $block_hash = $this->block_hash;
-        $block = requester_single($this->btc_nodes[0], endpoint: "/rest/block/notxdetails/{$block_hash}.json", timeout: $this->timeout);
-        $true_block_time = date('Y-m-d H:i:s', (int)$block['time']);
-        $sorted_tx = array_flip($block['tx']);
+        $block_from_node = requester_single($this->btc_nodes[0], endpoint: "/rest/block/notxdetails/{$block_hash}.json", timeout: $this->timeout);
+        $true_block_time = date('Y-m-d H:i:s', (int)$block_from_node['time']);
+        $sorted_tx = array_flip($block_from_node['tx']);
 
         $block = requester_single($this->select_node(),
             endpoint: "/ordinals/v1/brc-20/activity?block_height={$block_id}&limit={$this->limit}",
@@ -114,10 +114,9 @@ abstract class OrdinalsBRC20Module extends CoreModule
 
         if (count($block['results']) != 0)
         {
-            $this->block_time = to_timestamp_from_long_unixtime($block['results'][0]['timestamp']);
-
-            if ($true_block_time !== $this->block_time)
+            if ($block_from_node['hash'] !== $block['results'][0]['block_hash'])
                 throw new ModuleError("Timestamp of btc node and ord indexer doesn't match on block {$this->block_id}");
+            $this->block_time = $true_block_time;
         }
         else
         {
