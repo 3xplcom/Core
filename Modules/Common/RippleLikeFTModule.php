@@ -17,7 +17,7 @@ abstract class RippleLikeFTModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
-    public ?array $special_addresses = [];
+    public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'currency', 'address', 'effect', 'failed', 'extra'];
@@ -432,6 +432,48 @@ abstract class RippleLikeFTModule extends CoreModule
                             ];
                         }
                         break;
+                    }
+                case "Clawback":
+                    {
+                        // https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0039d-clawback#332-example-clawback-transaction
+                        if (isset($tx['meta']['AffectedNodes'])) 
+                        {
+                            $affected_nodes = $tx['meta']['AffectedNodes'];
+                            foreach ($affected_nodes as $id => $affection) 
+                            {
+                                if (isset($affection['ModifiedNode'])) 
+                                {
+                                    if ($affection['ModifiedNode']['LedgerEntryType'] === 'RippleState') 
+                                    {
+                                        $new_fields = $affection['ModifiedNode']['FinalFields']['Balance'];
+                                        $prev_fields = $affection['ModifiedNode']['PreviousFields']['Balance'];
+                                        $issuer = $new_fields['issuer'];
+                                        $currency = $new_fields['currency'];
+                                        $claw_back = bcsub($new_fields['value'], $prev_fields['value']);
+                                        $from_address = $tx['Amount']['issuer'];
+                                        $events[] = [
+                                            'currency' => $currency . '.' . $issuer,
+                                            'transaction' => $tx['hash'],
+                                            'address' => $from_address,
+                                            'sort_key' => $sort_key++,
+                                            'effect' => '-' . $claw_back,
+                                            'failed' => $tx_result,
+                                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                                        ];
+                                        $events[] = [
+                                            'currency' => $currency . '.' . $issuer,
+                                            'transaction' => $tx['hash'],
+                                            'address' => 'the-void',
+                                            'sort_key' => $sort_key++,
+                                            'effect' => $claw_back,
+                                            'failed' => $tx_result,
+                                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                                        ];
+                                        break;
+                                    }
+                                }
+                            }
+                        }
                     }
                 default:
                     break;

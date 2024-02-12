@@ -601,6 +601,7 @@ abstract class RippleLikeMainModule extends CoreModule
                 case 'TrustSet': 
                 case 'UNLModify':
                 case 'EnableAmendment':
+                case 'Clawback':
                    FEES: {
                         $events[] = [
                             'transaction' => $tx['hash'],
