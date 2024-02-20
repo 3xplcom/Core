@@ -275,7 +275,7 @@ abstract class RippleLikeFTModule extends CoreModule
                                 $issuer = $tx['NFTokenBrokerFee']['issuer'];
                                 $flag_assets++;
                             } else {
-                                $broker_fee = $tx['NFTokenBrokerFee'];
+                                // $broker_fee = $tx['NFTokenBrokerFee'];
                             }
                         }
                         if (isset($tx['meta']['AffectedNodes'])) 
@@ -436,6 +436,9 @@ abstract class RippleLikeFTModule extends CoreModule
                 case "Clawback":
                     {
                         // https://github.com/XRPLF/XRPL-Standards/tree/master/XLS-0039d-clawback#332-example-clawback-transaction
+                        // src/ripple/app/tx/impl/Clawback.cpp:55
+                        // In source code we can see that for accounts it's possible to have negative balance
+                        // However, in our realization we have bcsub(NEW, BEFORE) that returns negative in a case when NEW < BEFORE
                         if (isset($tx['meta']['AffectedNodes'])) 
                         {
                             $affected_nodes = $tx['meta']['AffectedNodes'];
@@ -449,7 +452,9 @@ abstract class RippleLikeFTModule extends CoreModule
                                         $prev_fields = $affection['ModifiedNode']['PreviousFields']['Balance'];
                                         $issuer = $new_fields['issuer'];
                                         $currency = $new_fields['currency'];
-                                        $claw_back = bcsub($new_fields['value'], $prev_fields['value']);
+                                        $claw_back = bcsub($this->to_96($new_fields['value']), $this->to_96($prev_fields['value']));
+                                        if($claw_back[0] === '-')
+                                            $claw_back = substr($claw_back, 1);
                                         $from_address = $tx['Amount']['issuer'];
                                         $events[] = [
                                             'currency' => $currency . '.' . $issuer,
@@ -549,6 +554,7 @@ abstract class RippleLikeFTModule extends CoreModule
             return [];
 
         $real_currencies = [];
+        $return = [];
 
         // Input currencies should be in format like this: `ripple-token/{name.ripple-like-address}`
         foreach ($currencies as $c)
@@ -566,30 +572,33 @@ abstract class RippleLikeFTModule extends CoreModule
             ],
             result_in: 'result',
             timeout: $this->timeout
-        )['assets'];
+        );
 
-        $return = [];
-        foreach($real_currencies as $currency) 
+        if(isset($account_currencies['assets']))
         {
-            if(isset($account_currencies[$currency[1]]))
+            $account_currencies = $account_currencies['assets'];
+            foreach($real_currencies as $currency) 
             {
-                $found_asset = false;
-                foreach ($account_currencies[$currency[1]] as $asset)
+                if(isset($account_currencies[$currency[1]]))
                 {
-                    if ($asset["currency"] === $currency[0])
+                    $found_asset = false;
+                    foreach ($account_currencies[$currency[1]] as $asset)
                     {
-                        $found_asset = true;
-                        $return[] = $this->to_96($asset['value']);
+                        if ($asset["currency"] === $currency[0])
+                        {
+                            $found_asset = true;
+                            $return[] = $this->to_96($asset['value']);
+                        }
+                    }
+    
+                    if (!$found_asset)
+                    {
+                        $return[] = '0';
                     }
                 }
-
-                if (!$found_asset)
-                {
+                else {
                     $return[] = '0';
                 }
-            }
-            else {
-                $return[] = '0';
             }
         }
 
