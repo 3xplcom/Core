@@ -158,6 +158,9 @@ trait EVMTraits
 
         $label = idn_to_ascii($label, IDNA_USE_STD3_RULES, INTL_IDNA_VARIANT_UTS46);
 
+        if (!is_string($label))
+            return null;
+
         if (str_contains($label,'.'))
             return null;
 
