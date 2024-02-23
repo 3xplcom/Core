@@ -274,8 +274,6 @@ abstract class RippleLikeFTModule extends CoreModule
                                 $broker_fee = $this->to_96($tx['NFTokenBrokerFee']['value']);
                                 $issuer = $tx['NFTokenBrokerFee']['issuer'];
                                 $flag_assets++;
-                            } else {
-                                // $broker_fee = $tx['NFTokenBrokerFee'];
                             }
                         }
                         if (isset($tx['meta']['AffectedNodes'])) 
@@ -288,7 +286,8 @@ abstract class RippleLikeFTModule extends CoreModule
                                     {
                                         $prev_owner = $affection['DeletedNode']['FinalFields']['Owner'];
                                         $new_owner = $tx['Account'];
-                                        if (is_array($affection['DeletedNode']['FinalFields']['Amount'])) {
+                                        if (is_array($affection['DeletedNode']['FinalFields']['Amount'])) 
+                                        {
                                             if((!is_null($currency) && !is_null($issuer)) && ($currency . '.' . $issuer) !== $affection['DeletedNode']['FinalFields']['Amount']['currency'] . '.' .
                                                              $affection['DeletedNode']['FinalFields']['Amount']['issuer'])
                                             {
@@ -296,8 +295,6 @@ abstract class RippleLikeFTModule extends CoreModule
                                             }
                                             $pay = $this->to_96($affection['DeletedNode']['FinalFields']['Amount']['value']);
                                             $flag_assets++;
-                                        } else {
-                                            // $pay = $affection['DeletedNode']['FinalFields']['Amount']; // it was in main module
                                         }
                                         break;
                                     }
@@ -318,8 +315,6 @@ abstract class RippleLikeFTModule extends CoreModule
                                                 }
                                                 $pay = $this->to_96($affection['DeletedNode']['FinalFields']['Amount']['value']);
                                                 $flag_assets++;
-                                            } else {
-                                                // $pay = $affection['DeletedNode']['FinalFields']['Amount']; // it was in main module
                                             }
                                         }
                                         if ($affection['DeletedNode']['FinalFields']['Flags'] == 1)     // it means that it's NFT sell offer 
@@ -336,8 +331,6 @@ abstract class RippleLikeFTModule extends CoreModule
                                                 }
                                                 $prev_pay = $this->to_96($affection['DeletedNode']['FinalFields']['Amount']['value']);
                                                 $flag_assets++;
-                                            } else {
-                                                // $prev_pay = $affection['DeletedNode']['FinalFields']['Amount']; // it was in main module
                                             }
                                         }
                                     }
