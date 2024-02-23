@@ -60,6 +60,7 @@ abstract class EVMERC721Module extends CoreModule
     {
         // Get logs
 
+        $logs = [];
         if ((!in_array(EVMSpecialFeatures::zkEVM, $this->extra_features)))
         {
             $logs = requester_single($this->select_node(),
@@ -77,39 +78,108 @@ abstract class EVMERC721Module extends CoreModule
         }
         else//if (zkEVM)
         {
-            // We need to get the block range for the batch
-
-            $blocks = requester_single($this->select_node(),
+            if ($block_id !== MEMPOOL)
+            {
+                // We need to get the block range for the batch
+                $blocks = requester_single($this->select_node(),
                 params: ['jsonrpc' => '2.0',
-                         'method'  => 'zkevm_getBatchByNumber',
-                         'params'  => [to_0xhex_from_int64($block_id), true],
-                         'id'      => 0,
+                        'method'  => 'zkevm_getBatchByNumber',
+                        'params'  => [to_0xhex_from_int64($block_id), true],
+                        'id'      => 0,
                 ],
                 result_in: 'result',
                 timeout: $this->timeout);
 
-            if (!$blocks['transactions'])
-            {
-                $logs = [];
-            }
-            else
-            {
-                $first_block = $blocks['transactions'][0]['blockNumber'];
-                $last_block = end($blocks['transactions'])['blockNumber'];
+                if (!$blocks['transactions'])
+                {
+                    $logs = [];
+                }
+                else
+                {
+                    $first_block = $blocks['transactions'][0]['blockNumber'];
+                    $last_block = end($blocks['transactions'])['blockNumber'];
 
-                $logs = requester_single($this->select_node(),
-                    params: ['jsonrpc' => '2.0',
-                             'method'  => 'eth_getLogs',
-                             'params'  =>
-                                 [['fromBlock' => $first_block,
-                                   'toBlock'   => $last_block,
-                                   'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
-                                  ],
-                                 ],
-                             'id'      => 0,
-                    ],
-                    result_in: 'result',
+                    $logs = requester_single($this->select_node(),
+                        params: ['jsonrpc' => '2.0',
+                                'method'  => 'eth_getLogs',
+                                'params'  =>
+                                    [['fromBlock' => $first_block,
+                                    'toBlock'   => $last_block,
+                                    'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+                                    ],
+                                    ],
+                                'id'      => 0,
+                        ],
+                        result_in: 'result',
+                        timeout: $this->timeout);
+                }
+            }
+            else // mempool processing
+            {
+                // For zkEVM, we request two latest numbers: zkevm_virtualBatchNumber which is processed as a "block", and
+                // zkevm_batchNumber which is the latest batch of "trusted state" transactions (see https://zkevm.polygon.technology/faq/zkevm-protocol-faq/)
+                $multi_curl = [];
+
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                        params: ['jsonrpc' => '2.0', 'method' => 'zkevm_virtualBatchNumber', 'id' => 0], timeout: $this->timeout);
+                $multi_curl[] = requester_multi_prepare($this->select_node(),
+                        params: ['jsonrpc' => '2.0', 'method' => 'zkevm_batchNumber', 'id' => 1], timeout: $this->timeout);
+
+                $multi_curl_results = requester_multi($multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
                     timeout: $this->timeout);
+
+                $latest_numbers = requester_multi_process_all($multi_curl_results,
+                    result_in: 'result',
+                    post_process: 'to_int64_from_0xhex');
+
+                $multi_curl = [];
+
+                // Then we resuest all these batches and treat them as "mempool"
+                for ($i = $latest_numbers[0] + 1; $i <= $latest_numbers[1]; $i++)
+                {
+                    $multi_curl[] = requester_multi_prepare($this->select_node(),
+                        params: ['method'  => 'zkevm_getBatchByNumber',
+                                    'params'  => [to_0xhex_from_int64($i),
+                                                true,
+                                    ],
+                                    'id'      => (string)$i,
+                                    'jsonrpc' => '2.0',
+                        ], timeout: $this->timeout);
+                }
+
+                $multi_curl_results = requester_multi($multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
+                    timeout: $this->timeout);
+
+                $pending_batches = requester_multi_process_all($multi_curl_results,
+                    result_in: 'result',
+                    reorder: false);
+
+                foreach ($pending_batches as $pending_batch)
+                {
+                    if ($pending_batch['transactions'])
+                    {
+                        $first_block = $pending_batch['transactions'][0]['blockNumber'];
+                        $last_block = end($pending_batch['transactions'])['blockNumber'];
+
+                        $this_logs = requester_single($this->select_node(),
+                            params: ['jsonrpc' => '2.0',
+                                    'method'  => 'eth_getLogs',
+                                    'params'  =>
+                                        [['fromBlock' => $first_block,
+                                        'toBlock'   => $last_block,
+                                        'topics'    => ['0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'],
+                                        ],
+                                        ],
+                                    'id'      => 0,
+                            ],
+                            result_in: 'result',
+                            timeout: $this->timeout);
+
+                        $logs = array_merge($logs, $this_logs);
+                    }
+                }
             }
         }
 
@@ -239,10 +309,12 @@ abstract class EVMERC721Module extends CoreModule
         // Processing //
         ////////////////
 
+        $this_time = date('Y-m-d H:i:s');
+
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;
-            $event['time'] = $this->block_time;
+            $event['time'] = ($block_id !== MEMPOOL) ? $this->block_time : $this_time;
         }
 
         $this->set_return_events($events);
