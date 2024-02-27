@@ -123,6 +123,24 @@ abstract class StellarLikeMainModule extends CoreModule
                 'failed' => false,
                 'extra' => 'f',
             ];
+
+            $events[] = [
+                'transaction' => $tx['id'],
+                'address' => $tx['source_account'],
+                'sort_key' => $sort_key++,
+                'effect' => '-0',
+                'failed' => false,
+                'extra' => 'f',
+            ];
+
+            $events[] = [
+                'transaction' => $tx['id'],
+                'address' => 'the-void',
+                'sort_key' => $sort_key++,
+                'effect' => '0',
+                'failed' => false,
+                'extra' => 'f',
+            ];
         }
 
         ////////////////
