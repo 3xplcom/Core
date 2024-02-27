@@ -159,6 +159,15 @@ function to_int256_from_hex(?string $value): ?string
     return hex2dec($value);
 }
 
+function to_0x_zeroes_trimmed_address(?string $value): ?string
+{
+    // from 00000000000000000000000014d3065c8eb89895f4df12450ec6b130049f8034
+    // to   0x14d3065c8eb89895f4df12450ec6b130049f8034
+    if (is_null($value)) return null;
+    if (strlen($value) <= 40) return $value;
+    return '0x' . substr($value, -40);
+}
+
 // Reordering JSON-RPC 2.0 response by id
 function reorder_by_id(&$curl_results_prepared)
 {
@@ -182,4 +191,18 @@ function remove_passwords($url)
 {
     $url = parse_url($url);
     return ($url['scheme'] ?? '').'://'.($url['host'] ?? '').($url['path'] ?? '').($url['query'] ?? '');
+}
+
+// Returns standard unixtime
+function to_timestamp_from_long_unixtime(string $long_unixtime): string
+{
+    // 1555400628000
+    return DateTime::createFromFormat('U.u', bcdiv($long_unixtime, '1000', 3))->format("Y-m-d H:i:s");
+}
+
+function remove_0x_safely(string $string): string
+{
+    if (substr($string, 0, 2) !== '0x')
+        throw new DeveloperError("remove_0x_safely({$string}): missing 0x");
+    return substr($string, 2);
 }

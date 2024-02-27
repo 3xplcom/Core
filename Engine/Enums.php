@@ -89,6 +89,7 @@ enum StandardPatterns: string
     case HexWithout0x = '/^[a-f0-9]+$/D';
     case iHexWithout0x = '/^[a-fA-F0-9]+$/D';
     case HexWith0x = '/^0x[a-f0-9]+$/D';
+    case HexWith0x40 = '/^0x[a-f0-9]{40}$/D';
     case iHexWith0x = '/^0x[a-fA-F0-9]+$/D';
     case iHexWith0x40 = '/^0x[a-fA-F0-9]{40}$/D';
     case Date = '/^\d\d\d\d-\d\d-\d\d$/D';

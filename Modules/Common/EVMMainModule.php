@@ -67,7 +67,7 @@ abstract class EVMMainModule extends CoreModule
 
         if (is_null($this->reward_function))
             throw new DeveloperError("`reward_function` is not set (developer error)");
-      
+
         if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
             throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
 
@@ -285,6 +285,9 @@ abstract class EVMMainModule extends CoreModule
                 {
                     foreach ($transactions as $transaction)
                     {
+                        if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                            $transaction = $transaction[0]; // For some reason, there's a different format in RSK
+
                         if (!isset($this->processed_transactions[($transaction['hash'])]))
                         {
                             $transaction_data[($transaction['hash'])] =
@@ -447,9 +450,14 @@ abstract class EVMMainModule extends CoreModule
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
 
+                // In RSK, the fees are collected into a special address and distributed to miners after 4000 confirmations.
+                $fee_recipient = (!in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                    ? $miner
+                    : '0x0000000000000000000000000000000001000008';
+
                 $events[] = [
                     'transaction' => $transaction_hash,
-                    'address' => $miner,
+                    'address' => $fee_recipient,
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 3,
                     'effect' => $this_to_miner,
