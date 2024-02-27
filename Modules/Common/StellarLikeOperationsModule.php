@@ -37,6 +37,8 @@ abstract class StellarLikeOperationsModule extends CoreModule
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = false;
 
+    public string $block_entity_name = 'ledger';
+
     // Blockchain-specific
 
     public ?int $transaction_count = null;
