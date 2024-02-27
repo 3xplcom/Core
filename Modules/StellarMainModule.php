@@ -14,8 +14,8 @@ final class StellarMainModule extends StellarLikeMainModule implements Module
         $this->blockchain = 'stellar';
         $this->module = 'stellar-main';
         $this->is_main = true;
-        $this->currency = 'xlm';
-        $this->currency_details = ['name' => 'XLM', 'symbol' => 'XLM', 'decimals' => 7, 'description' => null];
+        $this->currency = 'stellar';
+        $this->currency_details = ['name' => 'Stellar Lumens', 'symbol' => 'XLM', 'decimals' => 7, 'description' => null];
         $this->first_block_date = '2015-09-30';
         $this->first_block_id = 0;
     }
