@@ -17,7 +17,7 @@ abstract class StellarLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-void'];
+    public ?array $special_addresses = ['the-void', 'operations'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
@@ -58,9 +58,11 @@ abstract class StellarLikeMainModule extends CoreModule
         $events = [];
         $transactions = [];
         $multi_curl = [];
-        $diff_200 = "-819200"; // 200 * (Diff) = 200 * (-4096) = -819200; // it's a string for bcsub(string, string)
+
+        $diff_200 = '-819200'; // 200 * (Diff) = 200 * (-4096) = -819200; // it's a string for bcsub(string, string)
         $paging_token = $this->paging_token;
-        $paging_token = bcadd($paging_token, $diff_200); // for escaping a lot of ifs 
+        $paging_token = bcadd($paging_token, $diff_200); // for escaping a lot of ifs
+
         $tx_path = "ledgers/{$block_id}/transactions?order=asc&limit=%s&include_failed=true&cursor=%s";
 
         for ($i = $this->transaction_count; $i > 0;) 
@@ -144,7 +146,7 @@ abstract class StellarLikeMainModule extends CoreModule
 
             $events[] = [
                 'transaction' => $tx['id'],
-                'address' => 'the-void',
+                'address' => 'operations',
                 'sort_key' => $sort_key++,
                 'effect' => '0',
                 'failed' => false,
