@@ -721,50 +721,13 @@ abstract class StellarLikeOperationsModule extends CoreModule
     private function get_operations($paging_token, $count, $block_id) 
     {
         $transactions = [];
-        $diff_200 = (string)-819200; // 200 * (Diff) = 200 * (-4096) = -819200;
-        $paging_token = bcadd($paging_token, $diff_200); // for escaping a lot of ifs 
-        $tx_path = "ledgers/{$block_id}/transactions?order=asc&limit=%s&include_failed=true&cursor=%s";
-        $operation_path = "transactions/%s/operations?order=asc&limit=%s&include_failed=true&cursor=%s";
         $operations = [];
-        for ($i = $count; $i > 0;) 
-        {
-            $limit = 200;
-            if ($limit < $i) 
-            {
-                $i -= $limit;
-                $paging_token = bcsub($paging_token, $diff_200);
-            } else {
-                $limit = $i;
-                $i = 0;
-                $diff_limit = (string)($limit * (-4096));
-                $paging_token = bcsub($paging_token, $diff_limit);
-            }
-            $path_formed = sprintf($tx_path, $limit, $paging_token);
-            $multi_curl[] = requester_multi_prepare(
-                $this->select_node(),
-                endpoint: $path_formed,
-                timeout: $this->timeout
-            );
-        }
-        try
-        {
-            $curl_results = requester_multi($multi_curl, limit: count($this->nodes), timeout: $this->timeout);
-        }
-        catch (RequesterException $e)
-        {
-            throw new RequesterException("ensure_block(block_id: {$block_id}): no connection, previously: " . $e->getMessage());
-        }
-        foreach ($curl_results as $v)
-                $transactions = array_merge($transactions, requester_multi_process($v, ignore_errors: true)['_embedded']['records']);
+        $operation_path = "transactions/%s/operations?order=asc&limit=%s&include_failed=true&cursor=%s";
 
-        // here we are not sure that paging_token was lost somewhere
-        if($this->transaction_count != count($transactions)) 
-        {
-            unset($transactions);
-            $transactions = $this->get_data_with_cursor(
-                $this->select_node() . "ledgers/{$block_id}/transactions?order=desc&limit=%s&include_failed=true&cursor=%s", 
-                $this->transaction_count);
-        }
+        $transactions = $this->get_data_with_cursor(
+            $this->select_node() . "ledgers/{$block_id}/transactions?order=desc&limit=%s&include_failed=true&cursor=%s",
+            $this->transaction_count
+        );
 
         $operations_mc = [];
         $operation_results = [];
