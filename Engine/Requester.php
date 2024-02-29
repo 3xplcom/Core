@@ -285,7 +285,8 @@ function requester_multi_process($output, $result_in = '', $ignore_errors = fals
         $output = preg_replace('/("\w+"):(-?[\d.]+)/', '\\1:"\\2"', $output);
 
     if (!($output = json_decode($output, associative: true, depth: 4096, flags: JSON_BIGINT_AS_STRING)))
-        throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: bad JSON");
+        if (!in_array(RequesterOption::IgnoreFalseResponse, $flags))
+            throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) failed: bad JSON");
 
     if (isset($output['error']) && !$ignore_errors)
         throw new RequesterException("requester_multi_process(output:({$output_log}), result_in:({$result_in})) errored: " . print_r($output['error'], true));
@@ -346,4 +347,5 @@ enum RequesterOption
     case IgnoreAddingQuotesToNumbers;
     case TrimJSON;
     case RecheckUTF8;
+    case IgnoreFalseResponse;
 }
