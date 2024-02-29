@@ -298,11 +298,11 @@ abstract class UTXOFCTModule extends CoreModule
 
             foreach ($multi_curl_results as $result)
             {
-                $result = requester_multi_process($result, ignore_errors: true, flags: [RequesterOption::TrimJSON, RequesterOption::IgnoreFalseResponse]);
+                $result = requester_multi_process($result, ignore_errors: true, flags: [RequesterOption::TrimJSON]);
 
-                if (!$result || isset($result['error']))
+                if (isset($result['error']))
                 {
-                    if (!$result || $result['error'] === 'no valid metadata found')
+                    if ($result['error'] === 'no valid metadata found')
                     {
                         //
                     }
