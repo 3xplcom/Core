@@ -50,6 +50,7 @@ enum CurrencyFormat: string
                             // Bitcoin is the only currency
     case Numeric = 'Numeric'; // Currency identifiers are numbers (e.g. Omni layer)
     case AlphaNumeric = 'AlphaNumeric';
+    case UnsafeAlphaNumeric = 'UnsafeAlphaNumeric'; // This is for cases when currency ids may contain special characters such as `/`
     case HexWithout0x = 'HexWithout0x';
     case HexWith0x = 'HexWith0x'; // E.g. ERC-20 currency identifiers are their contract addresses
 }
