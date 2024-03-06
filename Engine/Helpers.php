@@ -190,7 +190,9 @@ function delete_array_values(array $arr, array $remove): array // https://stacko
 function remove_passwords($url)
 {
     $url = parse_url($url);
-    return ($url['scheme'] ?? '').'://'.($url['host'] ?? '').($url['path'] ?? '').($url['query'] ?? '');
+    $this_port = (isset($url['port'])) ? ':' . $url['port'] : '';
+
+    return ($url['scheme'] ?? '') . '://' . ($url['host'] ?? '') . $this_port . ($url['path'] ?? '') . ($url['query'] ?? '');
 }
 
 // Returns standard unixtime
