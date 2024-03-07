@@ -171,6 +171,14 @@ abstract class BeaconChainLikePenaltiesModule extends CoreModule
             }
         }
 
+        usort($proposers_slashing, function ($a, $b) {
+            return (strcmp($a[1], $b[1]));
+        });
+
+        usort($attestors_slashing, function ($a, $b) {
+            return (strcmp($a[1], $b[1]));
+        });
+
         $this->get_epoch_time($block, $slots);
 
         foreach ($slots as $slot => $tm)
