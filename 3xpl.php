@@ -101,6 +101,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
     ', Check handle ' . cli_format_reverse('<H>') .
     ', Run tests ' . cli_format_reverse('<T>') .
+    ', Transaction extras ' . cli_format_reverse('<AT>') .
     N;
 
 if (isset($argv[2]))
@@ -115,7 +116,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -471,4 +472,23 @@ elseif ($chosen_option === 'H') // Checking handles
     }
 
     ddd(($module->api_get_handle)($handle));
+}
+elseif ($chosen_option === 'AT') // Transaction extras
+{
+    echo cli_format_bold('Transaction id please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $transaction = $argv[3];
+        echo ":> {$transaction}\n\n";
+    }
+    else
+    {
+        $transaction = readline(':> ');
+    }
+
+    if (!method_exists($module, 'api_get_transaction_extra'))
+        ddd('This function is undefined');
+    else
+        ddd($module->api_get_transaction_extra($transaction));
 }

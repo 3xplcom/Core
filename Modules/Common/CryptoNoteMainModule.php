@@ -245,4 +245,19 @@ abstract class CryptoNoteMainModule extends CoreModule
 
         $this->set_return_events($events);
     }
+
+    final public function api_get_transaction_extra($transaction)
+    {
+        $transaction = requester_single($this->select_node(),
+            endpoint: 'api/transaction/' . $transaction,
+            timeout: $this->timeout,
+            result_in: 'data');
+
+        return [
+            ['field' => 'Transaction size', 'units' => 'bytes', 'type' => 'integer', 'value' => (int)$transaction['tx_size']],
+            ['field' => 'Is coinbase?', 'units' => null, 'type' => 'boolean', 'value' => $transaction['coinbase']],
+            ['field' => 'Version', 'units' => null, 'type' => 'integer', 'value' => (int)$transaction['tx_version']],
+            ['field' => 'Extra', 'units' => null, 'type' => 'string', 'value' => $transaction['extra']],
+        ];
+    }
 }
