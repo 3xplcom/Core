@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Various useful functions  */
@@ -207,4 +207,19 @@ function remove_0x_safely(string $string): string
     if (substr($string, 0, 2) !== '0x')
         throw new DeveloperError("remove_0x_safely({$string}): missing 0x");
     return substr($string, 2);
+}
+
+final class Specials
+{
+    public array $specials = [];
+
+    public function add(string $key, string $field, ?SpecialUnit $unit, SpecialType $type, mixed $value): void
+    {
+        $this->specials[$key] = ['field' => $field, 'unit' => ((isset($unit)) ? $unit->value : null), 'type' => $type->value, 'value' => $value];
+    }
+
+    public function return(): array
+    {
+        return $this->specials;
+    }
 }

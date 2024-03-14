@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This utility should be used to debug the modules.
@@ -473,7 +473,7 @@ elseif ($chosen_option === 'H') // Checking handles
 
     ddd(($module->api_get_handle)($handle));
 }
-elseif ($chosen_option === 'AT') // Transaction extras
+elseif ($chosen_option === 'AT') // Transaction specials
 {
     echo cli_format_bold('Transaction id please...') . N;
 
@@ -487,8 +487,8 @@ elseif ($chosen_option === 'AT') // Transaction extras
         $transaction = readline(':> ');
     }
 
-    if (!method_exists($module, 'api_get_transaction_extra'))
+    if (!method_exists($module, 'api_get_transaction_specials'))
         ddd('This function is undefined');
     else
-        ddd($module->api_get_transaction_extra($transaction));
+        ddd($module->api_get_transaction_specials($transaction));
 }

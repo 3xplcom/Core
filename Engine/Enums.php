@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  These enums describe variations of different formats used by the engine  */
@@ -107,9 +107,26 @@ enum ExtraDataModel: string
     case None = 'Zilch'; // There's no extra data for the module
 }
 
+// Privacy models
 enum PrivacyModel
 {
     case Transparent; // Every event has a known value
     case Mixed; // Any value is acceptable, including `-?` and `+?`
     case Shielded; // The only allowed values are `-?` and `+?`
+}
+
+// Data types for additional data returned from nodes
+enum SpecialUnit: string
+{
+    case Bytes = 'bytes';
+    case NativeTokens = 'native tokens';
+    case NativeTokensPerByte = 'native tokens per byte';
+}
+
+enum SpecialType: string
+{
+    case Integer = 'integer';
+    case Float = 'float';
+    case String = 'string';
+    case Boolean = 'boolean';
 }

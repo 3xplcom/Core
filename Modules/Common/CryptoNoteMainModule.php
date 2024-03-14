@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is a parser for Monero-like blockchains. It requires `moneroexamples/onion-monero-blockchain-explorer` as a node to
@@ -246,18 +246,21 @@ abstract class CryptoNoteMainModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    final public function api_get_transaction_extra($transaction)
+    final public function api_get_transaction_specials($transaction)
     {
         $transaction = requester_single($this->select_node(),
             endpoint: 'api/transaction/' . $transaction,
             timeout: $this->timeout,
             result_in: 'data');
 
-        return [
-            ['field' => 'Transaction size', 'units' => 'bytes', 'type' => 'integer', 'value' => (int)$transaction['tx_size']],
-            ['field' => 'Is coinbase?', 'units' => null, 'type' => 'boolean', 'value' => $transaction['coinbase']],
-            ['field' => 'Version', 'units' => null, 'type' => 'integer', 'value' => (int)$transaction['tx_version']],
-            ['field' => 'Extra', 'units' => null, 'type' => 'string', 'value' => $transaction['extra']],
-        ];
+        $specials = new Specials();
+        $specials->add('transaction_size', 'Transaction size', SpecialUnit::Bytes, SpecialType::Integer, (int)$transaction['tx_size']);
+        $specials->add('is_coinbase', 'Is coinbase?', null, SpecialType::Boolean, $transaction['coinbase']);
+        $specials->add('version', 'Version', null, SpecialType::Integer, (int)$transaction['tx_version']);
+        $specials->add('extra', 'Extra', null, SpecialType::String, $transaction['extra']);
+        $specials->add('fee', 'Fee', SpecialUnit::NativeTokens, SpecialType::Integer, (int)$transaction['tx_fee']);
+        $specials->add('fee_per_byte', 'Fee', SpecialUnit::NativeTokensPerByte, SpecialType::Float, (int)$transaction['tx_fee'] / (int)$transaction['tx_size']);
+
+        return $specials->return();
     }
 }
