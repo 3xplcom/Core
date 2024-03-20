@@ -36,6 +36,10 @@ abstract class UTXOMainModule extends CoreModule
     public ?string $p2pk_prefix1 = null;
     public ?string $p2pk_prefix2 = null;
 
+    // Liquid-specific
+
+    public ?string $native_asset = null;
+
     //
 
     final public function pre_initialize()
@@ -52,6 +56,15 @@ abstract class UTXOMainModule extends CoreModule
             $this->special_addresses[] = 'hogwarts';
         if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features))
             $this->special_addresses[] = '*-pool';
+
+        if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+        {
+            $this->special_addresses[] = 'bitcoin';
+            if (is_null($this->native_asset))
+                throw new DeveloperError("Native asset is not set for Liquid Bitcoin");
+            if ($this->privacy_model !== PrivacyModel::Mixed)
+                throw new DeveloperError("Invalid privacy model for Liquid Bitcoin (need Mixed)");
+        }
     }
 
     final public function pre_process_block($block_id)
@@ -131,6 +144,12 @@ abstract class UTXOMainModule extends CoreModule
 
             foreach ($transaction['vout'] as $output)
             {
+                if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+                {
+                    $asset = $output['asset'] ?? $this->native_asset;
+                    if ($asset !== $this->native_asset)
+                        continue; // Skip not native assets
+                }
                 if (in_array(UTXOSpecialFeatures::HasMWEB, $this->extra_features))
                 {
                     if ($this->block_id === MEMPOOL && !isset($output['scriptPubKey']) && isset($transaction['vkern']))
@@ -179,11 +198,29 @@ abstract class UTXOMainModule extends CoreModule
                     if (in_array($output['scriptPubKey']['type'], ['witness_mweb_hogaddr', 'witness_mweb_pegin']))
                         $address = 'hogwarts';
 
-                $events[] = ['transaction' => $transaction['txid'],
-                             'address'     => $address,
-                             'effect'      => satoshi($output['value'], $this),
-                             'sort_in_transaction' => ((int)$output['n'] + 1)
-                ];
+                if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+                {
+                    $effect = isset($output['value']) ? satoshi($output['value'], $this) : '+?';
+                    $type = $output['scriptPubKey']['type'] ?? '';
+                    if ($type !== 'fee') // Skip additional event for fee out
+                    {
+                        $events[] = [
+                            'transaction' => $transaction['txid'],
+                            'address'     => $address,
+                            'effect'      => $effect,
+                            'sort_in_transaction' => ((int)$output['n'] + 1)
+                        ];
+                    }
+                }
+                else
+                {
+                    $events[] = [
+                        'transaction' => $transaction['txid'],
+                        'address'     => $address,
+                        'effect'      => satoshi($output['value'], $this),
+                        'sort_in_transaction' => ((int)$output['n'] + 1)
+                    ];
+                }
 
                 if ($this_is_coinbase)
                 {
@@ -191,7 +228,16 @@ abstract class UTXOMainModule extends CoreModule
                 }
                 else
                 {
-                    $fees[($transaction['txid'])] = bcsub($fees[($transaction['txid'])], satoshi($output['value'], $this));
+                    if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+                    {
+                        $type = $output['scriptPubKey']['type'] ?? '';
+                        if ($type === 'fee')
+                            $fees[($transaction['txid'])] = satoshi($output['value'], $this);
+                    }
+                    else
+                    {
+                        $fees[($transaction['txid'])] = bcsub($fees[($transaction['txid'])], satoshi($output['value'], $this));
+                    }
                 }
             }
 
@@ -283,6 +329,32 @@ abstract class UTXOMainModule extends CoreModule
                 }
                 else
                 {
+                    // In LiquidBitcoin we cant get the previous tx vouts for pegin txs
+                    if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+                    {
+                        $is_pegin = $input['is_pegin'] ?? false;
+                        if ($is_pegin == true)
+                        {
+                            // Calculate exact amount from bitcoin
+                            $value = '0';
+                            foreach ($transaction['vout'] as $out)
+                            {
+                                $type = $out['scriptPubKey']['type'] ?? '';
+                                if ($type !== 'fee')
+                                    $value = bcadd($value, satoshi($out['value'], $this));
+                            }
+
+                            // Set event for pegin and skip check for this input
+                            $events[] = [
+                                'transaction'         => $transaction['txid'],
+                                'address'             => 'bitcoin',
+                                'effect'              => '-' . $value,
+                                'sort_in_transaction' => -1,
+                            ];
+                            continue;
+                        }
+                    }
+
                     if (!isset($previous_outputs_lib[($input['txid'])]))
                     {
                         $populate_outputs_lib_with[] = $input['txid'];
@@ -338,6 +410,13 @@ abstract class UTXOMainModule extends CoreModule
             {
                 $previous_output = $previous_outputs_lib[($input['previous_transaction'])];
 
+                if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+                {
+                    $asset = $output['asset'] ?? $this->native_asset;
+                    if ($asset !== $this->native_asset)
+                        continue; // Skip sends not native assets
+                }
+
                 if (!in_array(UTXOSpecialFeatures::OneAddressInScriptPubKey, $this->extra_features))
                 {
                     if (isset($previous_output[($input['previous_n'])]['scriptPubKey']['addresses'][0]) && count($previous_output[($input['previous_n'])]['scriptPubKey']['addresses']) === 1)
@@ -376,9 +455,19 @@ abstract class UTXOMainModule extends CoreModule
                     if (str_contains($address, ':'))
                         $address = explode(':', $address)[1];
 
+                if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $this->extra_features))
+                {
+                    $effect = isset($previous_output[($input['previous_n'])]['value']) ? satoshi($previous_output[($input['previous_n'])]['value'], $this) : '?';
+                    $previous_output[($input['previous_n'])]['value'] = $previous_output[($input['previous_n'])]['value'] ?? '0.00000000';
+                }
+                else
+                {
+                    $effect = satoshi($previous_output[($input['previous_n'])]['value'], $this);
+                }
+
                 $events[] = ['transaction' => $input['this_transaction'],
                              'address'     => $address,
-                             'effect'      => "-" . satoshi($previous_output[($input['previous_n'])]['value'], $this),
+                             'effect'      => "-" . $effect,
                              'sort_in_transaction' => (int)$input['this_n'],
                 ];
 
