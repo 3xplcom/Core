@@ -70,7 +70,6 @@ enum UTXOSpecialFeatures
     case HasShieldedPools; // Shielded pool processing in Zcash
     case Not8Decimals; // There's a "non-standard" number of decimals, i.e. not 8; e.g. Peercoin
     case OneAddressInScriptPubKey; // There's no "addresses" array in scriptPubKey
-    case LiquidBitcoin; // Liquid has anonymous amount/assets by default and pegin transactions
     case ManualCashAddress; // eCash doesn't output CashAddress format addresses for P2PK scripts
 }
 
@@ -171,8 +170,6 @@ function satoshi(string $value, CoreModule|false $module = false): string
 {
     if ($module === false || !in_array(UTXOSpecialFeatures::Not8Decimals, $module->extra_features))
     {
-        if (in_array(UTXOSpecialFeatures::LiquidBitcoin, $module->extra_features) && $value === '?')
-            return $value;
         if ($value === '0.00000000') return '0';
         if (strlen(explode('.', $value)[1]) !== 8) throw new ModuleError("satoshi(value: ({$value})): incorrect value");
         return ltrim(str_replace('.', '', $value), '0');
