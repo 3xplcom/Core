@@ -24,7 +24,7 @@ abstract class UTXOLiquidModule extends CoreModule
     public ?array $events_table_nullable_fields = ['currency', 'extra', 'extra_indexed'];
 
     public ?array $currencies_table_fields = ['id', 'name', 'symbol', 'decimals'];
-    public ?array $currencies_table_nullable_fields = [];
+    public ?array $currencies_table_nullable_fields = ['name', 'symbol'];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = true;
@@ -359,12 +359,12 @@ abstract class UTXOLiquidModule extends CoreModule
             }
             catch (RequesterException $e)
             {
-                // For unknown assets returns HTML page with 404 code
+                // For unknown assets the registry returns an HTML page with 404 code
                 if (str_contains($e->getMessage(), 'bad JSON'))
                     $meta = [
-                        'name'      => 'unknown',
-                        'ticker'    => 'unknown',
-                        'precision'  => 0,
+                        'name'      => null,
+                        'ticker'    => null,
+                        'precision' => 0,
                     ];
                 else
                     throw $e;
@@ -372,8 +372,8 @@ abstract class UTXOLiquidModule extends CoreModule
 
             $currencies[] = [
                 'id'    => $currency,
-                'name'      => $meta['name'] ?? '',
-                'symbol'    => $meta['ticker'] ?? '',
+                'name'      => $meta['name'] ?? null,
+                'symbol'    => $meta['ticker'] ?? null,
                 'decimals'  => $meta['precision'] ?? 0,
             ];
         }
