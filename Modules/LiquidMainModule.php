@@ -12,8 +12,8 @@ final class LiquidMainModule extends UTXOLiquidModule implements Module
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'liquid';
-        $this->module = 'liquid-main';
+        $this->blockchain = 'liquid-network';
+        $this->module = 'liquid-network-main';
         $this->is_main = true;
         $this->first_block_date = '2018-09-27';
 
