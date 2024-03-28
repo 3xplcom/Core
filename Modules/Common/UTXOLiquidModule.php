@@ -1,10 +1,10 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module process UTXO Assets (including L-BTC) transfers for Liquid Blockchain.  */
+/*  This module processes UTXO Assets (including L-BTC) transfers for Liquid Blockchain.  */
 
 abstract class UTXOLiquidModule extends CoreModule
 {
@@ -17,14 +17,9 @@ abstract class UTXOLiquidModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::HexWithout0x;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
-    // the-void is for coinbase/fee events
-    // bitcoin is for pegin/pegout events
-    public ?array $special_addresses = ['the-void', 'bitcoin'];
+    public ?array $special_addresses = ['the-void', 'the-bridge']; // `the-void` is for coinbase/fee events, `the-bridge` is for pegin/pegout events
     public ?PrivacyModel $privacy_model = PrivacyModel::Mixed;
 
-    // extra_indexed fields:
-    // 1. For Peg-in transactions contains the tx hash from bitcoin.
-    // 2. For Peg-out transactions contains the receiver bitcoin address.
     public ?array $events_table_fields = ['block', 'transaction', 'currency', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
     public ?array $events_table_nullable_fields = ['currency', 'extra', 'extra_indexed'];
 
@@ -36,8 +31,7 @@ abstract class UTXOLiquidModule extends CoreModule
     public ?bool $allow_empty_return_events = true;
     public ?bool $allow_empty_return_currencies = true;
 
-    // Cause of PrivacyModel::Mixed
-    public ?bool $ignore_sum_of_all_effects = true;
+    public ?bool $ignore_sum_of_all_effects = true; // PrivacyModel::Mixed
 
     public ?bool $mempool_implemented = true;
     public ?bool $forking_implemented = true;
@@ -69,8 +63,10 @@ abstract class UTXOLiquidModule extends CoreModule
     {
         if (is_null($this->native_asset))
             throw new DeveloperError("Native asset is not set");
+
         if (is_null($this->native_asset_meta))
             throw new DeveloperError("Native asset meta is not set");
+
         $this->asset_registry = envm(
             $this->module,
             'ASSETS_REGISTRY',
@@ -150,6 +146,7 @@ abstract class UTXOLiquidModule extends CoreModule
                     $address = 'script-' . substr(hash('sha256', $output['scriptPubKey']['hex']), 0, 32);
 
                 $extra = $extra_indexed = null;
+
                 if (isset($output['scriptPubKey']['pegout_address']))
                 {
                     $extra = 'po';
@@ -163,12 +160,15 @@ abstract class UTXOLiquidModule extends CoreModule
                 if ($type === 'fee') // Skip additional event for fee out
                 {
                     if (is_null($asset))
-                        throw new ModuleError("Null asset for fee output type");
+                        throw new ModuleError('Null asset for fee output type');
+
                     $fees[($transaction['txid'])]['amount'] = satoshi($output['value'], $this);
                     $fees[($transaction['txid'])]['currency'] = $asset;
                 }
                 else
                 {
+                    $address = ($extra === 'po') ? 'the-bridge' : $address;
+
                     $events[] = [
                         'transaction' => $transaction['txid'],
                         'currency'    => $asset,
@@ -198,6 +198,7 @@ abstract class UTXOLiquidModule extends CoreModule
         foreach ($block['tx'] as $transaction)
         {
             $this_n = 1;
+
             foreach ($transaction['vin'] as $input)
             {
                 if (isset($input['coinbase']))
@@ -217,14 +218,15 @@ abstract class UTXOLiquidModule extends CoreModule
                 else
                 {
                     // In LiquidBitcoin we cant get the previous tx vouts for pegin txs
-                    $is_pegin = $input['is_pegin'] ?? false;
-                    if ($is_pegin == true)
+                    if ($input['is_pegin'])
                     {
                         // Calculate exact amount from bitcoin
                         $value = '0';
+
                         foreach ($transaction['vout'] as $out)
                         {
                             $type = $out['scriptPubKey']['type'] ?? '';
+
                             if ($type !== 'fee')
                                 $value = bcadd($value, satoshi($out['value'], $this));
                         }
@@ -233,12 +235,13 @@ abstract class UTXOLiquidModule extends CoreModule
                         $events[] = [
                             'transaction'         => $transaction['txid'],
                             'currency'            => $this->native_asset,
-                            'address'             => 'bitcoin',
+                            'address'             => 'the-bridge',
                             'effect'              => '-' . $value,
                             'sort_in_transaction' => -1,
                             'extra' => 'pi',
                             'extra_indexed' => $input['txid'],
                         ];
+
                         $currencies_to_process[] = $this->native_asset;
                         continue;
                     }
@@ -254,6 +257,7 @@ abstract class UTXOLiquidModule extends CoreModule
                         'previous_transaction' => $input['txid'],
                         'previous_n'           => $input['vout'],
                         'this_n'               => -$this_n,
+                        'asset'                => $input['asset'] ?? null,
                     ];
 
                     $this_n++;
@@ -305,8 +309,9 @@ abstract class UTXOLiquidModule extends CoreModule
             else
                 $address = 'script-' . substr(hash('sha256', $previous_output[($input['previous_n'])]['scriptPubKey']['hex']), 0, 32);
 
-            $asset = $previous_output[($input['previous_n'])]['asset'] ?? $this->native_asset;
+            $asset = $previous_output[($input['previous_n'])]['asset'] ?? null;
             $effect = isset($previous_output[($input['previous_n'])]['value']) ? satoshi($previous_output[($input['previous_n'])]['value'], $this) : '?';
+
             $events[] = [
                 'transaction' => $input['this_transaction'],
                 'currency'    => $asset,
@@ -317,7 +322,8 @@ abstract class UTXOLiquidModule extends CoreModule
                 'extra_indexed' => null,
             ];
 
-            $currencies_to_process[] = $asset;
+            if (!is_null($asset))
+                $currencies_to_process[] = $asset;
         }
 
         foreach ($fees as $txid => $fee_transfer)
@@ -395,6 +401,7 @@ abstract class UTXOLiquidModule extends CoreModule
 
         $sort_key = 0;
         $latest_tx_hash = ''; // This is for mempool
+
         foreach ($events as &$event)
         {
             if ($this->block_id === MEMPOOL && $event['transaction'] !== $latest_tx_hash)
