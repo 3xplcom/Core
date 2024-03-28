@@ -7,7 +7,7 @@
 /*  This is the Liquid Bitcoin module.
  *  Using AssetRegistry: https://docs.liquid.net/docs/blockstream-liquid-asset-registry  */
 
-final class LiquidMainModule extends UTXOLiquidModule implements Module
+final class LiquidNetworkMainModule extends UTXOLiquidModule implements Module
 {
     function initialize()
     {
