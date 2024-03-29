@@ -227,6 +227,9 @@ abstract class UTXOLiquidModule extends CoreModule
                         {
                             $type = $out['scriptPubKey']['type'] ?? '';
 
+                            if (!isset($out['value'])) // Example: fd36f216be666d43ec861feb756b1c5f48fb54f98bfeed25e5367b05cccc96e8
+                                continue;
+
                             if ($type !== 'fee')
                                 $value = bcadd($value, satoshi($out['value'], $this));
                         }
