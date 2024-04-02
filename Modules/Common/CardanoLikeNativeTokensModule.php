@@ -387,4 +387,16 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
         $this->set_return_currencies($currencies);
     }
+
+    function api_get_currency_supply(string $currency): string
+    {
+        $this->db_connect();
+
+        $query = pg_query_params($this->db,
+            "SELECT SUM(ma_tx_mint.quantity::numeric) AS supply FROM ma_tx_mint 
+          WHERE ma_tx_mint.ident = (SELECT multi_asset.id FROM multi_asset WHERE fingerprint = $1)",
+            array($currency)
+        );
+        return pg_fetch_assoc($query)['supply'] ?? '0';
+    }
 }
