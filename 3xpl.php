@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This utility should be used to debug the modules.
@@ -101,6 +101,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
     ', Check handle ' . cli_format_reverse('<H>') .
     ', Run tests ' . cli_format_reverse('<T>') .
+    ', Currency supply ' . cli_format_reverse('<CS>') .
     N;
 
 if (isset($argv[2]))
@@ -115,7 +116,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'CS']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -471,4 +472,20 @@ elseif ($chosen_option === 'H') // Checking handles
     }
 
     ddd(($module->api_get_handle)($handle));
+}
+elseif ($chosen_option === 'CS') // Currency supply
+{
+    echo cli_format_bold('Currency please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $currency = $argv[3];
+        echo ":> {$currency}\n";
+    }
+    else
+    {
+        $currency = readline(':> ');
+    }
+
+    ddd($module->api_get_currency_supply($currency));
 }
