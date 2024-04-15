@@ -107,6 +107,7 @@ enum ExtraDataModel: string
     case None = 'Zilch'; // There's no extra data for the module
 }
 
+// Whether amounts are visible on chain or not
 enum PrivacyModel
 {
     case Transparent; // Every event has a known value
@@ -114,7 +115,7 @@ enum PrivacyModel
     case Shielded; // The only allowed values are `-?` and `+?`
 }
 
-// This is for
+// This is for modules where `extra_indexed` is specified: here we can chose which entity it directs to
 enum SearchableEntity: string
 {
     case Block = 'block';
