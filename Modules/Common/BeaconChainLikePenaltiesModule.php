@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes various penalties happening on the Beacon Chain.
@@ -20,6 +20,7 @@ abstract class BeaconChainLikePenaltiesModule extends CoreModule
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
     public ?array $events_table_nullable_fields = ['extra_indexed'];
+    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Address;
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
