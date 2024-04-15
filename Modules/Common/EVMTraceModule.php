@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes "internal" EVM transactions (this requires tracing). Both Erigon and geth are supported.  */
@@ -50,7 +50,7 @@ abstract class EVMTraceModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
-        if ($this->evm_implementation === EVMImplementation::geth)
+        if ($this->evm_implementation === EVMImplementation::geth && !in_array(EVMSpecialFeatures::TraceBlockSupport, $this->extra_features))
         {
             // We have to make two requests: `eth_getBlockByNumber` just to get transaction hashes, and
             // `debug_traceBlockByNumber` to get the actual traces. That's because `callTracer` doesn't
@@ -178,7 +178,7 @@ abstract class EVMTraceModule extends CoreModule
                 }
             }
         }
-        else//if ($this->evm_implementation === EVMImplementation::Erigon)
+        else//if ($this->evm_implementation === EVMImplementation::Erigon) // or if (EVMSpecialFeatures::TraceBlockSupport)
         {
             $trace = requester_single($this->select_node(),
                 params: ['jsonrpc' => '2.0',

@@ -384,7 +384,8 @@ abstract class EVMERC1155Module extends CoreModule
 
             foreach ($result as $bit)
             {
-                $return[] = to_int256_from_0xhex($bit['result'] ?? null);
+                $val = isset($bit['result']) ? substr($bit['result'],0,66): null;
+                $return[] = to_int256_from_0xhex($val);
             }
         }
 

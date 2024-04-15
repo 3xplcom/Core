@@ -15,6 +15,7 @@ class ModuleError extends Error {} // This should be used by module developers i
 
 class RequesterException extends Exception {} // Curl errors
 class RequesterEmptyResponseException extends RequesterException {} // This can be caught if an empty response is considered to be a valid response
+class RequesterEmptyArrayInResponseException extends RequesterException {} // This can be caught if an empty array response is considered to be a valid response
 class MathException extends Exception {} // This is for math exceptions
 class ConsensusException extends Exception {} // This is a special exception that should be used in ensure_block() in case
 // if different nodes return different block data

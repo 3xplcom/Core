@@ -157,8 +157,8 @@ abstract class CoreModule
 
         // Nodes
 
-        $this->nodes = envm($this->module, 'NODES', new DeveloperError('Nodes are not set in the config'));
-        $this->timeout = envm($this->module, 'REQUESTER_TIMEOUT', new DeveloperError('Timeout is not set in the config'));
+        $this->nodes = envm($this->module, 'NODES', new DeveloperError("Nodes are not set in the config for module {$this->module}"));
+        $this->timeout = envm($this->module, 'REQUESTER_TIMEOUT', new DeveloperError("Timeout is not set in the config for module {$this->module}"));
 
         // Post-initialization. Here we check if all settings are applied correctly.
 
@@ -212,10 +212,10 @@ abstract class CoreModule
             if ($this->address_format !== $complemented->address_format)
                 throw new DeveloperError("`address_format` mismatch for complemented module `{$this->complements}`");
 
-            if ($this->transaction_hash_format !== $complemented->transaction_hash_format)
+            if ($this->transaction_hash_format !== TransactionHashFormat::None && $this->transaction_hash_format !== $complemented->transaction_hash_format)
                 throw new DeveloperError("`transaction_hash_format` mismatch for complemented module `{$this->complements}`");
 
-            if ($this->transaction_render_model !== $complemented->transaction_render_model)
+            if ($this->transaction_render_model !== TransactionRenderModel::None && $this->transaction_render_model !== $complemented->transaction_render_model)
                 throw new DeveloperError("`transaction_render_model` mismatch for complemented module `{$this->complements}`");
 
             if ($this->should_return_currencies || $complemented->should_return_currencies)
@@ -513,11 +513,21 @@ abstract class CoreModule
                 }
             }
 
+            $previous_transaction_hash = null;
+            $check_sign = '-';
             $check_sums = [];
             $check_sort_key = 0;
 
             foreach ($this->return_events as $ekey => $event)
             {
+                if ($this->transaction_render_model === TransactionRenderModel::UTXO
+                    && isset($event['transaction'])
+                    && $event['transaction'] !== $previous_transaction_hash)
+                {
+                    $previous_transaction_hash = $event['transaction'];
+                    $check_sign = '-';
+                }
+
                 foreach ($event as $field => $value)
                 {
                     if (is_bool($value))
@@ -541,6 +551,37 @@ abstract class CoreModule
                         {
                             if (!in_array($value, ['-?', '+?']))
                                 throw new DeveloperError('`-?`, `+?` are the only variants for `effect` when `privacy_model` is `Shielded`');
+                        }
+
+                        if ($this->transaction_render_model === TransactionRenderModel::UTXO)
+                        {
+                            // `UTXO` model transactions should first contain negative events, then positive
+                            if (str_contains($value, '-'))
+                            {
+                                if ($check_sign === '+')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `UTXO`');
+                            }
+                            else // +
+                                $check_sign = '+';
+                        }
+
+                        if ($this->transaction_render_model === TransactionRenderModel::Even)
+                        {
+                            // `Even` model transactions should contain "negative-positive" pairs only
+                            if (str_contains($value, '-'))
+                            {
+                                if ($check_sign !== '-')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `Even`');
+                                else
+                                    $check_sign = '+';
+                            }
+                            else // +
+                            {
+                                if ($check_sign !== '+')
+                                    throw new DeveloperError('Wrong effect order for `transaction_render_model` set to `Even`');
+                                else
+                                    $check_sign = '-';
+                            }
                         }
                     }
 
@@ -621,7 +662,8 @@ abstract class CoreModule
                         throw new DeveloperError("`{$field}` is a part of `currencies_table_fields`, but not present in currency");
 
                 if (str_contains((string)$currency['id'], '/'))
-                    throw new DeveloperError("Currency ids can't contain slashes");
+                    if ($this->currency_format !== CurrencyFormat::UnsafeAlphaNumeric)
+                        throw new DeveloperError("Currency ids can't contain slashes");
             }
         }
     }

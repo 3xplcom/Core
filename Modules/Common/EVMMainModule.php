@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes "external" EVM transactions, block rewards, and withdrawals from the PoS chain.
@@ -67,7 +67,7 @@ abstract class EVMMainModule extends CoreModule
 
         if (is_null($this->reward_function))
             throw new DeveloperError("`reward_function` is not set (developer error)");
-      
+
         if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
             throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
 
@@ -265,6 +265,13 @@ abstract class EVMMainModule extends CoreModule
 
                 if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
+                
+                if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
+                {
+                    $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
+                    $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
+                    $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
+                }
             }
         }
         else // Mempool processing
@@ -285,6 +292,9 @@ abstract class EVMMainModule extends CoreModule
                 {
                     foreach ($transactions as $transaction)
                     {
+                        if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                            $transaction = $transaction[0]; // For some reason, there's a different format in RSK
+
                         if (!isset($this->processed_transactions[($transaction['hash'])]))
                         {
                             $transaction_data[($transaction['hash'])] =
@@ -403,6 +413,15 @@ abstract class EVMMainModule extends CoreModule
                         $this_burned = $this_to_miner = '0';
                     }
                 }
+
+                if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
+                {
+                    if ($transaction['type'] === '0x3')
+                    {
+                        $blob_fee = bcmul(to_int256_from_0xhex($transaction['blobGasUsed']), to_int256_from_0xhex($transaction['blobGasPrice']));
+                        $this_burned = bcadd($this_burned, $blob_fee);
+                    }
+                }
             }
             else
             {
@@ -447,9 +466,14 @@ abstract class EVMMainModule extends CoreModule
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
 
+                // In RSK, the fees are collected into a special address and distributed to miners after 4000 confirmations.
+                $fee_recipient = (!in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                    ? $miner
+                    : '0x0000000000000000000000000000000001000008';
+
                 $events[] = [
                     'transaction' => $transaction_hash,
-                    'address' => $miner,
+                    'address' => $fee_recipient,
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 3,
                     'effect' => $this_to_miner,

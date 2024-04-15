@@ -36,7 +36,7 @@ final class AvalancheMainModule extends EVMMainModule implements Module
             if (!preg_match($this->handles_regex, $handle))
                 return null;
 
-            return hex2bin(substr(requester_single($this->select_node(),
+            $address = strtolower(hex2bin(substr(requester_single($this->select_node(),
                 params: ['jsonrpc' => '2.0',
                          'method'  => 'eth_call',
                          'id'      => 0,
@@ -47,7 +47,12 @@ final class AvalancheMainModule extends EVMMainModule implements Module
                          ],
                 ],
                 result_in: 'result',
-                timeout: $this->timeout), 130, 84));
+                timeout: $this->timeout), 130, 84)));
+
+            if (!preg_match(StandardPatterns::HexWith0x40->value, $address))
+                return null;
+
+            return $address;
         };
     }
 }
