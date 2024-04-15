@@ -41,7 +41,6 @@ abstract class BeaconChainLikeMainModule extends CoreModule
         'ap' => 'Attestor penalty',
         'pp' => 'Proposer penalty',
     ];
-    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Address;
 
     public ?bool $ignore_sum_of_all_effects = true; // This is not needed if `the-void` is used
 
