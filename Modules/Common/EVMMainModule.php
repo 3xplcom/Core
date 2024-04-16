@@ -406,13 +406,13 @@ abstract class EVMMainModule extends CoreModule
 
                 // The fee is $this_burned + $this_to_miner
 
-                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
-                {
-                    if ($transaction['type'] === '0x7e')
-                    {
+                if (in_array(EVMSpecialFeatures::SpecialSenderPaysNoFee, $this->extra_features))
+                    if ($transaction['from'] === '0x0000000000000000000000000000000000000000')
                         $this_burned = $this_to_miner = '0';
-                    }
-                }
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                    if ($transaction['type'] === '0x7e')
+                        $this_burned = $this_to_miner = '0';
 
                 if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
                 {

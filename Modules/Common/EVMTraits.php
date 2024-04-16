@@ -31,6 +31,7 @@ enum EVMSpecialFeatures
     case AllowEmptyRecipient;
     case PoSWithdrawals;
     case zkEVM;
+    case SpecialSenderPaysNoFee;
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
     case rskEVM; // Rootstock has different traces and deferred validators rewards (in N+4000 block).
