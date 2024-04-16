@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This utility should be used to debug the modules.
@@ -96,9 +96,12 @@ else
 echo N . cli_format_bold('Please select an action: ') . N;
 echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Process block ' . cli_format_reverse('<B>') .
+    ', Process back ' . cli_format_reverse('<PB>') .
+    ', Process range ' . cli_format_reverse('<PR>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
     ', Check handle ' . cli_format_reverse('<H>') .
     ', Run tests ' . cli_format_reverse('<T>') .
+    ', Currency supply ' . cli_format_reverse('<CS>') .
     N;
 
 if (isset($argv[2]))
@@ -113,7 +116,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'M', 'H', 'T']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'CS']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -224,6 +227,7 @@ elseif ($chosen_option === 'B')
         //             address <tab> currency <tab> sign <tab> effect <tab> valid <tab> extra <?tab> ?extra_indexed
 
         $tsv_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'currency', 'sign', 'effect', 'valid', 'extra'];
+
         $tsv = '';
 
         foreach ($events as $event)
@@ -308,6 +312,104 @@ elseif ($chosen_option === 'B')
         ddd($output_events);
     }
 }
+elseif ($chosen_option === 'PB')
+{
+    echo cli_format_bold('Start block number please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $chosen_block_id = (int)$argv[3];
+        echo ":> {$chosen_block_id}\n";
+    }
+    else
+    {
+        $chosen_block_id = (int)readline(':> ');
+    }
+
+    $start_block_id = $chosen_block_id > 0 ? $chosen_block_id : $module->inquire_latest_block();
+
+    if ($start_block_id != $chosen_block_id)
+        echo cli_format_bold('Processing blocks from latest down to genesis...');
+    else
+        echo cli_format_bold("Processing blocks from {$start_block_id} up to genesis...");
+        for ($i = $start_block_id; $i != 0; $i--)
+        {
+            echo "\nProcessing block #{$i} ";
+
+            $t0 = microtime(true);
+
+            try
+            {
+                $module->process_block($i);
+            }
+            catch (RequesterException)
+            {
+                echo cli_format_error('Requested exception');
+                usleep(250000);
+            }
+
+            $event_count = count($module->get_return_events() ?? []);
+            $currency_count = count($module->get_return_currencies() ?? []);
+
+            $time = number_format(microtime(true) - $t0, 4);
+
+            echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+        }
+}
+elseif ($chosen_option === 'PR')
+{
+    echo cli_format_bold('Start block number please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $start_block_id = (int)$argv[3];
+        echo ":> {$start_block_id}\n";
+    }
+    else
+    {
+        $start_block_id = (int)readline(':> ');
+    }
+    echo cli_format_bold('End block number please...') . N;
+
+    if (isset($argv[4]))
+    {
+        $end_block_id = (int)$argv[4];
+        echo ":> {$end_block_id}\n";
+    }
+    else
+    {
+        $end_block_id = (int)readline(':> ');
+    }
+    echo N;
+
+    echo cli_format_bold('Processing range of blocks...');
+    $increment = $start_block_id > $end_block_id ? -1 : 1;
+    for ($i = $start_block_id; $i != $end_block_id; $i=$i+$increment)
+        {
+            echo "\nProcessing block #{$i} ";
+
+            $t0 = microtime(true);
+
+            try
+            {
+                $module->process_block($i);
+            }
+            catch (RequesterException)
+            {
+                echo cli_format_error('Requested exception');
+                usleep(250000);
+            }
+
+            $event_count = count($module->get_return_events() ?? []);
+            $currency_count = count($module->get_return_currencies() ?? []);
+
+            $time = number_format(microtime(true) - $t0, 4);
+
+            echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+        }
+
+}
+
 elseif ($chosen_option === 'M')
 {
     $best_known_block = $module->inquire_latest_block();
@@ -370,4 +472,20 @@ elseif ($chosen_option === 'H') // Checking handles
     }
 
     ddd(($module->api_get_handle)($handle));
+}
+elseif ($chosen_option === 'CS') // Currency supply
+{
+    echo cli_format_bold('Currency please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $currency = $argv[3];
+        echo ":> {$currency}\n";
+    }
+    else
+    {
+        $currency = readline(':> ');
+    }
+
+    ddd($module->api_get_currency_supply($currency));
 }
