@@ -34,6 +34,7 @@ enum EVMSpecialFeatures
     case SpecialSenderPaysNoFee;
     case HasSystemTransactions;
     case EffectiveGasPriceCanBeZero;
+    case NoEIP1559BurnFee; // Linea does this
     case rskEVM; // Rootstock has different traces and deferred validators rewards (in N+4000 block).
     case TraceBlockSupport; // Support for `trace_block` in RPC API
     case EIP4844; // Support of blob transaction
