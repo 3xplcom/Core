@@ -357,11 +357,11 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
             try
             {
-                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname'], valid_codes: [200, 204, 404]);
+                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname'], valid_codes: [200, 204]);
             }
             catch (RequesterEmptyResponseException)
             {
-                // Codes 204, 404
+                // Code 204
             }
 
             if ($metadata)
