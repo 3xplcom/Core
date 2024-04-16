@@ -357,32 +357,39 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
             try
             {
-                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname']);
+                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname'], valid_codes: [200, 204, 404]);
             }
-            catch (Exception $e)
+            catch (RequesterEmptyResponseException)
             {
-                // due to nature of GET, 404 is valid for our purpuses (no metadata) but response is not json-encoded, hence this
-                // also, for the same reason I cannot use multicurl, the whole batch will die
-                if (substr($e->getMessage(), -3) !== "404") {
-                    throw $e;
-                }
+                // Codes 204, 404
             }
 
-            $decimals = 0;
+            if ($metadata)
+            {
+                $decimals = 0;
 
-            if (array_key_exists('decimals', $metadata))
-                if (array_key_exists('value', $metadata['decimals']))
-                    $decimals = intval($metadata['decimals']['value']);
+                if (array_key_exists('decimals', $metadata))
+                    if (array_key_exists('value', $metadata['decimals']))
+                        $decimals = intval($metadata['decimals']['value']);
 
-            // null the gibberish names
-            $currency['name'] = preg_replace('/\\\\\d\d\d/', '', $currency['name']);
-            $currency['name'] = preg_replace('/[\x00-\x1F\x7F]/u', '', $currency['name']);
+                // null the gibberish names
+                $currency['name'] = preg_replace('/\\\\\d\d\d/', '', $currency['name']);
+                $currency['name'] = preg_replace('/[\x00-\x1F\x7F]/u', '', $currency['name']);
 
-            $currencies[] = [
-                'id'       => $currency['fingerprint'],
-                'name'     => $currency['name'],
-                'decimals' => $decimals
-            ];
+                $currencies[] = [
+                    'id'       => $currency['fingerprint'],
+                    'name'     => $currency['name'],
+                    'decimals' => $decimals
+                ];
+            }
+            else
+            {
+                $currencies[] = [
+                    'id'       => $currency['fingerprint'],
+                    'name'     => '',
+                    'decimals' => 0
+                ];
+            }
         }
 
         $this->set_return_currencies($currencies);
