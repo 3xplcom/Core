@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes main Ripple transfers. Requires a Ripple node.  */
 
@@ -17,7 +17,7 @@ abstract class RippleLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-void', 'payment-channels', 'the-escrow'];
+    public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
@@ -160,431 +160,147 @@ abstract class RippleLikeMainModule extends CoreModule
                 throw new ModuleException("Transactions haven't been fully processed by the node yet");
             
             // As we have 'failed' in events - so for us tesSUCCESS ~ false, because it means not 'failed'
-            $tx_result = $tx['meta']['TransactionResult'] === 'tesSUCCESS' ? false : true;
+            $tx_result = !($tx['meta']['TransactionResult'] === 'tesSUCCESS');
 
-            switch($tx['TransactionType']) {
-                case 'AccountDelete': 
-                    {
-                        if (isset($tx['meta']['AffectedNodes'])) 
-                        {
-                            $affected_nodes = $tx['meta']['AffectedNodes'];
-                            foreach ($affected_nodes as $id => $affection) 
-                            {
-                                if (isset($affection['DeletedNode'])) 
-                                {   // If we say that they send all money before being dead - ok
-                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'AccountRoot') 
-                                    {
-                                        $amount = $affection['DeletedNode']['PreviousFields']['Balance'] - $fee;
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            throw new ModuleError("Incorrect flow for AccountDelete");
-                        }
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $tx['Destination'],
-                            'sort_key' => $sort_key++,
-                            'effect' => (string)$amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-                        goto FEES;
-                        break;
-                    }
-                case 'CheckCash':
-                    {
-                        $account_destination = null;
-                        if (is_array($tx['Amount'])) 
-                        {
-                            // it's a token module work
-                            $amount = '0';
-                        } else {
-                            $amount = $tx['Amount'];
-                        }
-                        if (isset($tx['meta']['AffectedNodes'])) 
-                        {
-                            $affected_nodes = $tx['meta']['AffectedNodes'];
-                            foreach ($affected_nodes as $id => $affection)
-                            {
-                                if (isset($affection['DeletedNode'])) // this means that check that was created by account in meta 
-                                {                                     // will be deleted and money will come to Destination.
-                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'Check')
-                                    {
-                                        $account_destination = $affection['DeletedNode']['FinalFields']['Destination'];
-                                        $account = $affection['DeletedNode']['FinalFields']['Account'];
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            throw new ModuleError("Incorrect flow for CheckCash");
-                        }
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account_destination,
-                            'sort_key' => $sort_key++,
-                            'effect' => $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ]; 
-                        goto FEES;
-                        break;
-                    }
-                case 'EscrowCreate':
-                    {
-                        $amount = $tx['Amount'];
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-            
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => 'the-escrow',
-                            'sort_key' => $sort_key++,
-                            'effect' => $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ]; 
-                        goto FEES; 
-                        break;
-                    }
-                case 'EscrowCancel':
-                case 'EscrowFinish':        
-                    {
-                        if (isset($tx['meta']['AffectedNodes'])) 
-                        {
-                            $affected_nodes = $tx['meta']['AffectedNodes'];
-                            foreach ($affected_nodes as $id => $affection)
-                            {
-                                if (isset($affection['DeletedNode'])) 
-                                {                                     
-                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'Escrow')
-                                    {
-                                        $amount = $affection['DeletedNode']['FinalFields']['Amount'];
-                                        break;
-                                    }
-                                }
-                            }
-                        } else {
-                            throw new ModuleError("Incorrect flow for EscrowFinish and EscrowCancel");
-                        }
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => 'the-escrow',
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-            
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ]; 
-                        goto FEES; 
-                        break; 
-                    }
-                case 'Payment':
-                    {
-                        if (is_array($tx['Amount'])) 
-                        {
-                            // it's a token module work
-                            $amount = '0';  
-                        } else {
-                            $amount = $tx['Amount'];
-                        }
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-            
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $tx['Destination'],
-                            'sort_key' => $sort_key++,
-                            'effect' => $amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];  
-                        goto FEES;
-                        break;
-                    }
+            switch($tx['TransactionType']) { 
+                case 'AccountDelete':   
+                case 'AMMBid':
+                case 'AMMCreate':
+                case 'AMMDeposit':
+                case 'AMMWithdraw':
+                // 371a4a5f0d4f446f5a41661c937eba74c50afd99b716ab345158325bb6e6fd7d -- fee payment for nft trading
+                case 'NFTokenAcceptOffer': // we don't care who is broker,seller, buyer because we will glue everything however if Amount is 0 we'll not have any event (only fee)
                 case 'PaymentChannelCreate':
                 case 'PaymentChannelFund': 
+                case 'PaymentChannelClaim':
+                case 'AccountDelete':
+                case 'EscrowCancel':
+                case 'EscrowFinish': 
+                case 'OfferCreate':
+                case 'Payment':
+                case 'CheckCash':
+                case 'EscrowCreate':
                     {
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $tx['Amount'],
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => 'payment-channels',
-                            'sort_key' => $sort_key++,
-                            'effect' => $tx['Amount'],
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-                        goto FEES;
-                        break;
-                    }
-                case 'PaymentChannelClaim': {
-                        if (isset($tx['meta']['AffectedNodes'])) 
+                        // https://github.com/XRPLF/rippled/blob/2d1854f354ff8bb2b5671fd51252c5acd837c433/src/ripple/app/tx/impl/AMMVote.cpp#L239
+                        // ```cpp
+                        //     if (result.second)
+                        //          sb.apply(ctx_.rawView());
+                        // ```
+                        // This part of code means that in any situation if the transaction was fallen -- they just do nothing
+                        // So we can ignore fallen transactions and generate null events
+                        if ($tx_result)
                         {
-                            $affected_nodes = $tx['meta']['AffectedNodes'];
-                            foreach ($affected_nodes as $id => $affection) 
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => $tx['Account'],
+                                'sort_key' => $sort_key++,
+                                'effect' => '-0',
+                                'failed' => 't',
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
+                            $events[] = [
+                                'transaction' => $tx['hash'],
+                                'address' => 'the-void',
+                                'sort_key' => $sort_key++,
+                                'effect' => '0',
+                                'failed' => 't',
+                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                            ];
+                            goto FEES;
+                        } 
+                        $fee_charged = false;
+                        foreach ($tx['meta']['AffectedNodes'] ?? [] as $id => $affection) 
+                        {
+                            if (!isset($affection['ModifiedNode']) && !isset($affection['DeletedNode']) && !isset($affection['CreatedNode']))  
                             {
-                                if (isset($affection['DeletedNode'])) 
-                                {
-                                    // really it's an interesting question that Claim can close and send money to the creator, but I don't have proofs
-                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'PayChannel') // it means deleting the channel, it can happened in  this type of transaction
-                                    {
-                                        $amount = bcsub($affection['DeletedNode']['FinalFields']['Balance'],
-                                            $affection['DeletedNode']['PreviousFields']['Balance']);
-                                        $account = $affection['DeletedNode']['FinalFields']['Destination'];
-                                        break;
-                                    }
-                                }
-                                if (isset($affection['ModifiedNode']['LedgerEntryType'])) 
-                                {
-                                    if ($affection['ModifiedNode']['LedgerEntryType'] === 'PayChannel') 
-                                    {
-                                        $amount = bcsub($affection['ModifiedNode']['FinalFields']['Balance'],
-                                            $affection['ModifiedNode']['PreviousFields']['Balance']);
-                                        $account = $affection['ModifiedNode']['FinalFields']['Destination'];
-                                        break;
-                                    }
-                                }
+                                break;
                             }
-                        }
-
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => 'payment-channels',
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . (string)$amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-
-                        $events[] = [
-                            'transaction' => $tx['hash'],
-                            'address' => $account,
-                            'sort_key' => $sort_key++,
-                            'effect' => (string)$amount,
-                            'failed' => $tx_result,
-                            'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                        ];
-                        goto FEES;
-                        break;
-                    }
-                case 'NFTokenAcceptOffer': 
-                    {
-                        // in NFT we have two ways of selling it:
-                        // - p2p
-                        // - brokers
-                        $broker_op = isset($tx['NFTokenBrokerFee']); 
-                        $prev_pay = '0';
-                        $pay = '0';
-                        $new_owner = null;
-                        $broker_fee = '0';
-                        $prev_owner = null;
-                        if ($broker_op)
-                        {
-                            if (is_array($tx['NFTokenBrokerFee'])) 
+                            $affected = $affection['ModifiedNode'] ?? ($affection['DeletedNode'] ?? $affection['CreatedNode']);
+                            // AccountRoot is about changing xrp state of account
+                            // For AMM Create also will have CreatedNode
+                            if($affected['LedgerEntryType'] !== 'AccountRoot')
                             {
-                                // it's a token module work
-                                $broker_fee = '0';
+                                continue;
+                            }
+                            if( (!isset($affected['PreviousFields']['Balance']) || !isset($affected['FinalFields']['Balance'])) &&
+                                 !isset($affected['NewFields']['Balance']))
+                            {
+                                continue;
+                            }
+                            if(isset($affected['NewFields']['Balance']))
+                            {
+                                $account = $affected['NewFields']['Account'];
+                                $amount = '-' . $affected['NewFields']['Balance'];
                             } else {
-                                $broker_fee = $tx['NFTokenBrokerFee'];
+                                $account = $affected['FinalFields']['Account'];
+                                $amount = bcsub($affected['PreviousFields']['Balance'],
+                                                $affected['FinalFields']['Balance']);
                             }
-                        }
-                        
-                        if (isset($tx['meta']['AffectedNodes'])) {
-                            $affected_nodes = $tx['meta']['AffectedNodes'];
-                            foreach ($affected_nodes as $id => $affection) 
+                            // negative -- money is credited to account
+                            // positive --       is credited from account
+                            if($tx['Account'] === $account && !$fee_charged)
                             {
-                                if (isset($affection['DeletedNode'])) {
-                                    if (!$broker_op && $affection['DeletedNode']['LedgerEntryType'] === 'NFTokenOffer') 
-                                    {
-                                        $prev_owner = $affection['DeletedNode']['FinalFields']['Owner'];
-                                        $new_owner = $tx['Account'];
-                                        if (is_array($affection['DeletedNode']['FinalFields']['Amount'])) 
-                                        {
-                                            // it's a token module work
-                                            $pay = '0';
-                                        } else {
-                                            $pay = $affection['DeletedNode']['FinalFields']['Amount'];
-                                        }
-                                        break;
-                                    }
-                                    if ($broker_op && $affection['DeletedNode']['LedgerEntryType'] === 'NFTokenOffer') 
-                                    {
-                                        // https://xrpl.org/nftokencreateoffer.html#nftokencreateoffer-flags
-                                        if ($affection['DeletedNode']['FinalFields']['Flags'] == 0)     // it means that it's NFT buy offer
-                                        {
-                                            $new_owner = $affection['DeletedNode']['FinalFields']['Owner'];
-                                            if (is_array($affection['DeletedNode']['FinalFields']['Amount'])) 
-                                            {
-                                                // it's a token module work
-                                                $pay = '0';
-                                            } else {
-                                                $pay = $affection['DeletedNode']['FinalFields']['Amount'];
-                                            }
-                                        }
-                                        if ($affection['DeletedNode']['FinalFields']['Flags'] == 1)     // it means that it's NFT sell offer 
-                                        {
-                                            $prev_owner = $affection['DeletedNode']['FinalFields']['Owner'];
-                                            if (is_array($affection['DeletedNode']['FinalFields']['Amount'])) 
-                                            {
-                                                // it's a token module work
-                                                $prev_pay = '0';
-                                            } else {
-                                                $prev_pay = $affection['DeletedNode']['FinalFields']['Amount'];
-                                            }
-                                        }
-                                    }
+                                if($amount[0] === '-')
+                                {
+                                    $amount = '-' . bcadd($this->bcabs($amount), $tx['Fee']);
+                                } else {
+                                    $amount = bcsub($amount, $tx['Fee']);   
                                 }
+                                $fee_charged = true; // we charge the fee only once
                             }
-                        }
-                        if($broker_op && is_null($prev_owner) && is_null($new_owner))
-                        {   // this is for situation when the transaction is fallen
-                            // mostly in this situations we don't need to pay
-                            // 83084012 - here is error
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $tx['Account'],
-                                'sort_key' => $sort_key++,
-                                'effect' => '-0',
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => 'the-void',
-                                'sort_key' => $sort_key++,
-                                'effect' => '0',
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            goto FEES;
-                            break;
-                        } elseif(!$broker_op && is_null($prev_owner))
-                        {   // this is for situation when the transaction is fallen
-                            // mostly in this situations we don't need to pay
-                            // 83083328 - here is a second
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $tx['Account'],
-                                'sort_key' => $sort_key++,
-                                'effect' => '-0',
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => 'the-void',
-                                'sort_key' => $sort_key++,
-                                'effect' => '0',
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            goto FEES;
-                            break;
-                        }
-                        if ($broker_op) 
-                        {
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $new_owner,
-                                'sort_key' => $sort_key++,
-                                'effect' => '-' . $prev_pay,
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $prev_owner,
-                                'sort_key' => $sort_key++,
-                                'effect' => $prev_pay,
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $new_owner,
-                                'sort_key' => $sort_key++,
-                                'effect' => '-' . $broker_fee,
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $new_owner,
-                                'sort_key' => $sort_key++,
-                                'effect' => $broker_fee,
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                        } else {
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $new_owner,
-                                'sort_key' => $sort_key++,
-                                'effect' => '-' . $pay,
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
-                            $events[] = [
-                                'transaction' => $tx['hash'],
-                                'address' => $prev_owner,
-                                'sort_key' => $sort_key++,
-                                'effect' => $pay,
-                                'failed' => $tx_result,
-                                'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
-                            ];
+                            //  Question, do we need to show transfer from 'the-void' 
+                            //  to account and vice versa if it's 0
+                            if($amount === '0')
+                            {
+                                continue;
+                            }
+                            if($amount[0] === '-')
+                            {
+                                $events[] = [
+                                    'transaction' => $tx['hash'],
+                                    'address' => 'the-void',
+                                    'sort_key' => $sort_key++,
+                                    'effect' => $amount,
+                                    'failed' => $tx_result,
+                                    'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                                ];
+                                $events[] = [
+                                    'transaction' => $tx['hash'],
+                                    'address' => $account,
+                                    'sort_key' => $sort_key++,
+                                    'effect' => substr($amount, 1),
+                                    'failed' => $tx_result,
+                                    'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                                ];
+                            } else {
+                                $events[] = [
+                                    'transaction' => $tx['hash'],
+                                    'address' => $account,
+                                    'sort_key' => $sort_key++,
+                                    'effect' => '-' . $amount,
+                                    'failed' => $tx_result,
+                                    'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                                ];
+                                $events[] = [
+                                    'transaction' => $tx['hash'],
+                                    'address' => 'the-void',
+                                    'sort_key' => $sort_key++,
+                                    'effect' => $amount,
+                                    'failed' => $tx_result,
+                                    'extra' => RippleSpecialTransactions::fromName($tx['TransactionType']),
+                                ];
+                            }
+                            
                         }
                         goto FEES;
                         break;
                     }
                 // Yes it's only fees here ;)
+                // case 'AMMDelete': Hadn't found in our DB --> will be exception until we find it
+                case 'EscrowCancel':
+                case 'Payment':
+                case 'OfferCancel':
+                case 'AMMVote':
                 case 'AccountSet':
                 case 'CheckCancel':
                 case 'CheckCreate':
@@ -593,8 +309,6 @@ abstract class RippleLikeMainModule extends CoreModule
                 case 'NFTokenCancelOffer':
                 case 'NFTokenCreateOffer':
                 case 'NFTokenMint':
-                case 'OfferCancel':
-                case 'OfferCreate':
                 case 'SetRegularKey':
                 case 'SignerListSet':
                 case 'TicketCreate':
@@ -630,11 +344,13 @@ abstract class RippleLikeMainModule extends CoreModule
         ////////////////
         // Processing //
         ////////////////
-
+        $events = $this->glue_events($events);
+        $sort_key = 0;
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;
             $event['time'] = $this->block_time;
+            $event['sort_key'] = $sort_key++;
             $event['transaction'] = strtolower($event['transaction']);
         }
 
@@ -663,5 +379,94 @@ abstract class RippleLikeMainModule extends CoreModule
             return '0';
         else
             return (string)$request['account_data']['Balance'];
+    }
+
+    private function glue_events($events)
+    {
+        $events_by_tx = [];
+        $new_events = [];
+        for($i = 0; $i < count($events); $i++)
+        {
+            if($i + 1 < count($events) && $events[$i]['transaction'] != $events[$i + 1]['transaction'] || $i + 1 ==  count($events))
+            {
+                $events_by_tx[] = $events[$i];
+                // here we should leave fee events and do nothing with them
+                if(count($events_by_tx) == 2)
+                {
+                    $new_events[] = $events_by_tx[0];
+                    $new_events[] = $events_by_tx[1];
+                    unset($events_by_tx);
+                    continue;
+                }
+                $events_by_tx_amount = count($events_by_tx) - 2;
+                $ev1_fee = $events_by_tx[$events_by_tx_amount];
+                $ev2_fee = $events_by_tx[$events_by_tx_amount + 1];
+                // $events_by_tx = array_diff_key($events_by_tx, [$events_by_tx_amount => 0, $events_by_tx_amount + 1 => 0]);
+                array_splice($events_by_tx, $events_by_tx_amount + 1, 1);
+                array_splice($events_by_tx, $events_by_tx_amount, 1);
+                // events can be:
+                // - (-)void - (+)account1 - (-)account2 - (+)void -> (-)account2 - (+)account1
+                // - (-)account2 - (+)void - (-)void - (+)account1 -> (-)account2 - (+)account1
+                // unfortunately this it's not fully correct, because in chain can be inserted other events with other balances
+                // - (-)void - (+)account1 effect1 - (-)account3 - (+)void effect2 - (-)account2 - (+)void effect1 -> (-)account2 - (+)account1
+                // in addition it can be some situations 
+                // - (-)void - (+)account1 effect1 - (-)account3 - (+)void effect2 - (-)account2 - (+)void effect1 -> (-)account2 - (+)account1
+                // where effect1 == effect2, but real event will be (-)account2 - (+)account3
+                // I suppose that it should be very rare situation, but can be
+                // Now it will be like that: 
+                //                              1. Take first pair of events
+                //                              2. Search for the first same pair (same balance and opposite void)
+                //                              3. Delete this and do (1)
+                for($y = 0; $y < count($events_by_tx);)
+                {
+                    $ev_pair1 = $events_by_tx[$y];
+                    $ev_pair2 = $events_by_tx[$y + 1];
+                    array_splice($events_by_tx, $y + 1, 1);
+                    array_splice($events_by_tx, $y, 1);
+                    $found = false;
+                    // the amount of events should be even 
+                    for($z = 0; $z < count($events_by_tx); $z += 2)
+                    {
+                        if ( $z + 1 < count($events_by_tx) &&
+                            $ev_pair1['effect'] === $events_by_tx[$z]['effect'] &&
+                            $ev_pair2['effect'] === $events_by_tx[$z + 1]['effect']) 
+                        {
+                            if ($ev_pair1['address'] === 'the-void' &&
+                                $events_by_tx[$z + 1]['address'] === 'the-void') 
+                            {
+                                $new_events[] = $events_by_tx[$z];
+                                $new_events[] = $ev_pair2;
+                                $found = true;
+                                array_splice($events_by_tx, $z + 1, 1);
+                                array_splice($events_by_tx, $z, 1);
+                                break;
+                            }
+                            if ($ev_pair2['address'] === 'the-void' &&
+                                $events_by_tx[$z]['address'] === 'the-void') 
+                            {
+                                $new_events[] = $ev_pair1;
+                                $new_events[] = $events_by_tx[$z + 1];
+                                $found = true;
+                                array_splice($events_by_tx, $z + 1, 1);
+                                array_splice($events_by_tx, $z, 1);
+                                break;
+                            }
+                            // it's possible that nothing will be found here 
+                        }
+                    } 
+                    if(!$found)
+                    {
+                        $new_events[] = $ev_pair1;
+                        $new_events[] = $ev_pair2;
+                    }
+                }
+                $new_events[] = $ev1_fee;
+                $new_events[] = $ev2_fee;
+                unset($events_by_tx);
+                continue;
+            }
+            $events_by_tx[] = $events[$i];
+        }
+        return $new_events;
     }
 }
