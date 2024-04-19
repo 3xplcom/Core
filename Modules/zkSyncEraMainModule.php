@@ -6,13 +6,13 @@
 
 /*  This is the main zkSync module. It requires a geth node to run.  */
 
-final class zkSyncMainModule extends EVMMainModule implements Module
+final class zkSyncEraMainModule extends EVMMainModule implements Module
 {
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'zksync';
-        $this->module = 'zksync-main';
+        $this->blockchain = 'zksync-era';
+        $this->module = 'zksync-era-main';
         $this->is_main = true;
         $this->first_block_date = '2023-02-15';
         $this->first_block_id = 0;
