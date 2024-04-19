@@ -16,7 +16,7 @@ final class TONMainModule extends TONLikeMainModule implements Module
         $this->is_main = true;
         $this->currency = 'ton';
         $this->currency_details = ['name' => 'TON', 'symbol' => '💎', 'decimals' => 9, 'description' => null];
-        $this->first_block_date = '2015-07-30';
+        $this->first_block_date = '2019-11-15';
         $this->first_block_id = 0;
 
         // TONLikeMainModule

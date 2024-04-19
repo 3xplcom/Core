@@ -579,4 +579,26 @@ abstract class TVMTRC10Module extends CoreModule
         return $result;
     }
 
+    // Getting the token supply from the node
+    function api_get_currency_supply(string $currency): string
+    {
+        if (!preg_match(StandardPatterns::PositiveNumber->value, $currency))
+        {
+            return '0';
+        }
+
+        try
+        {
+            $asset = requester_single($this->select_node(),
+                endpoint: "/wallet/getassetissuebyid?value=$currency",
+                timeout: $this->timeout);
+            $total_supply = strval($asset["total_supply"] ?? 0);
+        }
+        catch (RequesterEmptyArrayInResponseException)
+        {
+            $total_supply = '0';
+        }
+
+        return $total_supply;
+    }
 }

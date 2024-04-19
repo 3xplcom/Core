@@ -299,4 +299,20 @@ abstract class TVMTRC20Module extends CoreModule
 
         return $return;
     }
+
+    // Getting the token supply from the node
+    function api_get_currency_supply(string $currency): string
+    {
+        $data[] = ['jsonrpc' => '2.0',
+                   'id'      => 0,
+                   'method'  => 'eth_call',
+                   'params'  => [['to'   => $this->encode_base58_to_evm_hex($currency),
+                                  'data' => '0x18160ddd',
+                                 ],
+                                 'latest',
+                   ],
+        ];
+
+        return to_int256_from_0xhex(requester_single($this->select_node(), params: $data)[0]['result']);
+    }
 }
