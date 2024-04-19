@@ -120,6 +120,10 @@ abstract class UTXOMainModule extends CoreModule
         if (in_array(UTXOSpecialFeatures::HasMWEB, $this->extra_features))
             $skip_mweb_txs = [];
 
+        // eCash P2PK
+        if (in_array(UTXOSpecialFeatures::ManualCashAddress, $this->extra_features))
+            require_once __DIR__ . '/../../Engine/Crypto/CashAddress.php';
+
         foreach ($block['tx'] as $transaction)
         {
             $previous_outputs_lib[($transaction['txid'])] = $transaction['vout'];
@@ -155,6 +159,17 @@ abstract class UTXOMainModule extends CoreModule
                 if (!in_array(UTXOSpecialFeatures::IgnorePubKeyConversion, $this->extra_features))
                     if ($output['scriptPubKey']['type'] === 'pubkey')
                         $address = CryptoP2PK::process($output['scriptPubKey']['asm'], $this->p2pk_prefix1, $this->p2pk_prefix2);
+
+                if (in_array(UTXOSpecialFeatures::ManualCashAddress, $this->extra_features))
+                {
+                    if ($output['scriptPubKey']['type'] === 'pubkey')
+                    {
+                        $address = CashAddressP2PK::old2new($address); // We're getting bitcoincash: here
+                        $cashaddr = new CashAddress();
+                        $decoded = $cashaddr->decode($address);
+                        $address = $cashaddr->encode($this->blockchain, $decoded['type'], $decoded['hash']);
+                    }
+                }
 
                 if (in_array(UTXOSpecialFeatures::HasAddressPrefixes, $this->extra_features))
                     if (str_contains($address, ':'))
@@ -342,6 +357,17 @@ abstract class UTXOMainModule extends CoreModule
                     if ($previous_output[($input['previous_n'])]['scriptPubKey']['type'] === 'pubkey')
                         $address = CryptoP2PK::process($previous_output[($input['previous_n'])]['scriptPubKey']['asm'], $this->p2pk_prefix1, $this->p2pk_prefix2);
 
+                if (in_array(UTXOSpecialFeatures::ManualCashAddress, $this->extra_features))
+                {
+                    if ($previous_output[($input['previous_n'])]['scriptPubKey']['type'] === 'pubkey')
+                    {
+                        $address = CashAddressP2PK::old2new($address); // We're getting bitcoincash: here
+                        $cashaddr = new CashAddress();
+                        $decoded = $cashaddr->decode($address);
+                        $address = $cashaddr->encode($this->blockchain, $decoded['type'], $decoded['hash']);
+                    }
+                }
+
                 if (in_array(UTXOSpecialFeatures::HasMWEB, $this->extra_features))
                     if (in_array($previous_output[($input['previous_n'])]['scriptPubKey']['type'], ['witness_mweb_hogaddr', 'witness_mweb_pegin']))
                         $address = 'hogwarts';
@@ -463,5 +489,14 @@ abstract class UTXOMainModule extends CoreModule
         }
 
         $this->set_return_events($events);
+    }
+
+    // Getting the token supply from the node. In case of UTXOs, `the-void` holds the negative value of the supply.
+    function api_get_currency_supply(string $currency): string
+    {
+        if ($currency !== $this->currency)
+            return '0';
+
+        return bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
     }
 }
