@@ -4,18 +4,17 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes main TON transfers for the BaseChain. Special Node API by Blockchair is needed (see https://github.com/Blockchair).  */
+/*  This module works with the TEP-74 standard, see
+ *  https://github.com/ton-blockchain/TEPs/blob/master/text/0074-jettons-standard.md */  
 
-final class TONMainModule extends TONLikeMainModule implements Module
+final class TONJettonModule extends TONLikeJettonModule implements Module
 {
     function initialize()
     {
         // CoreModule
         $this->blockchain = 'ton';
-        $this->module = 'ton-main';
-        $this->is_main = true;
-        $this->currency = 'ton';
-        $this->currency_details = ['name' => 'TON', 'symbol' => '💎', 'decimals' => 9, 'description' => null];
+        $this->module = 'ton-jetton';
+        $this->is_main = false;
         $this->first_block_date = '2019-11-15';
         $this->first_block_id = 0;
 
