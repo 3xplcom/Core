@@ -14,7 +14,7 @@ final class BOBMainModule extends EVMMainModule implements Module
         $this->blockchain = 'bob';
         $this->module = 'bob-main';
         $this->is_main = true;
-        $this->first_block_date = '2023-10-10';
+        $this->first_block_date = '2024-04-11';
         $this->first_block_id = 0;
         $this->currency = 'bob-bitcoin';
         $this->currency_details = ['name' => 'Bitcoin', 'symbol' => 'BTC', 'decimals' => 18, 'description' => null];

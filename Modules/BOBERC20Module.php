@@ -14,7 +14,7 @@ final class BOBERC20Module extends EVMERC20Module implements Module
         $this->blockchain = 'bob';
         $this->module = 'bob-erc-20';
         $this->is_main = false;
-        $this->first_block_date = '2023-10-10';
+        $this->first_block_date = '2024-04-11';
         $this->first_block_id = 0;
     }
 }
