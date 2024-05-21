@@ -156,6 +156,8 @@ abstract class BeaconChainLikeDepositsModule extends CoreModule
                     ];
                 }
             }
+            $this->set_return_events($events);
+            return;
         }
 
         foreach ($deposits as [$index, $address, $amount, $slot, $deposit_address])
@@ -163,13 +165,19 @@ abstract class BeaconChainLikeDepositsModule extends CoreModule
             $events[] = [
                 'block' => $block,
                 'transaction' => $slot,
-                'sort_key' => $key_tes++,
                 'time' => $this->block_time,
                 'address' => (string)$index,
                 'effect' => $amount,
                 'extra_indexed' => (string)$deposit_address
             ];
         }
+
+        usort($events, function ($a, $b) {
+            return (strcmp($a['transaction'], $b['transaction']));
+        });
+
+        foreach($events as &$ev)
+            $ev['sort_key'] = $key_tes++;
 
         $this->set_return_events($events);
     }

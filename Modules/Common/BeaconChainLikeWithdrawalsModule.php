@@ -116,6 +116,10 @@ abstract class BeaconChainLikeWithdrawalsModule extends CoreModule
             }
         }
 
+        usort($withdrawals, function ($a, $b) {
+            return (strcmp($a[3], $b[3]));
+        });
+
         $this->get_epoch_time($block, $slots);
         $key_tes = 0;
 
