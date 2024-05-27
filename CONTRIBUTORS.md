@@ -10,5 +10,6 @@
   - BRC-20 module
 * [Oleg Makaussov](https://github.com/Lorgansar)
     - Cardano Tokens modules
+    - Toncoin modules
 * [Kirill Kuzminykh](https://github.com/Oskal174)
     - Rootstock modules
