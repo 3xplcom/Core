@@ -13,7 +13,7 @@ final class GalacticaEVMTraceModule extends EVMTraceModule implements Module
         // CoreModule
         $this->blockchain = 'galactica-evm';
         $this->module = 'galactica-evm-trace';
-        $this->complements = 'galactica-main';
+        $this->complements = 'galactica-evm-main';
         $this->is_main = false;
         $this->first_block_date = '2024-04-08';
 
