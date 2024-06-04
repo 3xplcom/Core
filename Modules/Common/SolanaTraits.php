@@ -17,7 +17,6 @@ Enum SolanaAddressPrograms: string
     case TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
     case TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 }
-
 trait SolanaTraits
 {
     public function inquire_latest_block()
@@ -43,7 +42,7 @@ trait SolanaTraits
         if ($this->currency_type == CurrencyType::NFT)
             $currencies = array_filter($currencies,
                 function ($currency, $i) use ($tokens_supply) { return $currency["decimals"] == "0" && $tokens_supply[$currency['id']] == "1";},
-        ARRAY_FILTER_USE_BOTH);
+                ARRAY_FILTER_USE_BOTH);
         else
             $currencies = array_filter($currencies,
                 function ($currency, $i) use ($tokens_supply) { return $tokens_supply[$currency['id']] != "1";},
@@ -290,13 +289,17 @@ trait SolanaTraits
         return [$name, $symbol];
     }
 
-    function domain_deserialize(string $bytes): array
+    function domain_deserialize(string $bytes): ?string
     {
         $min_data_size = 96;
-        $parent = substr($bytes,0, 32);
-        $owner = substr($bytes, 31,32);
-        $class = substr($bytes, 63,32);
-        return [Base58::base58_nocheck_encode($parent), Base58::base58_nocheck_encode($owner), Base58::base58_nocheck_encode($class)];
+        if (strlen($bytes) < $min_data_size)
+        {
+            return null;
+        }
+//        $parent = substr($bytes,0, 32);
+        $owner = substr($bytes, 32,32);
+//        $class = substr($bytes, 64,32);
+        return Base58::base58_nocheck_encode($owner);
     }
 
     /** finds account key of the domain name
@@ -307,7 +310,6 @@ trait SolanaTraits
      */
     function getNameAccountKey(string $name, string $nameClass = null, string $parentName = SolanaAddressPrograms::SOL_TLD_AUTHORITY->value): ?string
     {
-        $name = substr($name,0,-4);
         $input = SolanaAddressPrograms::DOMAIN_HASH_PREFIX->value . $name;
         $hashedName = hash('sha256', $input, true);
 
@@ -324,7 +326,7 @@ trait SolanaTraits
                 $account_key = $this->getNameAccountKey($parts[0]);
                 break;
             case 3:
-                $account_key = $this->getNameAccountKey($parts[0],parentName: $this->getNameAccountKey($parts[1]));
+                $account_key = $this->getNameAccountKey("\x00" . $parts[0],parentName: $this->getNameAccountKey($parts[1]));
                 break;
             default:
                 return null;
@@ -352,10 +354,9 @@ trait SolanaTraits
             $account_data = $account_data['value']['data'] ?? null;
             if (is_null($account_data))
                 return null;
-            [$parent, $owner, $class]=$this->domain_deserialize(base64_decode($account_data[0]));
+            $owner = $this->domain_deserialize(base64_decode($account_data[0]));
             return $owner;
         }
         return null;
     }
-
 }

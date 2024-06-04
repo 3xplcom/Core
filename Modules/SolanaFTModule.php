@@ -11,7 +11,7 @@ final class SolanaFTModule extends SolanaLikeTokenModule implements Module
     function initialize()
     {
         $this->blockchain = 'solana';
-        $this->module = 'solana-token';
+        $this->module = 'solana-ft';
         $this->is_main = false;
         $this->first_block_date = '2020-03-16';
         $this->first_block_id = 0;
