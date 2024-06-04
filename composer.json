@@ -1,0 +1,11 @@
+{
+    "name": "3xpl/core",
+    "type": "project",
+    "require": {
+        "paragonie/sodium_compat": "^1.17"
+    },
+    "require-dev": {
+    },
+    "license": "MIT",
+    "minimum-stability": "dev"
+}
