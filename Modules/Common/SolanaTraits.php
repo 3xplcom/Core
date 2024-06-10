@@ -7,6 +7,8 @@
 /*  Common Solana functions and enums  */
 
 require_once __DIR__ . '/../../Engine/Crypto/Base58.php';
+require_once __DIR__ . '/../../Engine/Crypto/Sodium.php';
+
 Enum SolanaAddressPrograms: string
 {
     case SPL_NAME_SERVICE_PROGRAM_ID = 'namesLPneVptA9Z5rqUDD9tMTWEJwofgaYwp8cawRkX';
