@@ -46,9 +46,7 @@ abstract class SolanaLikeTokenModule extends CoreModule
 
     final public function post_post_initialize()
     {
-        // For old version of SPL Token we need to get meta from token-list
-        // Ref: https://github.com/solana-labs/token-list
-        $this->tokens_list = json_decode(file_get_contents(__DIR__ . '/../SPLTokensList/solana.tokenlist.formatted.json'), true);
+
     }
 
     final public function pre_process_block($block_id)
@@ -156,9 +154,12 @@ abstract class SolanaLikeTokenModule extends CoreModule
                 ];
         }
 
-        $currencies = $this->process_currencies($currencies);
-        $currencies_filter = array_column($currencies, 'id');
-        $events = $this->filter_events_by_currency($currencies_filter, $events);
+        if (count($currencies) > 0)
+        {
+            $currencies = $this->process_currencies($currencies);
+            $currencies_filter = array_column($currencies, 'id');
+            $events = $this->filter_events_by_currency($currencies_filter, $events);
+        }
 
         // Post process events
 
