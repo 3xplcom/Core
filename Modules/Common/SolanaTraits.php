@@ -257,7 +257,7 @@ trait SolanaTraits
             ParagonIE_Sodium_Compat::crypto_sign_ed25519_pk_to_curve25519($pk_bytes);
             return true;
         }
-        catch (Exception $e)
+        catch (Throwable)
         {
             return false;
         }
@@ -306,18 +306,18 @@ trait SolanaTraits
 
     /** finds account key of the domain name
      * @param $name string domain with .sol
-     * @param $nameClass string|null the name class public key
-     * @param $parentName string the name parent public key (actually TLD)
+     * @param $name_class string|null the name class public key
+     * @param $parent_name string the name parent public key (actually TLD)
      * @return string|null
      */
-    function getNameAccountKey(string $name, string $nameClass = null, string $parentName = SolanaAddressPrograms::SOL_TLD_AUTHORITY->value): ?string
+    function get_name_account_key(string $name, string $name_class = null, string $parent_name = SolanaAddressPrograms::SOL_TLD_AUTHORITY->value): ?string
     {
         $input = SolanaAddressPrograms::DOMAIN_HASH_PREFIX->value . $name;
-        $hashedName = hash('sha256', $input, true);
+        $hashed_name = hash('sha256', $input, true);
 
-        $nameClass = $nameClass ?? str_repeat("\x00", 32);
-        $parentName = $parentName != null  ? Base58::base58_nocheck_decode($parentName) : str_repeat("\x00", 32);
-        return $this->find_program_address($hashedName . $nameClass . $parentName, SolanaAddressPrograms::SPL_NAME_SERVICE_PROGRAM_ID->value);
+        $name_class = $name_class ?? str_repeat("\x00", 32);
+        $parent_name = $parent_name != null  ? Base58::base58_nocheck_decode($parent_name) : str_repeat("\x00", 32);
+        return $this->find_program_address($hashed_name . $name_class . $parent_name, SolanaAddressPrograms::SPL_NAME_SERVICE_PROGRAM_ID->value);
     }
 
     function get_domain_owner(string $domain): ?string
@@ -325,10 +325,10 @@ trait SolanaTraits
         $parts = explode('.', $domain);
         switch (count($parts)) {
             case 2:
-                $account_key = $this->getNameAccountKey($parts[0]);
+                $account_key = $this->get_name_account_key($parts[0]);
                 break;
             case 3:
-                $account_key = $this->getNameAccountKey("\x00" . $parts[0],parentName: $this->getNameAccountKey($parts[1]));
+                $account_key = $this->get_name_account_key("\x00" . $parts[0], parent_name: $this->get_name_account_key($parts[1]));
                 break;
             default:
                 return null;
