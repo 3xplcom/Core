@@ -18,6 +18,7 @@ abstract class SolanaLikeTokenModule extends CoreModule
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed;
     public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
+    public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
@@ -133,6 +134,8 @@ abstract class SolanaLikeTokenModule extends CoreModule
                 $delta = bcsub($post, $pre);
                 if ($delta != "0")
                 {
+                    if ($this->currency_type == CurrencyType::NFT && !in_array($delta,["1","-1"]))
+                        continue;
                     $events[] = [
                         'transaction' => $tx['transaction']['signatures']['0'],
                         'address' => $address,
