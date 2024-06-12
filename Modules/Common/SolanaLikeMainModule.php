@@ -1,13 +1,14 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module processes Solana transfers. Note that it's very minimal as it only processes basic transfers between accounts.  */
 
-abstract class SolanaLikeMinimalModule extends CoreModule
+abstract class SolanaLikeMainModule extends CoreModule
 {
+    use SolanaTraits;
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::AlphaNumeric;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
@@ -41,21 +42,6 @@ abstract class SolanaLikeMinimalModule extends CoreModule
     final public function post_post_initialize()
     {
         //
-    }
-
-    public function inquire_latest_block()
-    {
-        return requester_single($this->select_node(),
-            params: ['method' => 'getSlot', 'params' => [['commitment' => 'finalized']], 'id' => 0, 'jsonrpc' => '2.0'],
-            result_in: 'result',
-            timeout: $this->timeout,
-            flags: [RequesterOption::IgnoreAddingQuotesToNumbers]); // IgnoreAddingQuotesToNumbers is needed as there may be non-standard
-                                                                    // numbers in the output
-    }
-
-    public function ensure_block($block_id, $break_on_first = false)
-    {
-        $this->block_hash = ''; // As we query finalized slots only, we don't expect anything to get "orphaned"
     }
 
     final public function pre_process_block($block_id)

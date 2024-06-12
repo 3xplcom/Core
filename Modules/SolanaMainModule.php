@@ -1,12 +1,12 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module processes basic Solana transfers.  */
 
-final class SolanaMinimalModule extends SolanaLikeMinimalModule implements Module
+final class SolanaMainModule extends SolanaLikeMainModule implements Module
 {
     function initialize()
     {
@@ -22,5 +22,14 @@ final class SolanaMinimalModule extends SolanaLikeMinimalModule implements Modul
         // Blockchain-specific
         $this->currency = 'solana';
         $this->currency_details = ['name' => 'Solana', 'symbol' => 'SOL', 'decimals' => 9, 'description' => null];
+
+        $this->handles_implemented = true;
+        $this->handles_regex = '/(.*)\.sol/';
+        $this->api_get_handle = function ($handle)
+        {
+            if (!preg_match($this->handles_regex, $handle))
+                return null;
+            return $this->get_domain_owner($handle);
+        };
     }
 }
