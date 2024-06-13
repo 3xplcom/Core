@@ -11,4 +11,4 @@
 * [Oleg Makaussov](https://github.com/Lorgansar)
     - Cardano Tokens modules
 * [Kirill Kuzminykh](https://github.com/Oskal174)
-    - Rootstock modules
+    - Rootstock modules, Liquid modules
