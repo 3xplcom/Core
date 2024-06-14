@@ -331,7 +331,7 @@ trait SubstrateTraits
                         $next_method = $next_event['method']['method'];
                         $next_pallet = $next_event['method']['pallet'];
 
-                        if ($next_pallet === $this->treasury_address && $next_method === 'Deposit')
+                        if ($next_pallet === 'treasury' && $next_method === 'Deposit')
                             $collect_rewards = false;
 
                         if ($collect_rewards === true)

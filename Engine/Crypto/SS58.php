@@ -28,13 +28,13 @@ final class SS58
             (($ss58_format & 252) >> 2) | 64,
             ($ss58_format >> 8) | (($ss58_format & 3) << 6)
         ];
-        $dataWithPrefix = join(array_map("chr", $prefix)) . $key;
+        $data_with_prefix = join(array_map("chr", $prefix)) . $key;
         $checksum_length = in_array(strlen($key),[32,33]) ? 2 : 1;
-        $checksum = substr(sodium_crypto_generichash("SS58PRE" . $dataWithPrefix, '', 64), 0, $checksum_length);
+        $checksum = substr(sodium_crypto_generichash("SS58PRE" . $data_with_prefix, '', 64), 0, $checksum_length);
 
-        $dataWithChecksum = $dataWithPrefix . $checksum;
+        $data_with_checksum = $data_with_prefix . $checksum;
 
-        return Base58::base58_encode($dataWithChecksum);
+        return Base58::base58_encode($data_with_checksum);
     }
 
     /**
@@ -59,17 +59,16 @@ final class SS58
         // Calculate address checksum
         $ss58_length = (ord($decoded_data[0]) & 64) ? 2 : 1;
         // prefix of the parachain decoded in $ss58_decoded
-//        $ss58_decoded = $ss58_length === 1 ? ord($decoded_data[0])
-//            : ((ord($decoded_data[0]) & 63) << 2) | (ord($decoded_data[1]) >> 6) | ((ord($decoded_data[1]) & 63) << 8);
-        $isPublicKey = in_array(strlen($decoded_data), [34 + $ss58_length, 35 + $ss58_length]);
-        $length = strlen($decoded_data) - ($isPublicKey ? 2 : 1);
+        // $ss58_decoded = $ss58_length === 1 ? ord($decoded_data[0]) : ((ord($decoded_data[0]) & 63) << 2) | (ord($decoded_data[1]) >> 6) | ((ord($decoded_data[1]) & 63) << 8);
+        $is_public_key = in_array(strlen($decoded_data), [34 + $ss58_length, 35 + $ss58_length]);
+        $length = strlen($decoded_data) - ($is_public_key ? 2 : 1);
         $data = "SS58PRE" . substr($decoded_data, 0, $length);
         $hash = substr(sodium_crypto_generichash($data, '', 64), 0, 2);
 
-        $isValid = (ord($decoded_data[0]) & 128) === 0 && !in_array(ord($decoded_data[0]), [46, 47]) && ($isPublicKey
+        $is_valid = (ord($decoded_data[0]) & 128) === 0 && !in_array(ord($decoded_data[0]), [46, 47]) && ($is_public_key
                 ? str_ends_with($decoded_data, $hash)
                 : substr($decoded_data, -1) === $hash[0]);
-        if (!$isValid && !$ignore_checksum) {
+        if (!$is_valid && !$ignore_checksum) {
             return "";
         }
         return bin2hex(substr($decoded_data, $ss58_length, $length - $ss58_length));
