@@ -8,6 +8,7 @@
  *  This module process the main transfer events for Substrate SDK blockchains.
  *  Works with Substrate Sidecar API: https://paritytech.github.io/substrate-api-sidecar/dist/.
  */
+require_once __DIR__ . "/../../Engine/Crypto/SS58.php";
 
 abstract class SubstrateMainModule extends CoreModule
 {
@@ -23,7 +24,9 @@ abstract class SubstrateMainModule extends CoreModule
     // treasury - special address for paid fee and etc.
     // the-void - special address for mint/burn events.
     // pool - special address for rewards from nomination pool.
-    public ?array $special_addresses = ['treasury', 'the-void', 'pool'];
+    public ?SUBSTRATE_NETWORK_PREFIX $network_prefix = null;
+    public ?string $treasury_address = null;
+    public ?array $special_addresses = ['the-void', 'pool'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
@@ -61,6 +64,11 @@ abstract class SubstrateMainModule extends CoreModule
     {
         if (is_null($this->chain_type))
             throw new DeveloperError('Chain type is not set (developer error).');
+        if (is_null($this->network_prefix))
+            throw new DeveloperError("Chain prefix should be set (developer error).");
+        // bin2hex("modlpy/trsry") . str_repeat("0", 64-strlen(bin2hex("modlpy/trsry")))
+        $this->treasury_address = SS58::ss58_encode("6d6f646c70792f74727372790000000000000000000000000000000000000000", $this->network_prefix->value);
+
     }
 
     final public function pre_process_block($block_id)

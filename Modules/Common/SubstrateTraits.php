@@ -5,11 +5,19 @@
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Common Substrate functions and enums  */
-
 enum SubstrateChainType
 {
     case Relay;
     case Para;
+}
+
+enum SUBSTRATE_NETWORK_PREFIX: int {
+    case Polkadot = 0;
+    case Kusama = 2;
+
+    case Astar = 5;
+
+    case Centrifuge = 36;
 }
 
 enum SubstrateSpecialTransactions: string
@@ -119,7 +127,7 @@ trait SubstrateTraits
                 if ($fee !== ($partial_fee ?? $fee)) // Checks only if its getting from header
                     throw new ModuleException("Fee from transactionPayment and partial_fee missmatch ({$tx_id}).");
 
-                [$sub, $add] = $this->generate_event_pair($tx_id, $signer, 'treasury', $fee, $failed, $sort_key);
+                [$sub, $add] = $this->generate_event_pair($tx_id, $signer, $this->treasury_address, $fee, $failed, $sort_key);
                 $sub['extra'] = SubstrateSpecialTransactions::Fee->value;
                 $add['extra'] = SubstrateSpecialTransactions::Fee->value;
                 array_push($events, $sub, $add);
@@ -133,7 +141,7 @@ trait SubstrateTraits
             $tip = $extrinsic['tip'] ?? '0';
             $fee = bcadd($partial_fee, $tip);
 
-            [$sub, $add] = $this->generate_event_pair($tx_id, $signer, 'treasury', $fee, $failed, $sort_key);
+            [$sub, $add] = $this->generate_event_pair($tx_id, $signer, $this->treasury_address, $fee, $failed, $sort_key);
             $sub['extra'] = SubstrateSpecialTransactions::Fee->value;
             $add['extra'] = SubstrateSpecialTransactions::Fee->value;
             array_push($events, $sub, $add);
@@ -156,7 +164,13 @@ trait SubstrateTraits
         {
             $pallet = $extrinsic['events'][$i]['method']['pallet'];
             $method = $extrinsic['events'][$i]['method']['method'];
-            if ($pallet === 'treasury' && $method === 'Deposit')
+            // Here is 2 cases
+            // 1. treasury(Deposit) without treasury address and the next event is balances(Deposit) to validator
+            // 2. balances(Deposit) to treasury address "modlpy/trsry" (ss58 encoded) and the next event is balances(Deposit) to validator
+            if (($pallet === 'treasury' && $method === 'Deposit' && $fee_to_treasury === '0') ||
+                ($pallet === 'balances' && $method === 'Deposit' && $fee_to_treasury === '0' && $extrinsic['events'][$i+1]['method']['pallet'] != 'treasury')
+                    && $extrinsic['events'][$i]['data'][0] === $this->treasury_address
+            )
             {
                 $next_i = $i + 1;
                 if ($next_i >= count($extrinsic['events']))
@@ -167,14 +181,14 @@ trait SubstrateTraits
                 if ($pallet_next === 'balances' && $method_next === 'Deposit')
                 {
                     // 80% of fee amount goes to treasury
-                    $fee_to_treasury = $extrinsic['events'][$i]['data'][0];
+                    $fee_to_treasury = $pallet == "balances" ? $extrinsic['events'][$i]['data'][1] : $extrinsic['events'][$i]['data'][0] ;
                     // 20% of fee goes to validator
                     $fee_to_validator = $extrinsic['events'][$next_i]['data'][1];
 
                     if ($extrinsic['events'][$next_i]['data'][0] !== $validator)
                         throw new ModuleException("Invalid event for validator reward ({$tx_id}).");
 
-                    [$sub, $add] = $this->generate_event_pair($tx_id, $signer, 'treasury', $fee_to_treasury, $failed, $sort_key);
+                    [$sub, $add] = $this->generate_event_pair($tx_id, $signer, $this->treasury_address, $fee_to_treasury, $failed, $sort_key);
                     $sub['extra'] = SubstrateSpecialTransactions::Fee->value;
                     $add['extra'] = SubstrateSpecialTransactions::Fee->value;
                     array_push($events, $sub, $add);
@@ -189,13 +203,30 @@ trait SubstrateTraits
             {
                 $fee_payer = $extrinsic['events'][$i]['data'][0];
                 $fee = $extrinsic['events'][$i]['data'][1];
-
                 if ($fee_payer !== $signer)
                     throw new ModuleException("Fee payer is not a signer ({$tx_id}).");
                 if ($fee !== $partial_fee)
                     throw new ModuleException("Fee from transactionPayment and partial_fee missmatch ({$tx_id}).");
                 if ($fee !== bcadd($fee_to_treasury, $fee_to_validator))
                     throw new ModuleException("Fee from transactionPayment and parsed fee missmatch ({$tx_id}).");
+            }
+        }
+
+        // Handle special case for early blocks when fee was paid only to validator
+        // example polkadot blocks 4206698, 4206696
+        if ($fee_to_treasury === '0' && $fee_to_validator === '0')
+        {
+            for ($i =count($extrinsic['events'] ?? [1])-1; $i >0 ; $i--)
+            {
+                if ($extrinsic['events'][$i]['method']['pallet'] === 'balances' && $extrinsic['events'][$i]['method']['method'] === 'Deposit'
+                    && $extrinsic['events'][$i]['data'][0] === $validator)
+                {
+                    $fee_to_validator = $extrinsic['events'][$i]['data'][1];
+                    [$sub, $add] = $this->generate_event_pair($tx_id, $signer, $validator, $fee_to_validator, $failed, $sort_key);
+                    $sub['extra'] = SubstrateSpecialTransactions::Reward->value;
+                    $add['extra'] = SubstrateSpecialTransactions::Reward->value;
+                    array_push($events, $sub, $add);
+                }
             }
         }
     }
@@ -276,7 +307,7 @@ trait SubstrateTraits
 
                         if ($to === $signer)
                         {
-                            [$sub, $add] = $this->generate_event_pair($tx_id, 'treasury', $to, $amount, $failed, $sort_key);
+                            [$sub, $add] = $this->generate_event_pair($tx_id, $this->treasury_address, $to, $amount, $failed, $sort_key);
                             array_push($events, $sub, $add);
                         }
                     }
@@ -300,7 +331,7 @@ trait SubstrateTraits
                         $next_method = $next_event['method']['method'];
                         $next_pallet = $next_event['method']['pallet'];
 
-                        if ($next_pallet === 'treasury' && $next_method === 'Deposit')
+                        if ($next_pallet === $this->treasury_address && $next_method === 'Deposit')
                             $collect_rewards = false;
 
                         if ($collect_rewards === true)
@@ -308,7 +339,7 @@ trait SubstrateTraits
                             $to = $current_event['data'][0];
                             $amount = $current_event['data'][1];
 
-                            [$sub, $add] = $this->generate_event_pair($tx_id, 'treasury', $to, $amount, $failed, $sort_key);
+                            [$sub, $add] = $this->generate_event_pair($tx_id, $this->treasury_address, $to, $amount, $failed, $sort_key);
                             $sub['extra'] = SubstrateSpecialTransactions::StakingReward->value;
                             $add['extra'] = SubstrateSpecialTransactions::StakingReward->value;
                             array_push($events, $sub, $add);
@@ -434,7 +465,7 @@ trait SubstrateTraits
 
                     if ($e['method']['method'] === 'Deposit')
                     {
-                        $from = 'treasury';
+                        $from = $this->treasury_address;
                         $to = $e['data'][0];
                         $amount = $e['data'][1];
 
@@ -836,7 +867,7 @@ trait SubstrateTraits
                     $from = $e['data'][0];
                     $amount = $e['data'][1];
 
-                    [$sub, $add] = $this->generate_event_pair(null, $from, 'treasury', $amount, false, $sort_key);
+                    [$sub, $add] = $this->generate_event_pair(null, $from, $this->treasury_address, $amount, false, $sort_key);
                     $sub['extra'] = SubstrateSpecialTransactions::Slashed->value;
                     $add['extra'] = SubstrateSpecialTransactions::Slashed->value;
                     array_push($events, $sub, $add);
@@ -884,7 +915,7 @@ trait SubstrateTraits
                 $from = $e['data'][0];
                 $amount = $e['data'][1];
 
-                [$sub, $add] = $this->generate_event_pair(null, $from, 'treasury', $amount, false, $sort_key);
+                [$sub, $add] = $this->generate_event_pair(null, $from, $this->treasury_address, $amount, false, $sort_key);
                 $sub['extra'] = SubstrateSpecialTransactions::Slashed->value;
                 $add['extra'] = SubstrateSpecialTransactions::Slashed->value;
                 array_push($events, $sub, $add);
@@ -978,5 +1009,10 @@ trait SubstrateTraits
         ];
 
         return [$sub, $add];
+    }
+
+    function decode_address($address): string
+    {
+        return SS58::ss58_encode($address,$this->network_prefix->value);
     }
 }

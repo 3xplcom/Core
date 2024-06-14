@@ -18,8 +18,18 @@ final class PolkadotMainModule extends SubstrateMainModule implements Module
         $this->currency = 'polkadot';
         // The denomination of DOT was changed from 12 decimals of precision at block #1,248,328 in an event known as Denomination Day
         $this->currency_details = ['name' => 'Polkadot', 'symbol' => 'DOT', 'decimals' => 10, 'description' => null];
+        $this->handles_regex = '^([\w\d ]+)?((//?[^/]+)*)$';
 
+        // this is a hack to return polkadot address if any substrate address provided
+        $this->api_get_handle = function ($handle) {
+            $address = $this->decode_address($handle);
+            if ($address == '')
+                return null;
+            return $address;
+        };
         // Substrate-specific
         $this->chain_type = SubstrateChainType::Relay;
+        $this->network_prefix = SUBSTRATE_NETWORK_PREFIX::Polkadot;
+
     }
 }

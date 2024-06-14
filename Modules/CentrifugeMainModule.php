@@ -17,8 +17,16 @@ final class CentrifugeMainModule extends SubstrateMainModule implements Module
         $this->first_block_date = '2022-03-12';
         $this->currency = 'centrifuge';
         $this->currency_details = ['name' => 'Centrifuge', 'symbol' => 'CFG', 'decimals' => 18, 'description' => null];
-
+        $this->handles_regex = '^([\w\d ]+)?((//?[^/]+)*)$';
+        // this is a hack to return centrifuge address if any substrate address provided
+        $this->api_get_handle = function ($handle) {
+            $address = $this->decode_address($handle);
+            if ($address == '')
+                return null;
+            return $address;
+        };
         // Substrate-specific
         $this->chain_type = SubstrateChainType::Para;
+        $this->network_prefix = SUBSTRATE_NETWORK_PREFIX::Centrifuge;
     }
 }

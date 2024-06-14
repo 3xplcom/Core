@@ -17,8 +17,18 @@ final class KusamaMainModule extends SubstrateMainModule implements Module
         $this->first_block_date = '2019-11-28';
         $this->currency = 'kusama';
         $this->currency_details = ['name' => 'Kusama', 'symbol' => 'KSM', 'decimals' => 12, 'description' => null];
-
+        $this->handles_implemented = true;
+        $this->handles_regex = '^([\w\d ]+)?((//?[^/]+)*)$';
+        // this is a hack to return kusama address if any substrate address provided
+        $this->api_get_handle = function ($handle) {
+            $address = $this->decode_address($handle);
+            if ($address == '')
+                return null;
+            return $address;
+        };
         // Substrait-specific
         $this->chain_type = SubstrateChainType::Relay;
+        $this->network_prefix = SUBSTRATE_NETWORK_PREFIX::Kusama;
+
     }
 }

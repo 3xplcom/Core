@@ -17,8 +17,17 @@ final class AstarMainModule extends SubstrateMainModule implements Module
         $this->first_block_date = '2021-12-18';
         $this->currency = 'astar';
         $this->currency_details = ['name' => 'Astar', 'symbol' => 'ASTR', 'decimals' => 18, 'description' => null];
+        $this->handles_regex = '^([\w\d ]+)?((//?[^/]+)*)$';
 
+        // this is a hack to return astar address if any substrate address provided
+        $this->api_get_handle = function ($handle) {
+            $address = $this->decode_address($handle);
+            if ($address == '')
+                return null;
+            return $address;
+        };
         // Substrate-specific
         $this->chain_type = SubstrateChainType::Para;
+        $this->network_prefix = SUBSTRATE_NETWORK_PREFIX::Astar;
     }
 }

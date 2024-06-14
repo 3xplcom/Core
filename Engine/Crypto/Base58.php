@@ -7,7 +7,7 @@ final class Base58
 {
     private const ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
-    private static function base58_encode($string)
+    public static function base58_encode($string)
     {
         if (!$string)
             return '';
@@ -51,7 +51,7 @@ final class Base58
         return $output;
     }
 
-    private static function base58_decode($base58)
+    public static function base58_decode($base58)
     {
         if (!$base58)
             return '';
