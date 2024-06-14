@@ -4,18 +4,18 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This is the BOB trace module. It requires a geth node to run.  */
+/*  This is the Linea trace module. It requires a geth node to run.  */
 
-final class BOBTraceModule extends EVMTraceModule implements Module
+final class LineaTraceModule extends EVMTraceModule implements Module
 {
     function initialize()
     {
         // CoreModule
-        $this->blockchain = 'bob';
-        $this->module = 'bob-trace';
-        $this->complements = 'bob-main';
+        $this->blockchain = 'linea';
+        $this->module = 'linea-trace';
+        $this->complements = 'linea-main';
         $this->is_main = false;
-        $this->first_block_date = '2024-04-11';
+        $this->first_block_date = '2023-07-06';
         $this->first_block_id = 0;
 
         // EVMTraceModule

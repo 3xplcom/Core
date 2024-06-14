@@ -490,4 +490,13 @@ abstract class UTXOMainModule extends CoreModule
 
         $this->set_return_events($events);
     }
+
+    // Getting the token supply from the node. In case of UTXOs, `the-void` holds the negative value of the supply.
+    function api_get_currency_supply(string $currency): string
+    {
+        if ($currency !== $this->currency)
+            return '0';
+
+        return bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
+    }
 }

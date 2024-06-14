@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the Withdrawals module for Beacon Chain. It requires a Prysm or a Lighthouse node to run.  */
@@ -17,6 +17,7 @@ final class BeaconChainWithdrawalsModule extends BeaconChainLikeWithdrawalsModul
         $this->is_main = false;
         $this->first_block_date = '2020-12-01';
         $this->first_block_id = 0;
+        $this->extra_indexed_hint_blockchain = 'ethereum';
 
         // BeaconChainLikeModule
         $this->chain_config = [

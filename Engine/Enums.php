@@ -107,7 +107,7 @@ enum ExtraDataModel: string
     case None = 'Zilch'; // There's no extra data for the module
 }
 
-// Privacy models
+// Whether amounts are visible on chain or not
 enum PrivacyModel
 {
     case Transparent; // Every event has a known value
@@ -115,7 +115,17 @@ enum PrivacyModel
     case Shielded; // The only allowed values are `-?` and `+?`
 }
 
-// Data types for additional data returned from nodes
+// This is for modules where `extra_indexed` is specified: here we can chose which entity it directs to
+enum SearchableEntity: string
+{
+    case Block = 'block';
+    case Transaction = 'transaction';
+    case Address = 'address';
+    case Handle = 'handle';
+    case Any = 'any';
+}
+
+// Units and types for blockchain-specific data
 enum SpecialUnit: string
 {
     case Bytes = 'bytes';

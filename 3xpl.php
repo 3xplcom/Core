@@ -102,6 +102,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Check handle ' . cli_format_reverse('<H>') .
     ', Run tests ' . cli_format_reverse('<T>') .
     ', Transaction extras ' . cli_format_reverse('<AT>') .
+    ', Currency supply ' . cli_format_reverse('<CS>') .
     N;
 
 if (isset($argv[2]))
@@ -116,7 +117,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'CS']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -491,4 +492,20 @@ elseif ($chosen_option === 'AT') // Transaction specials
         ddd('This function is undefined');
     else
         ddd($module->api_get_transaction_specials($transaction));
+}
+elseif ($chosen_option === 'CS') // Currency supply
+{
+    echo cli_format_bold('Currency please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $currency = $argv[3];
+        echo ":> {$currency}\n";
+    }
+    else
+    {
+        $currency = readline(':> ');
+    }
+
+    ddd($module->api_get_currency_supply($currency));
 }

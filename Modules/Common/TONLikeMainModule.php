@@ -8,6 +8,8 @@
 
 abstract class TONLikeMainModule extends CoreModule
 {
+    use TONTraits;
+
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWithout0x;
@@ -47,74 +49,6 @@ abstract class TONLikeMainModule extends CoreModule
         if (is_null($this->workchain)) throw new DeveloperError("`workchain` is not set");
     }
 
-    public function inquire_latest_block()
-    {
-        $result = requester_single($this->select_node(), endpoint: 'lastNum', timeout: $this->timeout);
-
-        return (int)$result[($this->workchain)][(array_key_first($result[($this->workchain)]))]['seqno'];
-        // This may be not the best solution in case there are several shard with different heights
-    }
-
-    public function ensure_block($block_id, $break_on_first = false)
-    {
-        $multi_curl = [];
-
-        foreach ($this->nodes as $node)
-        {
-            $multi_curl[] = requester_multi_prepare($node, endpoint: "getHashByHeight?workchain={$this->workchain}&seqno={$block_id}", timeout: $this->timeout);
-
-            if ($break_on_first)
-                break;
-        }
-
-        try
-        {
-            $curl_results = requester_multi($multi_curl, limit: count($this->nodes), timeout: $this->timeout);
-        }
-        catch (RequesterException $e)
-        {
-            throw new RequesterException("ensure_block(block_id: {$block_id}): no connection, previously: " . $e->getMessage());
-        }
-
-        $hashes = requester_multi_process($curl_results[0]);
-        ksort($hashes, SORT_STRING);
-
-        $shard_list = $final_filehash = [];
-
-        foreach ($hashes as $shard => $shard_hashes)
-        {
-            $shard_list[] = $shard;
-            $final_filehash[] = $shard_hashes['filehash'];
-
-            $this->shards[$shard] = ['filehash' => $shard_hashes['filehash'], 'roothash' => $shard_hashes['roothash']];
-        }
-
-        $this->block_hash = strtolower(implode($final_filehash));
-
-        $this->block_extra = strtolower(implode('/', $shard_list));
-
-        if (count($curl_results) > 0)
-        {
-            foreach ($curl_results as $result)
-            {
-                $this_hashes = requester_multi_process($result);
-                ksort($this_hashes, SORT_STRING);
-
-                $this_final_filehash = [];
-
-                foreach ($this_hashes as $shard => $shard_hashes)
-                {
-                    $this_final_filehash[] = $shard_hashes['filehash'];
-                }
-
-                if (strtolower(implode($this_final_filehash)) !== $this->block_hash)
-                {
-                    throw new ConsensusException("ensure_block(block_id: {$block_id}): no consensus");
-                }
-            }
-        }
-    }
-
     final public function pre_process_block($block_id)
     {
         if ($block_id === 0) // Block #0 is there, but the node doesn't return data for it
@@ -125,20 +59,36 @@ abstract class TONLikeMainModule extends CoreModule
         }
 
         $block_times = [];
-
         $events = [];
         $sort_key = 0;
 
-        foreach ($this->shards as $shard => $shard_data)
+        $rq_blocks = [];
+        $rq_blocks_data = [];
+
+        foreach ($this->shards as $shard => $shard_data) 
         {
             $this_root_hash = strtoupper($shard_data['roothash']);
             $this_block_hash = strtoupper($shard_data['filehash']);
 
-            $block = requester_single($this->select_node(),
+            $rq_blocks[] = requester_multi_prepare(
+                $this->select_node(),
                 endpoint: "blockLite?workchain={$this->workchain}&shard={$shard}&seqno={$block_id}&roothash={$this_root_hash}&filehash={$this_block_hash}",
-                timeout: $this->timeout,
-                flags: [RequesterOption::RecheckUTF8]); // TODO: requester_multi for shards
+                timeout: $this->timeout
+            );
+        }
+            
+        $rq_blocks_multi = requester_multi(
+            $rq_blocks,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout,
+            valid_codes: [200]
+        );
 
+        foreach ($rq_blocks_multi as $v)
+            $rq_blocks_data[] = requester_multi_process($v, flags: [RequesterOption::RecheckUTF8]);
+
+        foreach ($rq_blocks_data as $block)
+        {
             $block_times[] = (int)$block['header']['time'];
 
             foreach ($block['transactions'] as $transaction)

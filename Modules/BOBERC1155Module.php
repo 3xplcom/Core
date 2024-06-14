@@ -14,7 +14,7 @@ final class BOBERC1155Module extends EVMERC1155Module implements Module
         $this->blockchain = 'bob';
         $this->module = 'bob-erc-1155';
         $this->is_main = false;
-        $this->first_block_date = '2023-10-10';
+        $this->first_block_date = '2024-04-11';
         $this->first_block_id = 0;
     }
 }

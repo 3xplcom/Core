@@ -75,9 +75,10 @@ How to develop a new module?
 5. Implement `pre_process_block()` to process blocks into event arrays (if there's mempool support, also add the mempool processing logic)
 6. Implement `api_get_balance()` if node allows to retrieve balances
 7. Implement `api_get_handle()` if node allows to retrieve handle data (see ENS in EthereumMainModule for example)
-8. Implement `api_get_transaction_extra()` if you can retrieve some extra blockchain-specific data for transactions
-9. Set `CoreModule` variables
-10. Start debugging your module with `3xpl.php`. The core module catches many errors (e.g. missing fields in the output).
+8. Implement `apt_get_currency_supply()` if node allows to retrieve the circulating supply for a token
+9. Implement `api_get_transaction_extra()` if you can retrieve some extra blockchain-specific data for transactions
+10. Set `CoreModule` variables
+11. Start debugging your module with `3xpl.php`. The core module catches many errors (e.g. missing fields in the output).
 
 How to test a module?
 ---------------------

@@ -202,6 +202,7 @@ function to_timestamp_from_long_unixtime(string $long_unixtime): string
     return DateTime::createFromFormat('U.u', bcdiv($long_unixtime, '1000', 3))->format("Y-m-d H:i:s");
 }
 
+// Removes 0x from the beginning of a string
 function remove_0x_safely(string $string): string
 {
     if (substr($string, 0, 2) !== '0x')
@@ -209,6 +210,14 @@ function remove_0x_safely(string $string): string
     return substr($string, 2);
 }
 
+// A stub function to retrieve balances from the database, see UTXOMainModule for example;
+// Those who build an API on top of this engine, should implement this function according to their database structure.
+function balance($blockchain, $module, $address, $currency)
+{
+    return 'database'; // Not a real value;
+}
+
+// Special class for blockchain-specific data
 final class Specials
 {
     public array $specials = [];

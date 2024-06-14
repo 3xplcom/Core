@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes "external" EVM transactions, block rewards, and withdrawals from the PoS chain.
@@ -265,6 +265,13 @@ abstract class EVMMainModule extends CoreModule
 
                 if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
+                
+                if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
+                {
+                    $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
+                    $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
+                    $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
+                }
             }
         }
         else // Mempool processing
@@ -399,12 +406,26 @@ abstract class EVMMainModule extends CoreModule
 
                 // The fee is $this_burned + $this_to_miner
 
-                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
-                {
-                    if ($transaction['type'] === '0x7e')
-                    {
+                if (in_array(EVMSpecialFeatures::SpecialSenderPaysNoFee, $this->extra_features))
+                    if ($transaction['from'] === '0x0000000000000000000000000000000000000000')
                         $this_burned = $this_to_miner = '0';
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                    if ($transaction['type'] === '0x7e')
+                        $this_burned = $this_to_miner = '0';
+
+                if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
+                {
+                    if ($transaction['type'] === '0x3')
+                    {
+                        $blob_fee = bcmul(to_int256_from_0xhex($transaction['blobGasUsed']), to_int256_from_0xhex($transaction['blobGasPrice']));
+                        $this_burned = bcadd($this_burned, $blob_fee);
                     }
+                }
+                if (in_array(EVMSpecialFeatures::NoEIP1559BurnFee, $this->extra_features))
+                {
+                    $this_to_miner = bcadd($this_burned, $this_to_miner);
+                    $this_burned = '0';
                 }
             }
             else
