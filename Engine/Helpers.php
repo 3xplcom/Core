@@ -234,8 +234,13 @@ final class Specials
 
     public function add(string $key, mixed $raw_value, ?Closure $format = null): void
     {
-        if (is_null($format)) $key_formatted = ucfirst(str_replace('_', ' ', $key));
+        if (is_null($format))
+            $key_formatted = ucfirst(str_replace('_', ' ', $key));
+
         $this->specials[$key] = ['value' => $raw_value, 'formatted' => (!is_null($format)) ? $format($raw_value) : "{$key_formatted}: {{$raw_value}}"];
+
+        if (!str_contains($this->specials[$key]['formatted'], '{') || !str_contains($this->specials[$key]['formatted'], '}'))
+            throw new DeveloperError("Formatted values should be inclosed in {curly braces}");
     }
 
     public function return(): array
