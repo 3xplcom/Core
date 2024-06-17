@@ -102,6 +102,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Check handle ' . cli_format_reverse('<H>') .
     ', Run tests ' . cli_format_reverse('<T>') .
     ', Transaction extras ' . cli_format_reverse('<AT>') .
+    ', Address extras ' . cli_format_reverse('<AA>') .
     ', Currency supply ' . cli_format_reverse('<CS>') .
     N;
 
@@ -117,7 +118,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'CS']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'AA', 'CS']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -503,6 +504,27 @@ elseif ($chosen_option === 'AT') // Transaction specials
         ddd('This function is undefined');
     else
         ddd($module->api_get_transaction_specials($transaction));
+}
+elseif ($chosen_option === 'AA') // Address specials
+{
+    echo cli_format_bold('Address please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $address = $argv[3];
+        echo ":> {$address}\n\n";
+    }
+    else
+    {
+        $address = readline(':> ');
+    }
+
+    $input_argv[] = $address;
+
+    if (!method_exists($module, 'api_get_address_specials'))
+        ddd('This function is undefined');
+    else
+        ddd($module->api_get_address_specials($address));
 }
 elseif ($chosen_option === 'CS') // Currency supply
 {

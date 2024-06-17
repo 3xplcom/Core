@@ -799,4 +799,47 @@ abstract class EVMMainModule extends CoreModule
 
         return $specials->return();
     }
+
+    final public function api_get_address_specials($address)
+    {
+        $multi_curl = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionCount',
+                     'params'  => [$address, 'latest'],
+                     'id'      => 0,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getCode',
+                     'params'  => [$address, 'latest'],
+                     'id'      => 1,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $curl_results = requester_multi_process_all(requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout));
+
+        //
+
+        $specials = new Specials();
+
+        $specials->add('nonce', to_int64_from_0xhex($curl_results[0]['result']));
+
+        $is_contract = ($curl_results[1]['result'] !== '0x');
+
+        if ($is_contract)
+        {
+            $specials->add('is_contract', true, function () { return 'Is contract? {Yes}'; });
+            $specials->add('contract_code', $curl_results[1]['result']);
+        }
+        else
+        {
+            $specials->add('is_contract', false, function () { return 'Is contract? {No}'; });
+        }
+
+        return $specials->return();
+    }
 }
