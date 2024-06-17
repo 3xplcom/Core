@@ -327,6 +327,8 @@ elseif ($chosen_option === 'PB')
         $chosen_block_id = (int)readline(':> ');
     }
 
+    $input_argv[] = $chosen_block_id;
+
     $start_block_id = $chosen_block_id > 0 ? $chosen_block_id : $module->inquire_latest_block();
 
     if ($start_block_id != $chosen_block_id)
@@ -370,6 +372,9 @@ elseif ($chosen_option === 'PR')
     {
         $start_block_id = (int)readline(':> ');
     }
+
+    $input_argv[] = $start_block_id;
+
     echo cli_format_bold('End block number please...') . N;
 
     if (isset($argv[4]))
@@ -381,39 +386,41 @@ elseif ($chosen_option === 'PR')
     {
         $end_block_id = (int)readline(':> ');
     }
+
+    $input_argv[] = $end_block_id;
+
     echo N;
-
     echo cli_format_bold('Processing range of blocks...');
+
     $increment = $start_block_id > $end_block_id ? -1 : 1;
-    for ($i = $start_block_id; $i != $end_block_id; $i=$i+$increment)
+
+    for ($i = $start_block_id; $i != $end_block_id; $i = $i + $increment)
+    {
+        echo "\nProcessing block #{$i} ";
+
+        $t0 = microtime(true);
+
+        try
         {
-            echo "\nProcessing block #{$i} ";
-
-            $t0 = microtime(true);
-
-            try
-            {
-                $module->process_block($i);
-            }
-            catch (RequesterException)
-            {
-                echo cli_format_error('Requested exception');
-                usleep(250000);
-            }
-
-            $event_count = count($module->get_return_events() ?? []);
-            $currency_count = count($module->get_return_currencies() ?? []);
-
-            $time = number_format(microtime(true) - $t0, 4);
-
-            echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+            $module->process_block($i);
+        }
+        catch (RequesterException)
+        {
+            echo cli_format_error('Requested exception');
+            usleep(250000);
         }
 
-}
+        $event_count = count($module->get_return_events() ?? []);
+        $currency_count = count($module->get_return_currencies() ?? []);
+        $time = number_format(microtime(true) - $t0, 4);
 
+        echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+    }
+}
 elseif ($chosen_option === 'M')
 {
     $best_known_block = $module->inquire_latest_block();
+
     echo cli_format_bold('Monitoring the blockchain for new blocks...');
 
     while (true)
@@ -472,6 +479,8 @@ elseif ($chosen_option === 'H') // Checking handles
         $handle = readline(':> ');
     }
 
+    $input_argv[] = $handle;
+
     ddd(($module->api_get_handle)($handle));
 }
 elseif ($chosen_option === 'AT') // Transaction specials
@@ -487,6 +496,8 @@ elseif ($chosen_option === 'AT') // Transaction specials
     {
         $transaction = readline(':> ');
     }
+
+    $input_argv[] = $transaction;
 
     if (!method_exists($module, 'api_get_transaction_specials'))
         ddd('This function is undefined');
@@ -506,6 +517,8 @@ elseif ($chosen_option === 'CS') // Currency supply
     {
         $currency = readline(':> ');
     }
+
+    $input_argv[] = $currency;
 
     ddd($module->api_get_currency_supply($currency));
 }
