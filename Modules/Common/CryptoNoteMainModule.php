@@ -254,12 +254,14 @@ abstract class CryptoNoteMainModule extends CoreModule
             result_in: 'data');
 
         $specials = new Specials();
-        $specials->add('transaction_size', 'Transaction size', SpecialUnit::Bytes, SpecialType::Integer, (int)$transaction['tx_size']);
-        $specials->add('is_coinbase', 'Is coinbase?', null, SpecialType::Boolean, $transaction['coinbase']);
-        $specials->add('version', 'Version', null, SpecialType::Integer, (int)$transaction['tx_version']);
-        $specials->add('extra', 'Extra', null, SpecialType::String, $transaction['extra']);
-        $specials->add('fee', 'Fee', SpecialUnit::NativeTokens, SpecialType::Integer, (int)$transaction['tx_fee']);
-        $specials->add('fee_per_byte', 'Fee', SpecialUnit::NativeTokensPerByte, SpecialType::Float, (int)$transaction['tx_fee'] / (int)$transaction['tx_size']);
+
+        $specials->add('version', (int)$transaction['tx_version']);
+        $specials->add('ringct_type', (int)$transaction['rct_type'], function ($raw_value) { return "RingCT type: {{$raw_value}}"; });
+        $specials->add('size', (int)$transaction['tx_size'], function ($raw_value) { return "Size: {{$raw_value}} bytes"; });
+        $specials->add('is_coinbase', $transaction['coinbase'], function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
+        $specials->add('extra', $transaction['extra']);
+        $specials->add('fee_per_byte', (int)$transaction['tx_fee'] / (int)$transaction['tx_size'],
+            function ($raw_value) { $currency = ' ' . $this->currency_details['smallest'] ?? ''; $value = round($raw_value); return "Fee per byte: {{$value}}{$currency}"; });
 
         return $specials->return();
     }

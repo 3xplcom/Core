@@ -741,4 +741,62 @@ abstract class EVMMainModule extends CoreModule
             params: ['jsonrpc' => '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
             result_in: 'result', timeout: $this->timeout));
     }
+
+    final public function api_get_transaction_specials($transaction)
+    {
+        $multi_curl = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionByHash',
+                     'params'  => [$transaction],
+                     'id'      => 0,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionReceipt',
+                     'params'  => [$transaction],
+                     'id'      => 1,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $curl_results = requester_multi_process_all(requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout));
+
+        $transaction_data = $curl_results[0]['result'];
+        $transaction_receipt = $curl_results[1]['result'];
+
+        //
+
+        $specials = new Specials();
+
+        $specials->add('status', to_bool_from_0xhex($transaction_receipt['status']),
+            function ($raw_value) { if ($raw_value) return 'Status: {Successful}'; else return 'Status: {Failed}'; });
+        $specials->add('nonce', to_int64_from_0xhex($transaction_data['nonce']));
+        $specials->add('type', to_int64_from_0xhex($transaction_data['type']));
+
+        $specials->add('gas_used', to_int64_from_0xhex($transaction_receipt['gasUsed']),
+            function ($raw_value) { return "Gas used: {{$raw_value}} gas"; });
+        $specials->add('gas_limit', to_int64_from_0xhex($transaction_data['gas']),
+            function ($raw_value) { return "Gas limit: {{$raw_value}} gas"; });
+        $specials->add('gas_price', to_int64_from_0xhex($transaction_data['gasPrice']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_receipt['effectiveGasPrice']))
+            $specials->add('effective_gas_price', to_int64_from_0xhex($transaction_receipt['effectiveGasPrice']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Effective gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_data['maxFeePerGas']))
+            $specials->add('max_gas_price', to_int64_from_0xhex($transaction_data['maxFeePerGas']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_data['maxPriorityFeePerGas']))
+            $specials->add('max_priority_gas_price', to_int64_from_0xhex($transaction_data['maxPriorityFeePerGas']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max priority gas price: {{$value}} Gwei"; });
+
+        $specials->add('input_data', $transaction_data['input']);
+
+        return $specials->return();
+    }
 }

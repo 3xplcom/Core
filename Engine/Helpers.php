@@ -159,6 +159,16 @@ function to_int256_from_hex(?string $value): ?string
     return hex2dec($value);
 }
 
+function to_bool_from_0xhex(string $value): bool
+{
+    if ($value === '0x0')
+        return false;
+    elseif ($value === '0x1')
+        return true;
+    else
+        throw new DeveloperError("to_bool_from_0xhex({$value}): wrong input");
+}
+
 function to_0x_zeroes_trimmed_address(?string $value): ?string
 {
     // from 00000000000000000000000014d3065c8eb89895f4df12450ec6b130049f8034
@@ -222,9 +232,10 @@ final class Specials
 {
     public array $specials = [];
 
-    public function add(string $key, string $field, ?SpecialUnit $unit, SpecialType $type, mixed $value): void
+    public function add(string $key, mixed $raw_value, ?Closure $format = null): void
     {
-        $this->specials[$key] = ['field' => $field, 'unit' => ((isset($unit)) ? $unit->value : null), 'type' => $type->value, 'value' => $value];
+        if (is_null($format)) $key_formatted = ucfirst(str_replace('_', ' ', $key));
+        $this->specials[$key] = ['value' => $raw_value, 'formatted' => (!is_null($format)) ? $format($raw_value) : "{$key_formatted}: {{$raw_value}}"];
     }
 
     public function return(): array

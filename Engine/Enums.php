@@ -124,19 +124,3 @@ enum SearchableEntity: string
     case Handle = 'handle';
     case Any = 'any';
 }
-
-// Units and types for blockchain-specific data
-enum SpecialUnit: string
-{
-    case Bytes = 'bytes';
-    case NativeTokens = 'native tokens';
-    case NativeTokensPerByte = 'native tokens per byte';
-}
-
-enum SpecialType: string
-{
-    case Integer = 'integer';
-    case Float = 'float';
-    case String = 'string';
-    case Boolean = 'boolean';
-}

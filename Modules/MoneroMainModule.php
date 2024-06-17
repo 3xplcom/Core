@@ -15,7 +15,7 @@ final class MoneroMainModule extends CryptoNoteMainModule implements Module
         $this->module = 'monero-main';
         $this->is_main = true;
         $this->currency = 'monero';
-        $this->currency_details = ['name' => 'Monero', 'symbol' => 'XMR', 'decimals' => 12, 'description' => null];
+        $this->currency_details = ['name' => 'Monero', 'symbol' => 'XMR', 'decimals' => 12, 'description' => null, 'smallest' => 'piconero'];
         $this->first_block_id = 0;
         $this->first_block_date = '2014-04-18';
 
