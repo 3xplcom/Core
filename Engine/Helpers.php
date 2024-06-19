@@ -227,6 +227,12 @@ function balance($blockchain, $module, $address, $currency)
     return 'database'; // Not a real value;
 }
 
+// The same for getting transaction fees.
+function fee($blockchain, $module, $transaction)
+{
+    return '?'; // Not a real value either
+}
+
 // Special class for blockchain-specific data
 final class Specials
 {

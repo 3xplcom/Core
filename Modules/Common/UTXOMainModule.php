@@ -499,4 +499,44 @@ abstract class UTXOMainModule extends CoreModule
 
         return bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
     }
+
+    final public function api_get_transaction_specials($transaction)
+    {
+        $data = requester_single($this->select_node(), params: ['method' => 'getrawtransaction', 'params' => [$transaction, 1]],
+            timeout: $this->timeout)['result'];
+        // A major problem here is that we don't have enough data on inputs... Including their values and script types.
+        // So we can either load transaction data on all inputs (not a very good solution for an API as this takes a (relative) lot of time
+        // or try to get some data from the database. Alas, we don't really store anything useful either. The only thing we can have is
+        // fee data as it's already loaded when we gather transaction data.
+
+        $specials = new Specials();
+
+        $specials->add('size', (int)$data['size'], function ($raw_value) { return "Size: {{$raw_value}} bytes"; });
+
+        $fee = fee($this->blockchain, $this->module, $transaction);
+
+        $specials->add('fee_per_byte',
+            ($fee !== '?') ? (int)bcdiv($fee, $data['size']) : '?',
+            function ($raw_value) { return "Fee rate: {{$raw_value}} sat/byte"; });
+
+        if (isset($data['vsize'])) // SegWit
+        {
+            $specials->add('vsize', (int)$data['vsize'], function ($raw_value) { return "Virtual size: {{$raw_value}} vbytes"; });
+
+            $specials->add('fee_per_vbyte',
+                ($fee !== '?') ? (int)bcdiv($fee, $data['vsize']) : '?',
+                function ($raw_value) { return "Fee rate: {{$raw_value}} sat/vbyte"; });
+
+            $specials->add('weight', (int)$data['weight'], function ($raw_value) { return "Weight: {{$raw_value}} WU"; });
+        }
+
+        $specials->add('version', (int)$data['version']);
+        $specials->add('locktime', (int)$data['locktime']);
+
+        $specials->add('is_coinbase',
+            isset($data['vin']['0']['coinbase']),
+            function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
+
+        return $specials->return();
+    }
 }
