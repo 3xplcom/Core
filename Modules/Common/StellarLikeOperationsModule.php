@@ -590,27 +590,24 @@ abstract class StellarLikeOperationsModule extends CoreModule
             }
         }
 
+        foreach ($currencies_to_process as $k => $v)
+            if (is_null($v))
+                $currencies_to_process[$k] = 'xlm';
+
         $currencies_to_process = array_values(array_unique($currencies_to_process)); // Removing duplicates
         $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format); // Removes already known currencies
 
         foreach ($currencies_to_process as $currency) 
         {
-            if($currency === null)
+            if ($currency !== 'xlm')
             {
                 $currencies[] = [
-                    'id'       => "XLM",
-                    'name'     => "XLM",
-                    'symbol'   => "XLM",
+                    'id'       => $currency,
+                    'name'     => explode(':', $currency)[0],
+                    'symbol'   => explode(':', $currency)[1],
                     'decimals' => 7,
                 ];
-                continue;
             }
-            $currencies[] = [
-                'id'       => $currency,
-                'name'     => explode(':', $currency)[0],
-                'symbol'   => explode(':', $currency)[1],
-                'decimals' => 7,
-            ];
         }
 
         ////////////////
@@ -621,6 +618,9 @@ abstract class StellarLikeOperationsModule extends CoreModule
         {
             $event['block'] = $block_id;
             $event['time'] = $this->block_time;
+
+            if (is_null($event['currency']))
+                $event['currency'] = 'xlm';
         }
 
         $this->set_return_events($events);
