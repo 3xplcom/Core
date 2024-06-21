@@ -603,8 +603,8 @@ abstract class StellarLikeOperationsModule extends CoreModule
             {
                 $currencies[] = [
                     'id'       => $currency,
-                    'name'     => explode(':', $currency)[0],
-                    'symbol'   => explode(':', $currency)[1],
+                    'name'     => explode(':', $currency)[1],
+                    'symbol'   => explode(':', $currency)[0],
                     'decimals' => 7,
                 ];
             }
