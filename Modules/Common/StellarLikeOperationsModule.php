@@ -571,7 +571,62 @@ abstract class StellarLikeOperationsModule extends CoreModule
                         ];
                         break;
                     }
-                
+                case "invoke_host_function":
+                    {
+                        $id_op = $op['id'];
+                        $effects = $this->get_effects($this->select_node() . "operations/{$id_op}/effects?order=desc&cursor=%s");
+                        foreach($effects as $effect) 
+                        {
+                            switch($effect['type']) 
+                            {
+                                case 'account_credited':
+                                {
+                                    $this->parse_account_credited($op, $tx_is_failed, $effect, $sort_key, $events, $currencies_to_process);
+                                    break;
+                                }
+                                case 'contract_credited':
+                                {
+                                    $this->parse_contract_credited($op, $tx_is_failed, $effect, $sort_key, $events, $currencies_to_process);
+                                    break;
+                                }
+                                case 'account_debited':
+                                {
+                                    $this->parse_account_debited($op, $tx_is_failed, $effect, $sort_key, $events, $currencies_to_process);
+                                    break;
+                                }
+                                case 'contract_debited':
+                                {
+                                    $this->parse_contract_debited($op, $tx_is_failed, $effect, $sort_key, $events, $currencies_to_process);
+                                    break;
+                                }
+                                default:
+                                    throw new ModuleError("Unknown operation type: " . $effect['type'] . " operation: " . $op['id']);
+                            }
+                        }
+                        break;
+                    }
+                case 'clawback_claimable_balance': // 210027804899786754
+                    {
+                        $id_op = $op['id'];
+                        $effects = $this->get_effects($this->select_node() . "operations/{$id_op}/effects?order=desc&cursor=%s");
+                        foreach($effects as $effect) 
+                        {
+                            switch($effect['type']) 
+                            {
+                                case 'account_credited':
+                                {
+                                    $this->parse_account_credited($op, $tx_is_failed, $effect, $sort_key, $events, $currencies_to_process);
+                                    break;
+                                }
+                                case 'claimable_balance_clawed_back':
+                                case 'claimable_balance_sponsorship_removed':
+                                    break;
+                                default:
+                                    throw new ModuleError("Unknown operation type: " . $effect['type'] . " operation: " . $op['id']);
+                            }
+                        }
+                        break;
+                    }
                 // if operation doesn't have any monetary operations -- we skip it, only fees we pay in Main Module
                 case 'create_passive_sell_offer': // 210453732511657987
                 case 'change_trust':
@@ -592,14 +647,14 @@ abstract class StellarLikeOperationsModule extends CoreModule
 
         foreach ($currencies_to_process as $k => $v)
             if (is_null($v))
-                $currencies_to_process[$k] = 'xlm';
+                $currencies_to_process[$k] = $this->currency;
 
         $currencies_to_process = array_values(array_unique($currencies_to_process)); // Removing duplicates
         $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format); // Removes already known currencies
 
         foreach ($currencies_to_process as $currency) 
         {
-            if ($currency !== 'xlm')
+            if ($currency !== $this->currency)
             {
                 $currencies[] = [
                     'id'       => $currency,
@@ -710,6 +765,54 @@ abstract class StellarLikeOperationsModule extends CoreModule
             'transaction' => $op['transaction_hash'],
             'currency' => ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'],
             'address' => 'the-void',
+            'sort_key' => $sort_key++,
+            'effect' => $this->to_7($effect['amount']),
+            'failed' => $is_failed,
+            'extra' => StellarSpecialTransactions::fromName($op['type']),
+        ];
+        $currencies_to_process[] = ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'];
+    }
+
+    private function parse_contract_debited($op, $is_failed, $effect, &$sort_key, &$events, &$currencies_to_process) 
+    {
+        $events[] = [
+            'transaction' => $op['transaction_hash'],
+            'currency' => ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'],
+            'address' => $effect['contract'],
+            'sort_key' => $sort_key++,
+            'effect' => '-' . $this->to_7($effect['amount']),
+            'failed' => $is_failed,
+            'extra' => StellarSpecialTransactions::fromName($op['type']),
+        ];
+
+        $events[] = [
+            'transaction' => $op['transaction_hash'],
+            'currency' => ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'],
+            'address' => 'the-void',
+            'sort_key' => $sort_key++,
+            'effect' => $this->to_7($effect['amount']),
+            'failed' => $is_failed,
+            'extra' => StellarSpecialTransactions::fromName($op['type']),
+        ];
+        $currencies_to_process[] = ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'];
+    }
+
+    private function parse_contract_credited($op, $is_failed, $effect, &$sort_key, &$events, &$currencies_to_process) 
+    {
+        $events[] = [
+            'transaction' => $op['transaction_hash'],
+            'currency' => ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'],
+            'address' => 'the-void',
+            'sort_key' => $sort_key++,
+            'effect' => '-' . $this->to_7($effect['amount']),
+            'failed' => $is_failed,
+            'extra' => StellarSpecialTransactions::fromName($op['type']),
+        ];
+
+        $events[] = [
+            'transaction' => $op['transaction_hash'],
+            'currency' => ($effect['asset_type'] === 'native') ? null : $effect['asset_code'] . ":" . $effect['asset_issuer'],
+            'address' => $effect['contract'],
             'sort_key' => $sort_key++,
             'effect' => $this->to_7($effect['amount']),
             'failed' => $is_failed,

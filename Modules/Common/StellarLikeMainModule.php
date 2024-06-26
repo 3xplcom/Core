@@ -23,8 +23,11 @@ abstract class StellarLikeMainModule extends CoreModule
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
     public ?array $events_table_nullable_fields = []; 
 
-    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
-    public ?array $extra_data_details = null;
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
+    public ?array $extra_data_details = [
+        'f' => "Fee",
+        'o' => "Source account",
+    ];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
