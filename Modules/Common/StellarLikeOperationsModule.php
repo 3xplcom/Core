@@ -873,4 +873,48 @@ abstract class StellarLikeOperationsModule extends CoreModule
 
         return $operations;
     }
+
+    final public function api_get_transaction_specials($transaction) 
+    {
+        $transaction_data = requester_single($this->select_node() . "transactions/{$transaction}", timeout: $this->timeout);
+        $memo_bytes = null;
+        $memo = null;
+
+        $specials = new Specials();
+        if(isset($transaction_data['memo_bytes']))
+            $memo_bytes = $transaction_data['memo_bytes'];
+
+        if(isset($transaction_data['memo']))
+            $memo = $transaction_data['memo'];
+
+        $specials->add('max_fee', $transaction_data['max_fee'],
+            function ($raw_value) { return "The maximum fee (in stroops): {{$raw_value}}";});
+        $specials->add('memo_type', $transaction_data['memo_type']);
+        $specials->add('memo_bytes', $memo_bytes);
+        $specials->add('memo', $memo);
+
+        return $specials->return();
+    }
+
+    final public function api_get_address_specials($address) 
+    {
+        $account_data = requester_single($this->select_node() . "accounts/{$address}", timeout: $this->timeout);
+        $home_domain = null;
+        $deleted = false;
+
+        $specials = new Specials();
+        if(isset($transaction_data['home_domain']))
+            $home_domain = $transaction_data['home_domain'];
+
+        if(isset($transaction_data['deleted']))
+            $deleted = $transaction_data['deleted'];
+
+        $specials->add('sequence_number', $account_data['sequence']);
+        $specials->add('last_modified_ledger', $account_data['last_modified_ledger']);
+        $specials->add('home_domain', $home_domain);
+        $specials->add('deleted', $account_data['deleted'], 
+            function ($raw_value) { if ($raw_value) return 'deleted ?: {Yes}'; else return 'deleted ?: {No}'; });
+
+        return $specials->return();
+    }
 }
