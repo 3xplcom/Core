@@ -526,9 +526,10 @@ abstract class UTXOMainModule extends CoreModule
             $specials->add('fee_per_vbyte',
                 ($fee !== '?') ? (int)bcdiv($fee, $data['vsize']) : '?',
                 function ($raw_value) { return "Fee rate: {{$raw_value}} sat/vbyte"; });
-
-            $specials->add('weight', (int)$data['weight'], function ($raw_value) { return "Weight: {{$raw_value}} WU"; });
         }
+
+        if (isset($data['weight'])) // SegWit
+            $specials->add('weight', (int)$data['weight'], function ($raw_value) { return "Weight: {{$raw_value}} WU"; });
 
         $specials->add('version', (int)$data['version']);
         $specials->add('locktime', (int)$data['locktime']);
