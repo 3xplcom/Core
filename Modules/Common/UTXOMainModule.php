@@ -538,6 +538,11 @@ abstract class UTXOMainModule extends CoreModule
             isset($data['vin']['0']['coinbase']),
             function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
 
+        if (isset($data['instantlock'])) // Dash-like$specials->add('is_coinbase',
+            $specials->add('is_instantsend',
+                $data['instantlock'],
+                function ($raw_value) { if ($raw_value) return "Is InstantSend? {Yes}"; else return "Is InstantSend? {No}"; });
+
         return $specials->return();
     }
 }
