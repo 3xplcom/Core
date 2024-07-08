@@ -286,7 +286,7 @@ abstract class TVMTRC1155Module extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance(string $address, array $currencies): array
+    final public function api_get_balance(string $address, array $currencies): array
     {
         if (!$currencies)
             return [];

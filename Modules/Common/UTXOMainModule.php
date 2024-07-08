@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module process main UTXO transfers. Requires a Bitcoin Core-like node.  */
@@ -492,7 +492,7 @@ abstract class UTXOMainModule extends CoreModule
     }
 
     // Getting the token supply from the node. In case of UTXOs, `the-void` holds the negative value of the supply.
-    function api_get_currency_supply(string $currency): string
+    final function api_get_currency_supply(string $currency): string
     {
         if ($currency !== $this->currency)
             return '0';
@@ -500,7 +500,7 @@ abstract class UTXOMainModule extends CoreModule
         return bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
     }
 
-    final public function api_get_transaction_specials($transaction)
+    final public function api_get_transaction_specials(string $transaction): array
     {
         $data = requester_single($this->select_node(), params: ['method' => 'getrawtransaction', 'params' => [$transaction, 1]],
             timeout: $this->timeout)['result'];

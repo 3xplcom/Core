@@ -1,13 +1,13 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Bitcoin module. It requires Bitcoin Core (https://github.com/bitcoin/bitcoin)
  *  with `txindex` set to true to run.  */
 
-final class BitcoinMainModule extends UTXOMainModule implements Module
+final class BitcoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
 {
     function initialize()
     {

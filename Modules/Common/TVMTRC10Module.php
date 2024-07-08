@@ -414,7 +414,7 @@ abstract class TVMTRC10Module extends CoreModule
     }
 
     // Getting balances from the node
-    function api_get_balance(string $address, array $currencies): array
+    final function api_get_balance(string $address, array $currencies): array
     {
         // assuming that address received  in base58 format THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC
         // should always be the case
@@ -580,7 +580,7 @@ abstract class TVMTRC10Module extends CoreModule
     }
 
     // Getting the token supply from the node
-    function api_get_currency_supply(string $currency): string
+    final function api_get_currency_supply(string $currency): string
     {
         if (!preg_match(StandardPatterns::PositiveNumber->value, $currency))
         {

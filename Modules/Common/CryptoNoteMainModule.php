@@ -246,7 +246,7 @@ abstract class CryptoNoteMainModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    final public function api_get_transaction_specials($transaction)
+    final public function api_get_transaction_specials(string $transaction): array
     {
         $transaction = requester_single($this->select_node(),
             endpoint: 'api/transaction/' . $transaction,

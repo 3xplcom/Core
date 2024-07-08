@@ -730,7 +730,7 @@ abstract class EVMMainModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address)
+    final public function api_get_balance(string $address): string
     {
         $address = strtolower($address);
 
@@ -742,7 +742,7 @@ abstract class EVMMainModule extends CoreModule
             result_in: 'result', timeout: $this->timeout));
     }
 
-    final public function api_get_transaction_specials($transaction)
+    final public function api_get_transaction_specials(string $transaction): array
     {
         $multi_curl = [];
 
@@ -800,7 +800,7 @@ abstract class EVMMainModule extends CoreModule
         return $specials->return();
     }
 
-    final public function api_get_address_specials($address)
+    final public function api_get_address_specials(string $address): array
     {
         $multi_curl = [];
 

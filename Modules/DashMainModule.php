@@ -1,13 +1,13 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Dash module. It requires Dash Core (https://github.com/dashpay/dash)
  *  with `txindex` set to true to run.  */
 
-final class DashMainModule extends UTXOMainModule implements Module
+final class DashMainModule extends UTXOMainModule implements Module, TransactionSpecials
 {
     function initialize()
     {

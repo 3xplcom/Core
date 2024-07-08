@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Module interface  */
@@ -25,4 +25,31 @@ interface Module
     public function pre_process_block($block_id); // This is the main function to program within modules
     public function process_block($block_id); // This is a top-level function
     public function post_process_block(); // Check if returned data was constructed correctly
+}
+
+// Special API interfaces
+
+interface BalanceSpecial
+{
+    public function api_get_balance(string $address): string;
+}
+
+interface MultipleBalanceSpecial
+{
+    public function api_get_balance(string $address, array $currencies): array;
+}
+
+interface TransactionSpecials
+{
+    public function api_get_transaction_specials(string $transaction): array;
+}
+
+interface AddressSpecials
+{
+    public function api_get_address_specials(string $address): array;
+}
+
+interface SupplySpecial
+{
+    public function api_get_currency_supply(string $currency): string;
 }

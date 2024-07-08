@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module processes "external" TVM transactions, block rewards.
@@ -630,7 +630,7 @@ abstract class TVMMainModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address): ?string
+    final public function api_get_balance(string $address): string
     {
         // assuming that address received  in base58 format THPvaUhoh2Qn2y9THCZML3H815hhFhn5YC
         // should always be the case

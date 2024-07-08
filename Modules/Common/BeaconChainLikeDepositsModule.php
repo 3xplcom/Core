@@ -174,7 +174,7 @@ abstract class BeaconChainLikeDepositsModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    public function api_get_balance($index)
+    final public function api_get_balance(string $index): string
     {
         return requester_single($this->select_node(),
             endpoint: "eth/v1/beacon/states/head/validators/{$index}",
