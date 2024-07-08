@@ -7,7 +7,7 @@
 /*  This is the main Litecoin module. It requires Litecoin Core (https://github.com/litecoin-project/litecoin)
  *  with `txindex` set to true to run.  */
 
-final class LitecoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class LitecoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

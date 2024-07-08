@@ -545,4 +545,20 @@ abstract class UTXOMainModule extends CoreModule
 
         return $specials->return();
     }
+
+    final function api_broadcast_transaction(string $data): ?string
+    {
+        if (!preg_match(StandardPatterns::HexWithout0x->value, $data))
+            return null;
+
+        try
+        {
+            return requester_single($this->select_node(), params: ['method' => 'sendrawtransaction', 'params' => [$data]],
+                timeout: $this->timeout)['result'];
+        }
+        catch (Throwable)
+        {
+            return null;
+        }
+    }
 }

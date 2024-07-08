@@ -7,7 +7,7 @@
 /*  This is the main Bitcoin module. It requires Bitcoin Core (https://github.com/bitcoin/bitcoin)
  *  with `txindex` set to true to run.  */
 
-final class BitcoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class BitcoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

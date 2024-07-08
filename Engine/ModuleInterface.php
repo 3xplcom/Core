@@ -53,3 +53,8 @@ interface SupplySpecial
 {
     public function api_get_currency_supply(string $currency): string;
 }
+
+interface BroadcastTransactionSpecial
+{
+    public function api_broadcast_transaction(string $data): ?string;
+}

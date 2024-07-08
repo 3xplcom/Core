@@ -9,7 +9,7 @@
  *  the amount of coins in these pools. This module requires the latest Zcash node version. If one was upgrading from
  *  some previous version, they'd need to use `reindex`.  */
 
-final class ZcashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class ZcashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

@@ -104,6 +104,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Transaction extras ' . cli_format_reverse('<AT>') .
     ', Address extras ' . cli_format_reverse('<AA>') .
     ', Currency supply ' . cli_format_reverse('<CS>') .
+    ', Broadcast transaction ' . cli_format_reverse('<BT>') .
     N;
 
 if (isset($argv[2]))
@@ -118,7 +119,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'AA', 'CS']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'AA', 'CS', 'BT']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -543,4 +544,22 @@ elseif ($chosen_option === 'CS') // Currency supply
     $input_argv[] = $currency;
 
     ddd($module->api_get_currency_supply($currency));
+}
+elseif ($chosen_option === 'BT') // Broadcast a transaction
+{
+    echo cli_format_bold('Data please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $data = $argv[3];
+        echo ":> {$data}\n";
+    }
+    else
+    {
+        $data = readline(':> ');
+    }
+
+    $input_argv[] = $data;
+
+    ddd($module->api_broadcast_transaction($data));
 }

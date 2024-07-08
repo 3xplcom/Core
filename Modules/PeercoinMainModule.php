@@ -4,7 +4,7 @@
  *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-final class PeercoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class PeercoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

@@ -7,7 +7,7 @@
 /*  This is the main Dash module. It requires Dash Core (https://github.com/dashpay/dash)
  *  with `txindex` set to true to run.  */
 
-final class DashMainModule extends UTXOMainModule implements Module, TransactionSpecials
+final class DashMainModule extends UTXOMainModule implements Module, TransactionSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

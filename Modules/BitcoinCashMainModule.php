@@ -7,7 +7,7 @@
 /*  This is the main Bitcoin Cash module. It requires Bitcoin Cash Node (https://gitlab.com/bitcoin-cash-node/bitcoin-cash-node)
  *  with `txindex` set to true to run.  */
 
-final class BitcoinCashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class BitcoinCashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

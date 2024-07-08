@@ -7,7 +7,7 @@
 /*  This is the main DigiByte module. It requires DigiByte Core (https://github.com/digibyte-core/digibyte)
  *  with `txindex` set to true to run.  */
 
-final class DigiByteMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class DigiByteMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

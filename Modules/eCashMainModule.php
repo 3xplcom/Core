@@ -7,7 +7,7 @@
 /*  This is the main eCash module. It requires a Bitcoin ABC node to run (https://github.com/Bitcoin-ABC/bitcoin-abc)
  *  with `txindex` set to true to run.  */
 
-final class eCashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class eCashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {

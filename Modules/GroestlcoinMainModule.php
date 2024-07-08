@@ -10,7 +10,7 @@
  *  `true` for `PUBKEY` like this: ```CPubKey pubKey(vSolutions[0]); if (!pubKey.IsValid()) return false;
  *  addressRet = PKHash(pubKey); return true;```  */
 
-final class GroestlcoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial
+final class GroestlcoinMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
     function initialize()
     {
