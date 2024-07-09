@@ -551,14 +551,26 @@ abstract class UTXOMainModule extends CoreModule
         if (!preg_match(StandardPatterns::HexWithout0x->value, $data))
             return null;
 
-        try
+        $hash = null;
+
+        foreach ($this->nodes as $node)
         {
-            return requester_single($this->select_node(), params: ['method' => 'sendrawtransaction', 'params' => [$data]],
-                timeout: $this->timeout)['result'];
+            // We're fine here with some nodes being down, so we don't use `requester_multi()`
+            // which requires for all nodes to be online.
+            try
+            {
+                $this_hash = requester_single($node, params: ['method' => 'sendrawtransaction', 'params' => [$data]],
+                    timeout: $this->timeout)['result'];
+            }
+            catch (Throwable)
+            {
+                $this_hash = null;
+            }
+
+            if (!is_null($this_hash))
+                $hash = $this_hash;
         }
-        catch (Throwable)
-        {
-            return null;
-        }
+
+        return $hash;
     }
 }
