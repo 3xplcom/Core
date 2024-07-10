@@ -22,10 +22,13 @@ final class opBNBMainModule extends EVMMainModule implements Module, BalanceSpec
         // EVMMainModule
         $this->mempool_implemented = false;
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions];
+        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions, EVMSpecialFeatures::OPStack];
         $this->reward_function = function($block_id)
         {
             return '0';
         };
+
+        $this->l1_fee_vault = '0x420000000000000000000000000000000000001A';
+        $this->base_fee_recipient = '0x4200000000000000000000000000000000000019';
     }
 }

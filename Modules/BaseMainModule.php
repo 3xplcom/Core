@@ -22,10 +22,12 @@ final class BaseMainModule extends EVMMainModule implements Module, BalanceSpeci
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions]; // Base is a fork of Optimism, so it has the same special txs
+        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions, EVMSpecialFeatures::OPStack]; // Base is a fork of Optimism, so it has the same special txs
         $this->reward_function = function($block_id)
         {
             return '0';
         };
+        $this->l1_fee_vault = '0x420000000000000000000000000000000000001A';
+        $this->base_fee_recipient = '0x4200000000000000000000000000000000000019';
     }
 }
