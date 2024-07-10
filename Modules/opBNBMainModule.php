@@ -28,7 +28,7 @@ final class opBNBMainModule extends EVMMainModule implements Module, BalanceSpec
             return '0';
         };
 
-        $this->l1_fee_vault = '0x420000000000000000000000000000000000001A';
+        $this->l1_fee_vault = '0x420000000000000000000000000000000000001A'; // https://github.com/bnb-chain/op-geth/blob/aead14eeda87794899daed7fbdcca11fb9021fbd/params/protocol_params.go#L29
         $this->base_fee_recipient = '0x4200000000000000000000000000000000000019';
     }
 }

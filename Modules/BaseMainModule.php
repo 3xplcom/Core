@@ -27,7 +27,7 @@ final class BaseMainModule extends EVMMainModule implements Module, BalanceSpeci
         {
             return '0';
         };
-        $this->l1_fee_vault = '0x420000000000000000000000000000000000001A';
+        $this->l1_fee_vault = '0x420000000000000000000000000000000000001A';  // https://github.com/ethereum-optimism/op-geth/blob/c6ea6fa09d4e7df6d1ca6b2d32bcb139f021b1e2/params/protocol_params.go#L29 as it uses the same code base
         $this->base_fee_recipient = '0x4200000000000000000000000000000000000019';
     }
 }
