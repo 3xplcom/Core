@@ -139,4 +139,45 @@ abstract class StellarLikeMainModule extends CoreModule
 
         throw new ModuleError('Unknown code flow');
     }
+
+    // Specials for transaction and addresses 
+    final public function api_get_transaction_specials($transaction) 
+    {
+        $transaction_data = requester_single($this->select_node() . "transactions/{$transaction}", timeout: $this->timeout);
+
+        $specials = new Specials();
+        $specials->add('max_fee', $transaction_data['max_fee'],
+            function ($raw_value) { return "The maximum fee (in stroops): {{$raw_value}}";});
+        $specials->add('memo_type', $transaction_data['memo_type']);
+
+        if(isset($transaction_data['memo_bytes']))
+            $specials->add('memo_bytes', $transaction_data['memo_bytes']);
+
+        if(isset($transaction_data['memo']))
+            $specials->add('memo', $transaction_data['memo']);
+
+        return $specials->return();
+    }
+
+    final public function api_get_address_specials($address) 
+    {
+        try {
+            $account_data = requester_single($this->select_node() . "accounts/{$address}", timeout: $this->timeout);
+        } catch (RequesterException) {
+            $specials = new Specials();
+            return $specials->return();
+        }
+        
+
+        $specials = new Specials();
+        $specials->add('sequence_number', $account_data['sequence']);
+        $specials->add('last_modified_ledger', $account_data['last_modified_ledger']);
+        $specials->add('deleted', $account_data['deleted'] ?? null, 
+            function ($raw_value) { if ($raw_value) return 'deleted ?: {Yes}'; else return 'deleted ?: {No}'; });
+
+        if(isset($transaction_data['home_domain']))
+            $specials->add('home_domain', $transaction_data['home_domain']);
+
+        return $specials->return();
+    }
 }

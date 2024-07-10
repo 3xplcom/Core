@@ -15,5 +15,6 @@ final class StellarOperationsModule extends StellarLikeOperationsModule implemen
         $this->is_main = false;
         $this->first_block_date = '2015-09-30';
         $this->first_block_id = 0;
+        $this->native_currency = 'xlm';
     }
 }

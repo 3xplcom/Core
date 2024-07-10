@@ -44,6 +44,7 @@ abstract class StellarLikeOperationsModule extends CoreModule
     public ?int $transaction_count = null;
     public ?int $operation_count = null;
     public ?string $paging_token = null;
+    public ?string $native_currency = null;
 
     //
 
@@ -61,6 +62,9 @@ abstract class StellarLikeOperationsModule extends CoreModule
     final public function post_post_initialize()
     {
         $this->extra_data_details = StellarSpecialTransactions::to_assoc_array();
+
+        if (is_null($this->native_currency))
+            throw new DeveloperError("`native_currency` is not set (developer error)");
     }
 
     final public function pre_process_block($block_id)
@@ -645,16 +649,12 @@ abstract class StellarLikeOperationsModule extends CoreModule
             }
         }
 
-        foreach ($currencies_to_process as $k => $v)
-            if (is_null($v))
-                $currencies_to_process[$k] = $this->currency;
-
         $currencies_to_process = array_values(array_unique($currencies_to_process)); // Removing duplicates
         $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format); // Removes already known currencies
 
         foreach ($currencies_to_process as $currency) 
         {
-            if ($currency !== $this->currency)
+            if ($currency !== null)
             {
                 $currencies[] = [
                     'id'       => $currency,
@@ -675,7 +675,7 @@ abstract class StellarLikeOperationsModule extends CoreModule
             $event['time'] = $this->block_time;
 
             if (is_null($event['currency']))
-                $event['currency'] = 'xlm';
+                $event['currency'] = $this->native_currency;
         }
 
         $this->set_return_events($events);
@@ -872,49 +872,5 @@ abstract class StellarLikeOperationsModule extends CoreModule
             throw new ModuleError("Incorrect amount of operations in block: {$block_id}");
 
         return $operations;
-    }
-
-    final public function api_get_transaction_specials($transaction) 
-    {
-        $transaction_data = requester_single($this->select_node() . "transactions/{$transaction}", timeout: $this->timeout);
-        $memo_bytes = null;
-        $memo = null;
-
-        $specials = new Specials();
-        if(isset($transaction_data['memo_bytes']))
-            $memo_bytes = $transaction_data['memo_bytes'];
-
-        if(isset($transaction_data['memo']))
-            $memo = $transaction_data['memo'];
-
-        $specials->add('max_fee', $transaction_data['max_fee'],
-            function ($raw_value) { return "The maximum fee (in stroops): {{$raw_value}}";});
-        $specials->add('memo_type', $transaction_data['memo_type']);
-        $specials->add('memo_bytes', $memo_bytes);
-        $specials->add('memo', $memo);
-
-        return $specials->return();
-    }
-
-    final public function api_get_address_specials($address) 
-    {
-        $account_data = requester_single($this->select_node() . "accounts/{$address}", timeout: $this->timeout);
-        $home_domain = null;
-        $deleted = false;
-
-        $specials = new Specials();
-        if(isset($transaction_data['home_domain']))
-            $home_domain = $transaction_data['home_domain'];
-
-        if(isset($transaction_data['deleted']))
-            $deleted = $transaction_data['deleted'];
-
-        $specials->add('sequence_number', $account_data['sequence']);
-        $specials->add('last_modified_ledger', $account_data['last_modified_ledger']);
-        $specials->add('home_domain', $home_domain);
-        $specials->add('deleted', $account_data['deleted'], 
-            function ($raw_value) { if ($raw_value) return 'deleted ?: {Yes}'; else return 'deleted ?: {No}'; });
-
-        return $specials->return();
     }
 }
