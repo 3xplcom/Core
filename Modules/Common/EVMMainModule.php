@@ -265,7 +265,7 @@ abstract class EVMMainModule extends CoreModule
 
                 if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
-                
+
                 if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
                 {
                     $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
@@ -398,10 +398,12 @@ abstract class EVMMainModule extends CoreModule
             {
                 $this_gas_used = to_int256_from_0xhex($transaction['gasUsed']);
                 $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
-                $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
+                $this_effective_gas_price = (!is_null($transaction['effectiveGasPrice'])) ? to_int256_from_0xhex($transaction['effectiveGasPrice']) : '0';
 
-                if (in_array(EVMSpecialFeatures::EffectiveGasPriceCanBeZero, $this->extra_features))
-                    if ($transaction['effectiveGasPrice'] === '0x0')
+                $this_to_miner = bcsub(bcmul($this_effective_gas_price, $this_gas_used), $this_burned);
+
+                if (in_array(EVMSpecialFeatures::EffectiveGasPriceCanBeZeroOrNull, $this->extra_features))
+                    if ($transaction['effectiveGasPrice'] === '0x0' || is_null($transaction['effectiveGasPrice']))
                         $this_to_miner = '0';
 
                 // The fee is $this_burned + $this_to_miner
