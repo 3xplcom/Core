@@ -21,7 +21,7 @@ final class BOBMainModule extends EVMMainModule implements Module, BalanceSpecia
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::EffectiveGasPriceCanBeZero];
+        $this->extra_features = [EVMSpecialFeatures::EffectiveGasPriceCanBeZeroOrNull];
         $this->reward_function = function($block_id)
         {
             return '0';
