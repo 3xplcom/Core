@@ -763,117 +763,117 @@ abstract class EVMMainModule extends CoreModule
         $this->set_return_events($events);
     }
 
-     // Getting balances from the node
-     final public function api_get_balance(string $address): string
-     {
-         $address = strtolower($address);
- 
-         if (!preg_match(StandardPatterns::iHexWith0x40->value, $address))
-             return '0';
- 
-         return to_int256_from_0xhex(requester_single($this->select_node(),
-             params: ['jsonrpc' => '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
-             result_in: 'result', timeout: $this->timeout));
-     }
- 
-     final public function api_get_transaction_specials(string $transaction): array
-     {
-         $multi_curl = [];
- 
-         $multi_curl[] = requester_multi_prepare($this->select_node(),
-             params: ['method'  => 'eth_getTransactionByHash',
-                      'params'  => [$transaction],
-                      'id'      => 0,
-                      'jsonrpc' => '2.0',
-             ], timeout: $this->timeout);
- 
-         $multi_curl[] = requester_multi_prepare($this->select_node(),
-             params: ['method'  => 'eth_getTransactionReceipt',
-                      'params'  => [$transaction],
-                      'id'      => 1,
-                      'jsonrpc' => '2.0',
-             ], timeout: $this->timeout);
- 
-         $curl_results = requester_multi_process_all(requester_multi($multi_curl,
-             limit: envm($this->module, 'REQUESTER_THREADS'),
-             timeout: $this->timeout));
- 
-         $transaction_data = $curl_results[0]['result'];
-         $transaction_receipt = $curl_results[1]['result'];
- 
-         //
- 
-         $specials = new Specials();
- 
-         $specials->add('status', to_bool_from_0xhex($transaction_receipt['status']),
-             function ($raw_value) { if ($raw_value) return 'Status: {Successful}'; else return 'Status: {Failed}'; });
-         $specials->add('nonce', to_int64_from_0xhex($transaction_data['nonce']));
-         $specials->add('type', to_int64_from_0xhex($transaction_data['type']));
- 
-         $specials->add('gas_used', to_int64_from_0xhex($transaction_receipt['gasUsed']),
-             function ($raw_value) { return "Gas used: {{$raw_value}} gas"; });
-         $specials->add('gas_limit', to_int64_from_0xhex($transaction_data['gas']),
-             function ($raw_value) { return "Gas limit: {{$raw_value}} gas"; });
-         $specials->add('gas_price', to_int64_from_0xhex($transaction_data['gasPrice']),
-             function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Gas price: {{$value}} Gwei"; });
- 
-         if (isset($transaction_receipt['effectiveGasPrice']))
-             $specials->add('effective_gas_price', to_int64_from_0xhex($transaction_receipt['effectiveGasPrice']),
-             function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Effective gas price: {{$value}} Gwei"; });
- 
-         if (isset($transaction_data['maxFeePerGas']))
-             $specials->add('max_gas_price', to_int64_from_0xhex($transaction_data['maxFeePerGas']),
-             function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max gas price: {{$value}} Gwei"; });
- 
-         if (isset($transaction_data['maxPriorityFeePerGas']))
-             $specials->add('max_priority_gas_price', to_int64_from_0xhex($transaction_data['maxPriorityFeePerGas']),
-             function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max priority gas price: {{$value}} Gwei"; });
- 
-         $specials->add('input_data', $transaction_data['input']);
- 
-         return $specials->return();
-     }
- 
-     final public function api_get_address_specials(string $address): array
-     {
-         $multi_curl = [];
- 
-         $multi_curl[] = requester_multi_prepare($this->select_node(),
-             params: ['method'  => 'eth_getTransactionCount',
-                      'params'  => [$address, 'latest'],
-                      'id'      => 0,
-                      'jsonrpc' => '2.0',
-             ], timeout: $this->timeout);
- 
-         $multi_curl[] = requester_multi_prepare($this->select_node(),
-             params: ['method'  => 'eth_getCode',
-                      'params'  => [$address, 'latest'],
-                      'id'      => 1,
-                      'jsonrpc' => '2.0',
-             ], timeout: $this->timeout);
- 
-         $curl_results = requester_multi_process_all(requester_multi($multi_curl,
-             limit: envm($this->module, 'REQUESTER_THREADS'),
-             timeout: $this->timeout));
- 
-         //
- 
-         $specials = new Specials();
- 
-         $specials->add('nonce', to_int64_from_0xhex($curl_results[0]['result']));
- 
-         $is_contract = ($curl_results[1]['result'] !== '0x');
- 
-         if ($is_contract)
-         {
-             $specials->add('is_contract', true, function () { return 'Is contract? {Yes}'; });
-             $specials->add('contract_code', $curl_results[1]['result']);
-         }
-         else
-         {
-             $specials->add('is_contract', false, function () { return 'Is contract? {No}'; });
-         }
- 
-         return $specials->return();
-     }
+    // Getting balances from the node
+    final public function api_get_balance(string $address): string
+    {
+        $address = strtolower($address);
+
+        if (!preg_match(StandardPatterns::iHexWith0x40->value, $address))
+            return '0';
+
+        return to_int256_from_0xhex(requester_single($this->select_node(),
+            params: ['jsonrpc' => '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
+            result_in: 'result', timeout: $this->timeout));
+    }
+
+    final public function api_get_transaction_specials(string $transaction): array
+    {
+        $multi_curl = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionByHash',
+                     'params'  => [$transaction],
+                     'id'      => 0,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionReceipt',
+                     'params'  => [$transaction],
+                     'id'      => 1,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $curl_results = requester_multi_process_all(requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout));
+
+        $transaction_data = $curl_results[0]['result'];
+        $transaction_receipt = $curl_results[1]['result'];
+
+        //
+
+        $specials = new Specials();
+
+        $specials->add('status', to_bool_from_0xhex($transaction_receipt['status']),
+            function ($raw_value) { if ($raw_value) return 'Status: {Successful}'; else return 'Status: {Failed}'; });
+        $specials->add('nonce', to_int64_from_0xhex($transaction_data['nonce']));
+        $specials->add('type', to_int64_from_0xhex($transaction_data['type']));
+
+        $specials->add('gas_used', to_int64_from_0xhex($transaction_receipt['gasUsed']),
+            function ($raw_value) { return "Gas used: {{$raw_value}} gas"; });
+        $specials->add('gas_limit', to_int64_from_0xhex($transaction_data['gas']),
+            function ($raw_value) { return "Gas limit: {{$raw_value}} gas"; });
+        $specials->add('gas_price', to_int64_from_0xhex($transaction_data['gasPrice']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_receipt['effectiveGasPrice']))
+            $specials->add('effective_gas_price', to_int64_from_0xhex($transaction_receipt['effectiveGasPrice']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Effective gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_data['maxFeePerGas']))
+            $specials->add('max_gas_price', to_int64_from_0xhex($transaction_data['maxFeePerGas']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_data['maxPriorityFeePerGas']))
+            $specials->add('max_priority_gas_price', to_int64_from_0xhex($transaction_data['maxPriorityFeePerGas']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max priority gas price: {{$value}} Gwei"; });
+
+        $specials->add('input_data', $transaction_data['input']);
+
+        return $specials->return();
+    }
+
+    final public function api_get_address_specials(string $address): array
+    {
+        $multi_curl = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionCount',
+                     'params'  => [$address, 'latest'],
+                     'id'      => 0,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getCode',
+                     'params'  => [$address, 'latest'],
+                     'id'      => 1,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $curl_results = requester_multi_process_all(requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout));
+
+        //
+
+        $specials = new Specials();
+
+        $specials->add('nonce', to_int64_from_0xhex($curl_results[0]['result']));
+
+        $is_contract = ($curl_results[1]['result'] !== '0x');
+
+        if ($is_contract)
+        {
+            $specials->add('is_contract', true, function () { return 'Is contract? {Yes}'; });
+            $specials->add('contract_code', $curl_results[1]['result']);
+        }
+        else
+        {
+            $specials->add('is_contract', false, function () { return 'Is contract? {No}'; });
+        }
+
+        return $specials->return();
+    }
 }
