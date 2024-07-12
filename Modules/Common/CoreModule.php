@@ -220,6 +220,12 @@ abstract class CoreModule
 
             if ($this->should_return_currencies || $complemented->should_return_currencies)
                 throw new DeveloperError("Undefined behaviour for processing currencies in a complemented module");
+
+            if (method_exists($this, 'api_get_balance'))
+                throw new DeveloperError("Complementing module can't implement `api_get_balance()`");
+
+            if (method_exists($this, 'api_get_currency_supply'))
+                throw new DeveloperError("Complementing module can't implement `api_get_currency_supply()`");
         }
         else
         {
