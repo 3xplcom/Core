@@ -25,6 +25,7 @@ abstract class HandshakeLikeMainModule extends CoreModule
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
     public ?array $events_table_nullable_fields = ['extra', 'extra_indexed'];
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
+    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Handle;
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;

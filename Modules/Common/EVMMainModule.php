@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module processes "external" EVM transactions, block rewards, and withdrawals from the PoS chain.
@@ -67,7 +67,7 @@ abstract class EVMMainModule extends CoreModule
 
         if (is_null($this->reward_function))
             throw new DeveloperError("`reward_function` is not set (developer error)");
-      
+
         if (in_array(EVMSpecialFeatures::PoSWithdrawals, $this->extra_features) && is_null($this->staking_contract))
             throw new DeveloperError('`staking_contract` is not set when `PoSWithdrawals` is enabled');
 
@@ -265,6 +265,13 @@ abstract class EVMMainModule extends CoreModule
 
                 if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
+                
+                if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
+                {
+                    $transaction_data[($general_data[$i]['hash'])]['type'] = $receipt_data[$i]['type'];
+                    $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
+                    $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
+                }
             }
         }
         else // Mempool processing
@@ -285,6 +292,9 @@ abstract class EVMMainModule extends CoreModule
                 {
                     foreach ($transactions as $transaction)
                     {
+                        if (in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                            $transaction = $transaction[0]; // For some reason, there's a different format in RSK
+
                         if (!isset($this->processed_transactions[($transaction['hash'])]))
                         {
                             $transaction_data[($transaction['hash'])] =
@@ -396,12 +406,26 @@ abstract class EVMMainModule extends CoreModule
 
                 // The fee is $this_burned + $this_to_miner
 
-                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
-                {
-                    if ($transaction['type'] === '0x7e')
-                    {
+                if (in_array(EVMSpecialFeatures::SpecialSenderPaysNoFee, $this->extra_features))
+                    if ($transaction['from'] === '0x0000000000000000000000000000000000000000')
                         $this_burned = $this_to_miner = '0';
+
+                if (in_array(EVMSpecialFeatures::HasSystemTransactions, $this->extra_features))
+                    if ($transaction['type'] === '0x7e')
+                        $this_burned = $this_to_miner = '0';
+
+                if (in_array(EVMSpecialFeatures::EIP4844, $this->extra_features))
+                {
+                    if ($transaction['type'] === '0x3')
+                    {
+                        $blob_fee = bcmul(to_int256_from_0xhex($transaction['blobGasUsed']), to_int256_from_0xhex($transaction['blobGasPrice']));
+                        $this_burned = bcadd($this_burned, $blob_fee);
                     }
+                }
+                if (in_array(EVMSpecialFeatures::NoEIP1559BurnFee, $this->extra_features))
+                {
+                    $this_to_miner = bcadd($this_burned, $this_to_miner);
+                    $this_burned = '0';
                 }
             }
             else
@@ -447,9 +471,14 @@ abstract class EVMMainModule extends CoreModule
                     'extra' => EVMSpecialTransactions::FeeToMiner->value,
                 ];
 
+                // In RSK, the fees are collected into a special address and distributed to miners after 4000 confirmations.
+                $fee_recipient = (!in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
+                    ? $miner
+                    : '0x0000000000000000000000000000000001000008';
+
                 $events[] = [
                     'transaction' => $transaction_hash,
-                    'address' => $miner,
+                    'address' => $fee_recipient,
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 3,
                     'effect' => $this_to_miner,
@@ -701,7 +730,7 @@ abstract class EVMMainModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address)
+    final public function api_get_balance(string $address): string
     {
         $address = strtolower($address);
 
@@ -711,5 +740,106 @@ abstract class EVMMainModule extends CoreModule
         return to_int256_from_0xhex(requester_single($this->select_node(),
             params: ['jsonrpc' => '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
             result_in: 'result', timeout: $this->timeout));
+    }
+
+    final public function api_get_transaction_specials(string $transaction): array
+    {
+        $multi_curl = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionByHash',
+                     'params'  => [$transaction],
+                     'id'      => 0,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionReceipt',
+                     'params'  => [$transaction],
+                     'id'      => 1,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $curl_results = requester_multi_process_all(requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout));
+
+        $transaction_data = $curl_results[0]['result'];
+        $transaction_receipt = $curl_results[1]['result'];
+
+        //
+
+        $specials = new Specials();
+
+        $specials->add('status', to_bool_from_0xhex($transaction_receipt['status']),
+            function ($raw_value) { if ($raw_value) return 'Status: {Successful}'; else return 'Status: {Failed}'; });
+        $specials->add('nonce', to_int64_from_0xhex($transaction_data['nonce']));
+        $specials->add('type', to_int64_from_0xhex($transaction_data['type']));
+
+        $specials->add('gas_used', to_int64_from_0xhex($transaction_receipt['gasUsed']),
+            function ($raw_value) { return "Gas used: {{$raw_value}} gas"; });
+        $specials->add('gas_limit', to_int64_from_0xhex($transaction_data['gas']),
+            function ($raw_value) { return "Gas limit: {{$raw_value}} gas"; });
+        $specials->add('gas_price', to_int64_from_0xhex($transaction_data['gasPrice']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_receipt['effectiveGasPrice']))
+            $specials->add('effective_gas_price', to_int64_from_0xhex($transaction_receipt['effectiveGasPrice']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Effective gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_data['maxFeePerGas']))
+            $specials->add('max_gas_price', to_int64_from_0xhex($transaction_data['maxFeePerGas']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max gas price: {{$value}} Gwei"; });
+
+        if (isset($transaction_data['maxPriorityFeePerGas']))
+            $specials->add('max_priority_gas_price', to_int64_from_0xhex($transaction_data['maxPriorityFeePerGas']),
+            function ($raw_value) { $value = bcdiv((string)$raw_value, bcpow('10', '9'), 9); return "Max priority gas price: {{$value}} Gwei"; });
+
+        $specials->add('input_data', $transaction_data['input']);
+
+        return $specials->return();
+    }
+
+    final public function api_get_address_specials(string $address): array
+    {
+        $multi_curl = [];
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getTransactionCount',
+                     'params'  => [$address, 'latest'],
+                     'id'      => 0,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $multi_curl[] = requester_multi_prepare($this->select_node(),
+            params: ['method'  => 'eth_getCode',
+                     'params'  => [$address, 'latest'],
+                     'id'      => 1,
+                     'jsonrpc' => '2.0',
+            ], timeout: $this->timeout);
+
+        $curl_results = requester_multi_process_all(requester_multi($multi_curl,
+            limit: envm($this->module, 'REQUESTER_THREADS'),
+            timeout: $this->timeout));
+
+        //
+
+        $specials = new Specials();
+
+        $specials->add('nonce', to_int64_from_0xhex($curl_results[0]['result']));
+
+        $is_contract = ($curl_results[1]['result'] !== '0x');
+
+        if ($is_contract)
+        {
+            $specials->add('is_contract', true, function () { return 'Is contract? {Yes}'; });
+            $specials->add('contract_code', $curl_results[1]['result']);
+        }
+        else
+        {
+            $specials->add('is_contract', false, function () { return 'Is contract? {No}'; });
+        }
+
+        return $specials->return();
     }
 }

@@ -18,7 +18,7 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['the-void'];
-    public ?bool $hidden_values_only = false;
+    public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'currency'];
     public ?array $events_table_nullable_fields = [];
@@ -357,34 +357,53 @@ abstract class CardanoLikeNativeTokensModule extends CoreModule
 
             try
             {
-                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname']);
+                $metadata = requester_single($this->metadata_registry . $currency['policy'] . $currency['hexname'], valid_codes: [200, 204]);
             }
-            catch (Exception $e)
+            catch (RequesterEmptyResponseException)
             {
-                // due to nature of GET, 404 is valid for our purpuses (no metadata) but response is not json-encoded, hence this
-                // also, for the same reason I cannot use multicurl, the whole batch will die
-                if (substr($e->getMessage(), -3) !== "404") {
-                    throw $e;
-                }
+                // Code 204
             }
 
-            $decimals = 0;
+            if ($metadata)
+            {
+                $decimals = 0;
 
-            if (array_key_exists('decimals', $metadata))
-                if (array_key_exists('value', $metadata['decimals']))
-                    $decimals = intval($metadata['decimals']['value']);
+                if (array_key_exists('decimals', $metadata))
+                    if (array_key_exists('value', $metadata['decimals']))
+                        $decimals = intval($metadata['decimals']['value']);
 
-            // null the gibberish names
-            $currency['name'] = preg_replace('/\\\\\d\d\d/', '', $currency['name']);
-            $currency['name'] = preg_replace('/[\x00-\x1F\x7F]/u', '', $currency['name']);
+                // null the gibberish names
+                $currency['name'] = preg_replace('/\\\\\d\d\d/', '', $currency['name']);
+                $currency['name'] = preg_replace('/[\x00-\x1F\x7F]/u', '', $currency['name']);
 
-            $currencies[] = [
-                'id'       => $currency['fingerprint'],
-                'name'     => $currency['name'],
-                'decimals' => $decimals
-            ];
+                $currencies[] = [
+                    'id'       => $currency['fingerprint'],
+                    'name'     => $currency['name'],
+                    'decimals' => $decimals
+                ];
+            }
+            else
+            {
+                $currencies[] = [
+                    'id'       => $currency['fingerprint'],
+                    'name'     => '',
+                    'decimals' => 0
+                ];
+            }
         }
 
         $this->set_return_currencies($currencies);
+    }
+
+    function api_get_currency_supply(string $currency): string
+    {
+        $this->db_connect();
+
+        $query = pg_query_params($this->db,
+            "SELECT SUM(ma_tx_mint.quantity::numeric) AS supply FROM ma_tx_mint 
+          WHERE ma_tx_mint.ident = (SELECT multi_asset.id FROM multi_asset WHERE fingerprint = $1)",
+            array($currency)
+        );
+        return pg_fetch_assoc($query)['supply'] ?? '0';
     }
 }
