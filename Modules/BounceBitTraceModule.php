@@ -4,7 +4,7 @@
  *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes internal Ethereum transactions (using block tracing). It requires an archival Erigon node to run.  */
+/*  This module processes internal BounceBit transactions (using block tracing). It requires an archival node to run.  */
 
 final class BounceBitTraceModule extends EVMTraceModule implements Module
 {
