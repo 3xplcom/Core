@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-20 token transfers in BounceBit.  */
 
-final class BounceBitERC20Module extends EVMERC20Module implements Module
+final class BounceBitERC20Module extends EVMERC20Module implements Module, MultipleBalanceSpecial, SupplySpecial
 {
     function initialize()
     {

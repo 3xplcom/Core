@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-721 NFT transfers in BounceBit.  */
 
-final class BounceBitERC721Module extends EVMERC721Module implements Module
+final class BounceBitERC721Module extends EVMERC721Module implements Module, MultipleBalanceSpecial
 {
     function initialize()
     {

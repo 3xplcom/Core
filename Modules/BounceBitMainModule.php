@@ -6,7 +6,7 @@
 
 /*  This is the main BounceBit module. */
 
-final class BounceBitMainModule extends EVMMainModule implements Module
+final class BounceBitMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {
