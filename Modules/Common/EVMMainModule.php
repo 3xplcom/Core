@@ -238,6 +238,9 @@ abstract class EVMMainModule extends CoreModule
 
             // Data processing
 
+            if (in_array(EVMSpecialFeatures::FeesToTreasury, $this->extra_features))
+                $miner = 'treasury';
+
             $this->block_time = date('Y-m-d H:i:s', to_int64_from_0xhex($block_time));
 
             if (($ic = count($general_data)) !== count($receipt_data))
