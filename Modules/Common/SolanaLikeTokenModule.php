@@ -177,10 +177,8 @@ abstract class SolanaLikeTokenModule extends CoreModule
         $this->set_return_currencies($currencies);
     }
 
-    function api_get_balance(string $address, array $currencies)
+    function api_get_balance(string $address, array $currencies): array
     {
-        if (!preg_match(StandardPatterns::AnySearchable->value, $address))
-            return null;
         // Input currencies should be in format like this: solana-spl-token/So11111111111111111111111111111111111111112
         $balances = [];
         $data = [];

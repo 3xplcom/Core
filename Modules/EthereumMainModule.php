@@ -6,7 +6,7 @@
 
 /*  This is the main Ethereum module. It requires either a geth or an Erigon node to run (but the latter is much faster).  */
 
-final class EthereumMainModule extends EVMMainModule implements Module
+final class EthereumMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {

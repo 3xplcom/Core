@@ -7,7 +7,7 @@
 /*  This module processes BRC-20 token transfers on Bitcoin.
  *  It requires https://github.com/hirosystems/ordinals-api and a Bitcoin Core node to run.  */
 
-final class BitcoinBRC20Module extends OrdinalsBRC20Module implements Module
+final class BitcoinBRC20Module extends OrdinalsBRC20Module implements Module, MultipleBalanceSpecial
 {
     function initialize()
     {

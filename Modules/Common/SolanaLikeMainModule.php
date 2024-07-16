@@ -126,11 +126,8 @@ abstract class SolanaLikeMainModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    function api_get_balance($address)
+    final function api_get_balance($address): string
     {
-        if (!preg_match(StandardPatterns::AnySearchable->value, $address))
-            return null;
-
         return requester_single($this->select_node(),
             params: ['method' => 'getBalance',
                      'params' => [$address],

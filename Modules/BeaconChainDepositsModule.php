@@ -6,7 +6,7 @@
 
 /*  This is the Deposits & Withdrawals (main) module for Beacon Chain. It requires a Prysm or a Lighthouse node to run.  */
 
-final class BeaconChainDepositsModule extends BeaconChainLikeDepositsModule implements Module
+final class BeaconChainDepositsModule extends BeaconChainLikeDepositsModule implements Module, BalanceSpecial
 {
     function initialize()
     {

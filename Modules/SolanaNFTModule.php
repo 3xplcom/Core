@@ -16,7 +16,7 @@ Enum SolanaAddressPrograms: string
     case TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 }
 
-final class SolanaNFTModule extends SolanaLikeTokenModule implements Module
+final class SolanaNFTModule extends SolanaLikeTokenModule implements Module, MultipleBalanceSpecial, SupplySpecial
 {
     function initialize()
     {

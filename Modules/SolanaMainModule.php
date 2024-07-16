@@ -6,7 +6,7 @@
 
 /*  This module processes basic Solana transfers.  */
 
-final class SolanaMainModule extends SolanaLikeMainModule implements Module
+final class SolanaMainModule extends SolanaLikeMainModule implements Module, BalanceSpecial
 {
     function initialize()
     {
