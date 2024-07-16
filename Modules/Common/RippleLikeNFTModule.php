@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module works with NFT in Ripple. Requires a Ripple node.  */
@@ -268,14 +268,16 @@ abstract class RippleLikeNFTModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    // Getting balances from the node
-    function api_get_balance(string $address)
+    // This just counts the total number of NFTs an address has
+    final function api_get_balance(string $address): string
     {
-        $nft_amount = "0";
+        $nft_amount = '0';
         $marker = null;
 
-        do {
-            if($marker === null) {
+        do
+        {
+            if($marker === null)
+            {
                 $params = [
                     'method' => 'account_nfts',
                     'params' => [[
@@ -285,7 +287,9 @@ abstract class RippleLikeNFTModule extends CoreModule
                         'limit' => 100,
                     ]]
                     ];
-            } else {
+            }
+            else
+            {
                 $params = [
                     'method' => 'account_nfts',
                     'params' => [[
@@ -297,15 +301,18 @@ abstract class RippleLikeNFTModule extends CoreModule
                     ]]
                     ];
             }
+
             $account_nfts = requester_single(
                 $this->select_node(),
                 params: $params,
                 result_in: 'result',
                 timeout: $this->timeout
             );
+
             $nft_amount = bcadd($nft_amount, (string)count($account_nfts['account_nfts']));
             $marker = $account_nfts['marker'] ?? null;
-        }while($marker);
+        }
+        while ($marker);
 
         return $nft_amount;
     }

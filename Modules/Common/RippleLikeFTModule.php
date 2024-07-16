@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module works with assets in Ripple. Requires a Ripple node.  */
@@ -541,7 +541,7 @@ abstract class RippleLikeFTModule extends CoreModule
     }
 
     // Getting balances from the node
-    function api_get_balance(string $address, array $currencies): array
+    final function api_get_balance(string $address, array $currencies): array
     {
         if (!$currencies)
             return [];

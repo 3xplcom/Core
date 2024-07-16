@@ -1,14 +1,14 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Ethereum Classic module. It requires either a geth node to run. Please note that `status` is
  *  not available on geth for some older transactions when requesting receipts and a special fix is required,
  *  see https://github.com/3xplcom/ethereum-classic  */
 
-final class EthereumClassicMainModule extends EVMMainModule implements Module
+final class EthereumClassicMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {

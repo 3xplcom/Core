@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module processes Solana transfers. Note that it's very minimal as it only processes basic transfers between accounts.  */
@@ -140,11 +140,8 @@ abstract class SolanaLikeMinimalModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    function api_get_balance($address)
+    final function api_get_balance($address): string
     {
-        if (!preg_match(StandardPatterns::AnySearchable->value, $address))
-            return null;
-
         return requester_single($this->select_node(),
             params: ['method' => 'getBalance',
                      'params' => [$address],
