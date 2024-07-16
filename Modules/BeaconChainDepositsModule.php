@@ -1,12 +1,12 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the Deposits & Withdrawals (main) module for Beacon Chain. It requires a Prysm or a Lighthouse node to run.  */
 
-final class BeaconChainDepositsModule extends BeaconChainLikeDepositsModule implements Module
+final class BeaconChainDepositsModule extends BeaconChainLikeDepositsModule implements Module, BalanceSpecial
 {
     function initialize()
     {
@@ -18,6 +18,7 @@ final class BeaconChainDepositsModule extends BeaconChainLikeDepositsModule impl
         $this->first_block_id = 0;
         $this->currency = 'beacon-ethereum'; // We can't use `ethereum` here as this one has a different number of decimals
         $this->currency_details = ['name' => 'Ethereum', 'symbol' => 'ETH', 'decimals' => 9, 'description' => null];
+        $this->extra_indexed_hint_blockchain = 'ethereum';
 
         // BeaconChainLikeModule
         $this->chain_config = [

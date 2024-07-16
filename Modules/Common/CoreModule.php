@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the core module. When you create a custom module, it inherits everything from this core module.
@@ -56,6 +56,12 @@ abstract class CoreModule
     public ?CurrencyType $currency_type = null; // Currency type (FT, NFT, or MT). This can influence the `extra` field.
     public ?FeeRenderModel $fee_render_model = null; // How transactions fees should be rendered or understood
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::None; // What's being stored in the `extra` field
+    public ?string $extra_indexed_hint_blockchain = null; // If there's something in the `extra_indexed` field, which blockchain should
+    // be searched for its contents. By default, it's set to the module's blockchain in post_initialize(). It's possible to set this
+    // param in post_post_initialize() on the abstract module layer, or in initialize() on the final module level.
+    public ?SearchableEntity $extra_indexed_hint_entity = null; // What's being set in `extra_indexed`. The core module doesn't set a default for
+    // this, so it must be set in the module somewhere if `extra_indexed` is present in `events_table_fields`. See Beacon modules as an example.
+
     public ?array $extra_data_details = null; // An array of extended descriptions for `extra`
     const DefaultExtraDataArray = ['f' => 'Miner fee', // This is the default array with the most frequent cases
                                    'b' => 'Burnt fee',
@@ -206,14 +212,20 @@ abstract class CoreModule
             if ($this->address_format !== $complemented->address_format)
                 throw new DeveloperError("`address_format` mismatch for complemented module `{$this->complements}`");
 
-            if ($this->transaction_hash_format !== $complemented->transaction_hash_format)
+            if ($this->transaction_hash_format !== TransactionHashFormat::None && $this->transaction_hash_format !== $complemented->transaction_hash_format)
                 throw new DeveloperError("`transaction_hash_format` mismatch for complemented module `{$this->complements}`");
 
-            if ($this->transaction_render_model !== $complemented->transaction_render_model)
+            if ($this->transaction_render_model !== TransactionRenderModel::None && $this->transaction_render_model !== $complemented->transaction_render_model)
                 throw new DeveloperError("`transaction_render_model` mismatch for complemented module `{$this->complements}`");
 
             if ($this->should_return_currencies || $complemented->should_return_currencies)
                 throw new DeveloperError("Undefined behaviour for processing currencies in a complemented module");
+
+            if (method_exists($this, 'api_get_balance'))
+                throw new DeveloperError("Complementing module can't implement `api_get_balance()`");
+
+            if (method_exists($this, 'api_get_currency_supply'))
+                throw new DeveloperError("Complementing module can't implement `api_get_currency_supply()`");
         }
         else
         {
@@ -385,6 +397,15 @@ abstract class CoreModule
                 throw new DeveloperError("`handles_regex` is not defined");
             if (!isset($this->api_get_handle))
                 throw new DeveloperError("`api_get_handle` is not defined");
+        }
+
+        if (in_array('extra_indexed', $this->events_table_fields))
+        {
+            if (!isset($this->extra_indexed_hint_blockchain))
+                $this->extra_indexed_hint_blockchain = $this->blockchain;
+
+            if (!isset($this->extra_indexed_hint_entity))
+                throw new DeveloperError("`extra_indexed_hint_entity` is not defined");
         }
     }
 
@@ -647,7 +668,8 @@ abstract class CoreModule
                         throw new DeveloperError("`{$field}` is a part of `currencies_table_fields`, but not present in currency");
 
                 if (str_contains((string)$currency['id'], '/'))
-                    throw new DeveloperError("Currency ids can't contain slashes");
+                    if ($this->currency_format !== CurrencyFormat::UnsafeAlphaNumeric)
+                        throw new DeveloperError("Currency ids can't contain slashes");
             }
         }
     }

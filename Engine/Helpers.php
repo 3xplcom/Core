@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Various useful functions  */
@@ -159,6 +159,25 @@ function to_int256_from_hex(?string $value): ?string
     return hex2dec($value);
 }
 
+function to_bool_from_0xhex(string $value): bool
+{
+    if ($value === '0x0')
+        return false;
+    elseif ($value === '0x1')
+        return true;
+    else
+        throw new DeveloperError("to_bool_from_0xhex({$value}): wrong input");
+}
+
+function to_0x_zeroes_trimmed_address(?string $value): ?string
+{
+    // from 00000000000000000000000014d3065c8eb89895f4df12450ec6b130049f8034
+    // to   0x14d3065c8eb89895f4df12450ec6b130049f8034
+    if (is_null($value)) return null;
+    if (strlen($value) <= 40) return $value;
+    return '0x' . substr($value, -40);
+}
+
 // Reordering JSON-RPC 2.0 response by id
 function reorder_by_id(&$curl_results_prepared)
 {
@@ -181,7 +200,9 @@ function delete_array_values(array $arr, array $remove): array // https://stacko
 function remove_passwords($url)
 {
     $url = parse_url($url);
-    return ($url['scheme'] ?? '').'://'.($url['host'] ?? '').($url['path'] ?? '').($url['query'] ?? '');
+    $this_port = (isset($url['port'])) ? ':' . $url['port'] : '';
+
+    return ($url['scheme'] ?? '') . '://' . ($url['host'] ?? '') . $this_port . ($url['path'] ?? '') . ($url['query'] ?? '');
 }
 
 // Returns standard unixtime
@@ -191,9 +212,45 @@ function to_timestamp_from_long_unixtime(string $long_unixtime): string
     return DateTime::createFromFormat('U.u', bcdiv($long_unixtime, '1000', 3))->format("Y-m-d H:i:s");
 }
 
+// Removes 0x from the beginning of a string
 function remove_0x_safely(string $string): string
 {
     if (substr($string, 0, 2) !== '0x')
         throw new DeveloperError("remove_0x_safely({$string}): missing 0x");
     return substr($string, 2);
+}
+
+// A stub function to retrieve balances from the database, see UTXOMainModule for example;
+// Those who build an API on top of this engine, should implement this function according to their database structure.
+function balance($blockchain, $module, $address, $currency)
+{
+    return 'database'; // Not a real value;
+}
+
+// The same for getting transaction fees.
+function fee($blockchain, $module, $transaction)
+{
+    return '?'; // Not a real value either
+}
+
+// Special class for blockchain-specific data
+final class Specials
+{
+    public array $specials = [];
+
+    public function add(string $key, mixed $raw_value, ?Closure $format = null): void
+    {
+        if (is_null($format))
+            $key_formatted = ucfirst(str_replace('_', ' ', $key));
+
+        $this->specials[$key] = ['value' => $raw_value, 'formatted' => (!is_null($format)) ? $format($raw_value) : "{$key_formatted}: {{$raw_value}}"];
+
+        if (!str_contains($this->specials[$key]['formatted'], '{') || !str_contains($this->specials[$key]['formatted'], '}'))
+            throw new DeveloperError("Formatted values should be inclosed in {curly braces}");
+    }
+
+    public function return(): array
+    {
+        return $this->specials;
+    }
 }

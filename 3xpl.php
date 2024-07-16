@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This utility should be used to debug the modules.
@@ -101,6 +101,10 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Monitor blockchain ' . cli_format_reverse('<M>') .
     ', Check handle ' . cli_format_reverse('<H>') .
     ', Run tests ' . cli_format_reverse('<T>') .
+    ', Transaction extras ' . cli_format_reverse('<AT>') .
+    ', Address extras ' . cli_format_reverse('<AA>') .
+    ', Currency supply ' . cli_format_reverse('<CS>') .
+    ', Broadcast transaction ' . cli_format_reverse('<BT>') .
     N;
 
 if (isset($argv[2]))
@@ -115,7 +119,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'AA', 'CS', 'BT']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -325,6 +329,8 @@ elseif ($chosen_option === 'PB')
         $chosen_block_id = (int)readline(':> ');
     }
 
+    $input_argv[] = $chosen_block_id;
+
     $start_block_id = $chosen_block_id > 0 ? $chosen_block_id : $module->inquire_latest_block();
 
     if ($start_block_id != $chosen_block_id)
@@ -368,6 +374,9 @@ elseif ($chosen_option === 'PR')
     {
         $start_block_id = (int)readline(':> ');
     }
+
+    $input_argv[] = $start_block_id;
+
     echo cli_format_bold('End block number please...') . N;
 
     if (isset($argv[4]))
@@ -379,39 +388,41 @@ elseif ($chosen_option === 'PR')
     {
         $end_block_id = (int)readline(':> ');
     }
+
+    $input_argv[] = $end_block_id;
+
     echo N;
-
     echo cli_format_bold('Processing range of blocks...');
+
     $increment = $start_block_id > $end_block_id ? -1 : 1;
-    for ($i = $start_block_id; $i != $end_block_id; $i=$i+$increment)
+
+    for ($i = $start_block_id; $i != $end_block_id; $i = $i + $increment)
+    {
+        echo "\nProcessing block #{$i} ";
+
+        $t0 = microtime(true);
+
+        try
         {
-            echo "\nProcessing block #{$i} ";
-
-            $t0 = microtime(true);
-
-            try
-            {
-                $module->process_block($i);
-            }
-            catch (RequesterException)
-            {
-                echo cli_format_error('Requested exception');
-                usleep(250000);
-            }
-
-            $event_count = count($module->get_return_events() ?? []);
-            $currency_count = count($module->get_return_currencies() ?? []);
-
-            $time = number_format(microtime(true) - $t0, 4);
-
-            echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+            $module->process_block($i);
+        }
+        catch (RequesterException)
+        {
+            echo cli_format_error('Requested exception');
+            usleep(250000);
         }
 
-}
+        $event_count = count($module->get_return_events() ?? []);
+        $currency_count = count($module->get_return_currencies() ?? []);
+        $time = number_format(microtime(true) - $t0, 4);
 
+        echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+    }
+}
 elseif ($chosen_option === 'M')
 {
     $best_known_block = $module->inquire_latest_block();
+
     echo cli_format_bold('Monitoring the blockchain for new blocks...');
 
     while (true)
@@ -470,5 +481,85 @@ elseif ($chosen_option === 'H') // Checking handles
         $handle = readline(':> ');
     }
 
+    $input_argv[] = $handle;
+
     ddd(($module->api_get_handle)($handle));
+}
+elseif ($chosen_option === 'AT') // Transaction specials
+{
+    echo cli_format_bold('Transaction id please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $transaction = $argv[3];
+        echo ":> {$transaction}\n\n";
+    }
+    else
+    {
+        $transaction = readline(':> ');
+    }
+
+    $input_argv[] = $transaction;
+
+    if (!method_exists($module, 'api_get_transaction_specials'))
+        ddd('This function is undefined');
+    else
+        ddd($module->api_get_transaction_specials($transaction));
+}
+elseif ($chosen_option === 'AA') // Address specials
+{
+    echo cli_format_bold('Address please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $address = $argv[3];
+        echo ":> {$address}\n\n";
+    }
+    else
+    {
+        $address = readline(':> ');
+    }
+
+    $input_argv[] = $address;
+
+    if (!method_exists($module, 'api_get_address_specials'))
+        ddd('This function is undefined');
+    else
+        ddd($module->api_get_address_specials($address));
+}
+elseif ($chosen_option === 'CS') // Currency supply
+{
+    echo cli_format_bold('Currency please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $currency = $argv[3];
+        echo ":> {$currency}\n";
+    }
+    else
+    {
+        $currency = readline(':> ');
+    }
+
+    $input_argv[] = $currency;
+
+    ddd($module->api_get_currency_supply($currency));
+}
+elseif ($chosen_option === 'BT') // Broadcast a transaction
+{
+    echo cli_format_bold('Data please...') . N;
+
+    if (isset($argv[3]))
+    {
+        $data = $argv[3];
+        echo ":> {$data}\n";
+    }
+    else
+    {
+        $data = readline(':> ');
+    }
+
+    $input_argv[] = $data;
+
+    ddd($module->api_broadcast_transaction($data));
 }

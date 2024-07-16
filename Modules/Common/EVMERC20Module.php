@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module works with the ERC-20 (BEP-20 and similar) standard, see
@@ -332,5 +332,26 @@ abstract class EVMERC20Module extends CoreModule
         }
 
         return $return;
+    }
+
+    // Getting the token supply from the node
+    function api_get_currency_supply(string $currency): string
+    {
+        if (!preg_match(StandardPatterns::iHexWith0x40->value, $currency))
+        {
+            return '0';
+        }
+
+        $data[] = ['jsonrpc' => '2.0',
+                   'id'      => 0,
+                   'method'  => 'eth_call',
+                   'params'  => [['to'   => $currency,
+                                  'data' => '0x18160ddd',
+                                 ],
+                                 'latest',
+                   ],
+        ];
+
+        return to_int256_from_0xhex(requester_single($this->select_node(), params: $data)[0]['result']);
     }
 }

@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is a parser for Monero-like blockchains. It requires `moneroexamples/onion-monero-blockchain-explorer` as a node to
@@ -244,5 +244,25 @@ abstract class CryptoNoteMainModule extends CoreModule
         });
 
         $this->set_return_events($events);
+    }
+
+    final public function api_get_transaction_specials(string $transaction): array
+    {
+        $transaction = requester_single($this->select_node(),
+            endpoint: 'api/transaction/' . $transaction,
+            timeout: $this->timeout,
+            result_in: 'data');
+
+        $specials = new Specials();
+
+        $specials->add('version', (int)$transaction['tx_version']);
+        $specials->add('ringct_type', (int)$transaction['rct_type'], function ($raw_value) { return "RingCT type: {{$raw_value}}"; });
+        $specials->add('size', (int)$transaction['tx_size'], function ($raw_value) { return "Size: {{$raw_value}} bytes"; });
+        $specials->add('is_coinbase', $transaction['coinbase'], function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
+        $specials->add('extra', $transaction['extra']);
+        $specials->add('fee_per_byte', (int)$transaction['tx_fee'] / (int)$transaction['tx_size'],
+            function ($raw_value) { $currency = ' ' . $this->currency_details['smallest'] ?? ''; $value = round($raw_value); return "Fee per byte: {{$value}}{$currency}"; });
+
+        return $specials->return();
     }
 }

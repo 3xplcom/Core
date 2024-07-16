@@ -94,7 +94,7 @@ final class Base58
         return $output;
     }
 
-    private static function base58_check_encode($address)
+    public static function base58_check_encode($address)
     {
         $hash0 = hash('sha256', $address);
         $hash1 = hash('sha256', hex2bin($hash0));
@@ -105,7 +105,7 @@ final class Base58
         return $base58add;
     }
 
-    private static function base58_check_decode($base58add)
+    public static function base58_check_decode($base58add)
     {
         $address = self::base58_decode($base58add);
         $size = strlen($address);

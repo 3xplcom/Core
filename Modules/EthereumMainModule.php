@@ -1,12 +1,12 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Ethereum module. It requires either a geth or an Erigon node to run (but the latter is much faster).  */
 
-final class EthereumMainModule extends EVMMainModule implements Module
+final class EthereumMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {
@@ -20,7 +20,7 @@ final class EthereumMainModule extends EVMMainModule implements Module
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::Erigon; // Change to geth if you're running geth, but this would be slower
-        $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles, EVMSpecialFeatures::PoSWithdrawals];
+        $this->extra_features = [EVMSpecialFeatures::HasOrHadUncles, EVMSpecialFeatures::PoSWithdrawals, EVMSpecialFeatures::EIP4844];
         $this->staking_contract = '0x00000000219ab540356cbb839cbe05303d7705fa';
         $this->reward_function = function($block_id)
         {
@@ -67,5 +67,11 @@ final class EthereumMainModule extends EVMMainModule implements Module
             else
                 return null;
         };
+
+        // Tests
+        $this->tests = [
+            // Blob transaction
+            ['block' => 19429224, 'transaction' => "0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa", "result" => 'a:1:{s:6:"events";a:6:{i:0;a:8:{s:11:"transaction";s:66:"0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa";s:7:"address";s:42:"0x2c169dfe5fbba12957bdd0ba47d9cedbfe260ca7";s:6:"effect";s:17:"-8079000539885872";s:6:"failed";s:1:"f";s:5:"extra";s:1:"b";s:5:"block";i:19429224;s:4:"time";s:19:"2024-03-13 22:52:47";s:8:"sort_key";i:666;}i:1;a:8:{s:11:"transaction";s:66:"0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa";s:7:"address";s:4:"0x00";s:6:"effect";s:16:"8079000539885872";s:6:"failed";s:1:"f";s:5:"extra";s:1:"b";s:5:"block";i:19429224;s:4:"time";s:19:"2024-03-13 22:52:47";s:8:"sort_key";i:667;}i:2;a:8:{s:11:"transaction";s:66:"0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa";s:7:"address";s:42:"0x2c169dfe5fbba12957bdd0ba47d9cedbfe260ca7";s:6:"effect";s:15:"-13660000000000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:19429224;s:4:"time";s:19:"2024-03-13 22:52:47";s:8:"sort_key";i:668;}i:3;a:8:{s:11:"transaction";s:66:"0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa";s:7:"address";s:42:"0x88c6c46ebf353a52bdbab708c23d0c81daa8134a";s:6:"effect";s:14:"13660000000000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:19429224;s:4:"time";s:19:"2024-03-13 22:52:47";s:8:"sort_key";i:669;}i:4;a:8:{s:11:"transaction";s:66:"0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa";s:7:"address";s:42:"0x2c169dfe5fbba12957bdd0ba47d9cedbfe260ca7";s:6:"effect";s:2:"-0";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:19429224;s:4:"time";s:19:"2024-03-13 22:52:47";s:8:"sort_key";i:670;}i:5;a:8:{s:11:"transaction";s:66:"0xe876dc9e3e2a87fff5f43e9072f8046a0a46d2a2276f01bbb0a69ae0af6af4fa";s:7:"address";s:42:"0xc662c410c0ecf747543f5ba90660f6abebd9c8c4";s:6:"effect";s:1:"0";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:19429224;s:4:"time";s:19:"2024-03-13 22:52:47";s:8:"sort_key";i:671;}}}']
+        ];
     }
 }
