@@ -122,7 +122,7 @@ abstract class StellarLikeMainModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address)
+    public function api_get_balance(string $address): string
     {
         $account_balances = requester_single($this->select_node(),
             endpoint: "accounts/{$address}",
@@ -141,7 +141,7 @@ abstract class StellarLikeMainModule extends CoreModule
     }
 
     // Specials for transaction and addresses 
-    final public function api_get_transaction_specials($transaction) 
+    final public function api_get_transaction_specials(string $transaction): array
     {
         $transaction_data = requester_single($this->select_node() . "transactions/{$transaction}", timeout: $this->timeout);
 
@@ -159,7 +159,7 @@ abstract class StellarLikeMainModule extends CoreModule
         return $specials->return();
     }
 
-    final public function api_get_address_specials($address) 
+    final public function api_get_address_specials(string $address): array
     {
         try {
             $account_data = requester_single($this->select_node() . "accounts/{$address}", timeout: $this->timeout);

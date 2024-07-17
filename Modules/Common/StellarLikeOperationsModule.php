@@ -683,7 +683,6 @@ abstract class StellarLikeOperationsModule extends CoreModule
     }
 
     // Getting balances from the node
-    // Getting balances from the node
     function api_get_balance(string $address, array $currencies): array
     {
         if (!$currencies)
