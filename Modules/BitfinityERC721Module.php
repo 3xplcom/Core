@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-721 NFT transfers in Bitfinity (EVM-like L2 for Bitcoin).  */
 
-final class BitfinityERC721Module extends EVMERC721Module implements Module
+final class BitfinityERC721Module extends EVMERC721Module implements Module, MultipleBalanceSpecial
 {
     function initialize()
     {
@@ -16,5 +16,7 @@ final class BitfinityERC721Module extends EVMERC721Module implements Module
         $this->is_main = false;
         $this->first_block_date = '2024-06-17';
         $this->first_block_id = 0;
+
+        $this->tests = []; // currently, only testnet contains erc721 activity
     }
 }

@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-20 token transfers in Bitfinity (EVM-like L2 for Bitcoin).  */
 
-final class BitfinityERC20Module extends EVMERC20Module implements Module
+final class BitfinityERC20Module extends EVMERC20Module implements Module, MultipleBalanceSpecial, SupplySpecial
 {
     function initialize()
     {
@@ -16,5 +16,7 @@ final class BitfinityERC20Module extends EVMERC20Module implements Module
         $this->is_main = false;
         $this->first_block_date = '2024-06-17';
         $this->first_block_id = 0;
+
+        $this->tests = []; // currently, only testnet contains erc20 activity
     }
 }
