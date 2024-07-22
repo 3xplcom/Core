@@ -8,7 +8,7 @@
 
 abstract class SolanaLikeMainModule extends CoreModule
 {
-    use SolanaTraits;
+    use SolanaLikeTraits;
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::AlphaNumeric;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;

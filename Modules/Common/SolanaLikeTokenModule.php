@@ -11,7 +11,7 @@
 
 abstract class SolanaLikeTokenModule extends CoreModule
 {
-    use SolanaTraits;
+    use SolanaLikeTraits;
 
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::AlphaNumeric;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
@@ -39,6 +39,7 @@ abstract class SolanaLikeTokenModule extends CoreModule
     public ?bool $ignore_sum_of_all_effects = true;
 
     public ?array $tokens_list = null;
+    public ?array $programs = null;
 
     final public function pre_initialize()
     {
@@ -47,7 +48,7 @@ abstract class SolanaLikeTokenModule extends CoreModule
 
     final public function post_post_initialize()
     {
-
+        if (is_null($this->programs)) throw new DeveloperError("`programs` is not set");
     }
 
     final public function pre_process_block($block_id)

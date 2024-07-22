@@ -9,7 +9,7 @@
 require_once __DIR__ . '/../../Engine/Crypto/Base58.php';
 require_once __DIR__ . '/../../Engine/Crypto/Sodium.php';
 
-trait SolanaTraits
+trait SolanaLikeTraits
 {
     public function inquire_latest_block()
     {
@@ -217,10 +217,10 @@ trait SolanaTraits
     function find_metaplex_meta_pda(string $mint): ?string
     {
         $fullseeds = 'metadata';
-        $fullseeds .= Base58::base58_nocheck_decode(SolanaAddressPrograms::METAPLEX_ID->value);
+        $fullseeds .= Base58::base58_nocheck_decode($this->programs['METAPLEX_ID']);
         $fullseeds .= Base58::base58_nocheck_decode($mint);
 
-        return $this->find_program_address($fullseeds, SolanaAddressPrograms::METAPLEX_ID->value);
+        return $this->find_program_address($fullseeds, $this->programs['METAPLEX_ID']);
     }
 
 // Returns new program derived address of Metaplex Master Edition from mint address
@@ -304,14 +304,17 @@ trait SolanaTraits
      * @param $parent_name string the name parent public key (actually TLD)
      * @return string|null
      */
-    function get_name_account_key(string $name, string $name_class = null, string $parent_name = SolanaAddressPrograms::SOL_TLD_AUTHORITY->value): ?string
+    function get_name_account_key(string $name, string $name_class = null, ?string $parent_name = null): ?string
     {
-        $input = SolanaAddressPrograms::DOMAIN_HASH_PREFIX->value . $name;
+        if (is_null($parent_name))
+            $parent_name = $this->programs['SOL_TLD_AUTHORITY'];
+
+        $input = $this->programs['DOMAIN_HASH_PREFIX'] . $name;
         $hashed_name = hash('sha256', $input, true);
 
         $name_class = $name_class ?? str_repeat("\x00", 32);
-        $parent_name = $parent_name != null  ? Base58::base58_nocheck_decode($parent_name) : str_repeat("\x00", 32);
-        return $this->find_program_address($hashed_name . $name_class . $parent_name, SolanaAddressPrograms::SPL_NAME_SERVICE_PROGRAM_ID->value);
+        $parent_name = Base58::base58_nocheck_decode($parent_name);
+        return $this->find_program_address($hashed_name . $name_class . $parent_name, $this->programs['SPL_NAME_SERVICE_PROGRAM_ID']);
     }
 
     function get_domain_owner(string $domain): ?string
