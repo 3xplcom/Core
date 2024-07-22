@@ -6,7 +6,7 @@
 
 /*  This is the main zkSync module. It requires a geth node to run.  */
 
-final class zkSyncEraMainModule extends EVMMainModule implements Module
+final class zkSyncEraMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {

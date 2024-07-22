@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-721 NFT transfers in zkSync. It requires a geth node to run.  */
 
-final class zkSyncEraERC721Module extends EVMERC721Module implements Module
+final class zkSyncEraERC721Module extends EVMERC721Module implements Module, MultipleBalanceSpecial
 {
     function initialize()
     {

@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-20 token transfers in zkSync. It requires a geth node to run.  */
 
-final class zkSyncEraERC20Module extends EVMERC20Module implements Module
+final class zkSyncEraERC20Module extends EVMERC20Module implements Module, MultipleBalanceSpecial, SupplySpecial
 {
     function initialize()
     {

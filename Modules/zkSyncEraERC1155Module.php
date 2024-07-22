@@ -6,7 +6,7 @@
 
 /*  This module processes ERC-1155 MT transfers in zkSync. It requires a geth node to run.  */
 
-final class zkSyncEraERC1155Module extends EVMERC1155Module implements Module
+final class zkSyncEraERC1155Module extends EVMERC1155Module implements Module, MultipleBalanceSpecial
 {
     function initialize()
     {
