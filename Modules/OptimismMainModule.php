@@ -6,7 +6,7 @@
 
 /*  This is the main Optimism module. It requires a geth node to run.  */
 
-final class OptimismMainModule extends EVMMainModule implements Module
+final class OptimismMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {

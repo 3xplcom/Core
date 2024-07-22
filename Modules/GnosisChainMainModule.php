@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Gnosis Chain module. It requires either a Nethermind or an Erigon node to run (but the latter is much faster).
@@ -9,7 +9,7 @@
  *  the created contract address neither in the transaction info, nor in the transaction receipt. That's probably a bug with
  *  Nethermind which is not observed with Erigon. `No address` exception will be thrown for such transactions.  */
 
-final class GnosisChainMainModule extends EVMMainModule implements Module
+final class GnosisChainMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {

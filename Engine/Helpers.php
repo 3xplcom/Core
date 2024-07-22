@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  Various useful functions  */
@@ -159,6 +159,16 @@ function to_int256_from_hex(?string $value): ?string
     return hex2dec($value);
 }
 
+function to_bool_from_0xhex(string $value): bool
+{
+    if ($value === '0x0')
+        return false;
+    elseif ($value === '0x1')
+        return true;
+    else
+        throw new DeveloperError("to_bool_from_0xhex({$value}): wrong input");
+}
+
 function to_0x_zeroes_trimmed_address(?string $value): ?string
 {
     // from 00000000000000000000000014d3065c8eb89895f4df12450ec6b130049f8034
@@ -215,4 +225,32 @@ function remove_0x_safely(string $string): string
 function balance($blockchain, $module, $address, $currency)
 {
     return 'database'; // Not a real value;
+}
+
+// The same for getting transaction fees.
+function fee($blockchain, $module, $transaction)
+{
+    return '?'; // Not a real value either
+}
+
+// Special class for blockchain-specific data
+final class Specials
+{
+    public array $specials = [];
+
+    public function add(string $key, mixed $raw_value, ?Closure $format = null): void
+    {
+        if (is_null($format))
+            $key_formatted = ucfirst(str_replace('_', ' ', $key));
+
+        $this->specials[$key] = ['value' => $raw_value, 'formatted' => (!is_null($format)) ? $format($raw_value) : "{$key_formatted}: {{$raw_value}}"];
+
+        if (!str_contains($this->specials[$key]['formatted'], '{') || !str_contains($this->specials[$key]['formatted'], '}'))
+            throw new DeveloperError("Formatted values should be inclosed in {curly braces}");
+    }
+
+    public function return(): array
+    {
+        return $this->specials;
+    }
 }
