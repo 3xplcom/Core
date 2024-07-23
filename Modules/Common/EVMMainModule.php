@@ -83,10 +83,10 @@ abstract class EVMMainModule extends CoreModule
             $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
         }
 
-        if(is_null($this->l1_fee_vault) && in_array(EVMSpecialFeatures::OPStack, $this->extra_features))
+        if(is_null($this->l1_fee_vault) && in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
             throw new DeveloperError("For each OP stack chains should be set L1 fee vault address");
 
-        if(is_null($this->base_fee_recipient) && in_array(EVMSpecialFeatures::OPStack, $this->extra_features))
+        if(is_null($this->base_fee_recipient) && in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features))
             throw new DeveloperError("For each OP stack chains should be set base fee recipient address");
     }
 
@@ -280,7 +280,7 @@ abstract class EVMMainModule extends CoreModule
                     $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
                     $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
                 }
-                if(in_array(EVMSpecialFeatures::OPStack, $this->extra_features))
+                if(in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['l1Fee'] = $receipt_data[$i]['l1Fee'] ?? null;
             }
         }
@@ -445,7 +445,7 @@ abstract class EVMMainModule extends CoreModule
                 $this_to_miner = '0';
             }
 
-            if (in_array(EVMSpecialFeatures::OPStack, $this->extra_features) && $this_l1_fee !== '0')
+            if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && $this_l1_fee !== '0')
             {
                 $events[] = [
                     'transaction' => $transaction_hash,
@@ -483,7 +483,7 @@ abstract class EVMMainModule extends CoreModule
 
                 $events[] = [
                     'transaction' => $transaction_hash,
-                    'address' => in_array(EVMSpecialFeatures::OPStack, $this->extra_features) ? $this->base_fee_recipient : '0x00',
+                    'address' => in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? $this->base_fee_recipient : '0x00',
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 1,
                     'effect' => $this_burned,
