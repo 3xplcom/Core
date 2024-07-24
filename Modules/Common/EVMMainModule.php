@@ -49,6 +49,7 @@ abstract class EVMMainModule extends CoreModule
     public array $extra_features = [];
     public ?string $staking_contract = null;
     public ?Closure $reward_function = null;
+    public ?string $feeCollectorAddress = null;
 
     //
 
@@ -80,6 +81,9 @@ abstract class EVMMainModule extends CoreModule
             $this->block_entity_name = 'batch'; // We process batches instead of blocks
             $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
         }
+
+        if (in_array(EVMSpecialFeatures::FeeCollectorAddress, $this->extra_features) && is_null($this->feeCollectorAddress))
+            throw new DeveloperError("`feeCollectorAddress` is not set (developer error)");
     }
 
     final public function pre_process_block($block_id)
@@ -472,9 +476,9 @@ abstract class EVMMainModule extends CoreModule
                 ];
 
                 // In RSK, the fees are collected into a special address and distributed to miners after 4000 confirmations.
-                $fee_recipient = (!in_array(EVMSpecialFeatures::rskEVM, $this->extra_features))
-                    ? $miner
-                    : '0x0000000000000000000000000000000001000008';
+                $fee_recipient = (in_array(EVMSpecialFeatures::FeeCollectorAddress, $this->extra_features))
+                    ? $this->feeCollectorAddress
+                    : $miner;
 
                 $events[] = [
                     'transaction' => $transaction_hash,
