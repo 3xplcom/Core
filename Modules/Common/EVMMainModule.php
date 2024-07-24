@@ -83,10 +83,10 @@ abstract class EVMMainModule extends CoreModule
             $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
         }
 
-        if(is_null($this->l1_fee_vault) && in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
+        if(in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && is_null($this->l1_fee_vault))
             throw new DeveloperError("For each OP stack chains should be set L1 fee vault address");
 
-        if(is_null($this->base_fee_recipient) && in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features))
+        if(in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) && is_null($this->base_fee_recipient) )
             throw new DeveloperError("For each OP stack chains should be set base fee recipient address");
     }
 
