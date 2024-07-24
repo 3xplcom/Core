@@ -6,12 +6,12 @@
 
 /*  This module processes Stellar operations. It requires a Stellar node to run.  */
 
-final class StellarOperationsModule extends StellarLikeOperationsModule implements Module, MultipleBalanceSpecial, AddressSpecials, TransactionSpecials
+final class StellarMainModule extends StellarLikeMainModule implements Module, MultipleBalanceSpecial, AddressSpecials, TransactionSpecials
 {
     function initialize()
     {
         $this->blockchain = 'stellar';
-        $this->module = 'stellar-operations';
+        $this->module = 'stellar-main';
         $this->is_main = true;
         $this->first_block_date = '2015-09-30';
         $this->first_block_id = 0;

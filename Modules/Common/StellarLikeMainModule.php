@@ -6,7 +6,7 @@
 
 /*  This module processes Stellar operations. Requires a Stellar node.  */
 
-abstract class StellarLikeOperationsModule extends CoreModule
+abstract class StellarLikeMainModule extends CoreModule
 {
     use StellarTraits;
 
