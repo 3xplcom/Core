@@ -49,6 +49,9 @@ abstract class SolanaLikeTokenModule extends CoreModule
     final public function post_post_initialize()
     {
         if (is_null($this->programs)) throw new DeveloperError("`programs` is not set");
+
+        if (is_null($this->tokens_list)) // some chains may not have pre-defined tokens list
+            $this->tokens_list = [];
     }
 
     final public function pre_process_block($block_id)

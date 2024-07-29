@@ -15,11 +15,13 @@ abstract class SolanaLikeMainModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::None; // As this module is minimal, we don't process fees
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF; // As this module is minimal, we don't process fees
+    public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect'];
-    public ?array $events_table_nullable_fields = [];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed','extra'];
+    public ?array $events_table_nullable_fields = ['extra'];
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
@@ -31,8 +33,10 @@ abstract class SolanaLikeMainModule extends CoreModule
     public ?bool $ignore_sum_of_all_effects = true; // As we don't process everything, there can be gaps...
 
     public string $block_entity_name = 'slot';
-
-    //
+    public ?array $extra_data_details = [
+        'f',
+        'b'
+    ];
 
     final public function pre_initialize()
     {
@@ -52,7 +56,7 @@ abstract class SolanaLikeMainModule extends CoreModule
                 params: ['method'  => 'getBlock',
                          'params'  => [$block_id,
                                        ['transactionDetails'             => 'full',
-                                        'rewards'                        => false,
+                                        'rewards'                        => true,
                                         'encoding'                       => 'jsonParsed',
                                         'maxSupportedTransactionVersion' => 0,
                                        ],
@@ -82,24 +86,35 @@ abstract class SolanaLikeMainModule extends CoreModule
 
         $events = [];
         $sort_key = 0;
-
+        $total_validator_fee = '0';
+        $validator_parsed_fee = '0';
+        $validator = '';
+        foreach ($block['rewards'] as $reward)
+        {
+            if ($reward['rewardType'] != 'Fee')
+                throw new DeveloperError("unprocessed validator reward in block {$block_id}");
+            else
+            {
+                $total_validator_fee = (string)$reward['lamports'];
+                $validator = $reward['pubkey'];
+            }
+        }
         foreach ($block['transactions'] as $transaction)
         {
-            if ($transaction['meta']['err'])
-                continue;
+            $failed = !is_null($transaction['meta']['err']);
 
-            if (count($transaction['transaction']['message']['instructions']) === 1 && $transaction['transaction']['message']['instructions'][0]['programId'] === 'Vote111111111111111111111111111111111111111')
-                continue;
+            // These writable signer accounts are serialized first in the list of accounts and
+            // the first of these is always used as the "fee payer".
+            // https://solana.com/docs/core/fees#fee-collection
+            $fee_payer = $transaction['transaction']['message']['accountKeys'][0]['pubkey'];
 
             $transaction['meta']['postBalances']['0'] += $transaction['meta']['fee'];
-
             if (array_diff($transaction['meta']['preBalances'], $transaction['meta']['postBalances']))
             {
                 foreach ($transaction['transaction']['message']['accountKeys'] as $akey => $aval)
                 {
                     $delta = $transaction['meta']['postBalances'][$akey] - $transaction['meta']['preBalances'][$akey];
-
-                    if ($akey === '0' && !$aval['signer'])
+                    if ($akey === 0 && !$aval['signer'])
                         throw new ModuleError('First account is not the signer');
 
                     if ($delta)
@@ -109,14 +124,49 @@ abstract class SolanaLikeMainModule extends CoreModule
                             'address' => $aval['pubkey'],
                             'sort_key' => $sort_key++,
                             'effect' => (string)$delta,
+                            'failed' => $failed,
+                            'extra' => null,
                         ];
                     }
                 }
             }
+
+            if ($fee_payer !== '')
+            {
+                $transaction['meta']['fee'] = (string)$transaction['meta']['fee'];
+                $validator_parsed_fee = bcadd($validator_parsed_fee,$transaction['meta']['fee']);
+                $events[] = [
+                    'transaction' => $transaction['transaction']['signatures']['0'],
+                    'address' => $fee_payer,
+                    'sort_key' => $sort_key++,
+                    'effect' => "-" . $transaction['meta']['fee'],
+                    'failed' => $failed,
+                    'extra' => null,
+
+                ];
+                $events[] = [
+                    'transaction' => $transaction['transaction']['signatures']['0'],
+                    'address' => 'the-void',
+                    'sort_key' => $sort_key++,
+                    'effect' => bcfloor(bcdiv($transaction['meta']['fee'], '2',2)),
+                    'failed' => $failed,
+                    'extra' => 'b',
+                ];
+                $events[] = [
+                    'transaction' => $transaction['transaction']['signatures']['0'],
+                    'address' => $validator,
+                    'sort_key' => $sort_key++,
+                    'effect' => bcceil(bcdiv($transaction['meta']['fee'], '2',2)),
+                    'failed' => $failed,
+                    'extra' => 'f',
+                ];
+
+            }
         }
-
+        $validator_parsed_fee = bcceil(bcdiv($validator_parsed_fee,'2',2));
+        if ($validator_parsed_fee != $total_validator_fee)
+            throw new DeveloperError("Miscalculation in transaction fees occured in block: {$block_id}: validator fee: {$total_validator_fee}, actual non-burnt transactions fee: {$validator_parsed_fee}");
         $this->block_time = date('Y-m-d H:i:s', (int)$block['blockTime']);
-
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;

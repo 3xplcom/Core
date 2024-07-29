@@ -26,5 +26,7 @@ final class SolanaNFTModule extends SolanaLikeTokenModule implements Module, Mul
             'TOKEN_2022_PROGRAM_ID' => 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',
             'TOKEN_PROGRAM_ID' => 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
         ];
+
+        $this->tokens_list = unserialize(file_get_contents(__DIR__ . '/Genesis/tokens.data'));
     }
 }
