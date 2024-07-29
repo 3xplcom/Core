@@ -141,7 +141,7 @@ abstract class SolanaLikeMainModule extends CoreModule
                     'sort_key' => $sort_key++,
                     'effect' => "-" . $transaction['meta']['fee'],
                     'failed' => $failed,
-                    'extra' => null,
+                    'extra' => 'f',
 
                 ];
                 $events[] = [
