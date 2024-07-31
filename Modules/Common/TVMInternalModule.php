@@ -50,7 +50,7 @@ abstract class TVMInternalModule extends CoreModule
     final public function pre_process_block($block_id)
     {
         try {
-            $r1 = requester_single($this->select_node(),
+            $r1 = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}",
                 timeout: $this->timeout); // example block_num 21575018
         } catch (RequesterEmptyArrayInResponseException) {

@@ -13,6 +13,7 @@ require_once __DIR__ . '/Engine/Helpers.php';
 require_once __DIR__ . '/Engine/Requester.php';
 require_once __DIR__ . '/Engine/Database.php';
 require_once __DIR__ . '/Engine/ModuleInterface.php';
+require_once __DIR__ . '/Engine/AutoGenTest.php';
 
 spl_autoload_register(function($class)
 {

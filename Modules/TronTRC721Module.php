@@ -17,5 +17,10 @@ final class TronTRC721Module extends TVMTRC721Module implements Module, Multiple
         $this->is_main = false;
         $this->first_block_date = '2018-06-25';
         $this->first_block_id = 0;
+        if (file_exists(__DIR__ . '/Tests/TronTRC721ModuleTest.php'))
+        {
+            require_once __DIR__ . '/Tests/TronTRC721ModuleTest.php';
+            $this->tests = TronTRC721ModuleTest::$tests;
+        }
     }
 }
