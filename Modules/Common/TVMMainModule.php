@@ -481,7 +481,6 @@ abstract class TVMMainModule extends CoreModule
 
         $events = [];
         $in_block_sort = 0;
-        $in_tx_sort = 0;
 
         foreach ($transaction_data as $transaction_hash => $transaction)
         {
@@ -498,7 +497,7 @@ abstract class TVMMainModule extends CoreModule
                     'transaction' => $transaction_hash,
                     'address' => $transaction['from'] ?? $transaction['to'],
                     'sort_in_block' => $in_block_sort++,
-                    'sort_in_transaction' => $in_tx_sort++,
+                    'sort_in_transaction' => 0,
                     'effect' => '-' . $this_burned,
                     'failed' => false,
                     'extra' => TVMSpecialTransactions::Burning->value,
@@ -508,7 +507,7 @@ abstract class TVMMainModule extends CoreModule
                     'transaction' => $transaction_hash,
                     'address' => 'the-void',
                     'sort_in_block' => $in_block_sort++,
-                    'sort_in_transaction' => $in_tx_sort++,
+                    'sort_in_transaction' => 1,
                     'effect' => $this_burned,
                     'failed' => false,
                     'extra' => TVMSpecialTransactions::Burning->value,
@@ -518,35 +517,11 @@ abstract class TVMMainModule extends CoreModule
             // The action itself
             $val = $transaction['value'] < 0 ? (int)(substr($transaction['value'],1)): $transaction['value'];
 
-            if ($transaction['extra'] === TVMSpecialTransactions::UnDelegateResourceContract->value)
-            {
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => 'the-void',
-                    'sort_in_block' => $in_block_sort++,
-                    'sort_in_transaction' => $in_tx_sort++,
-                    'effect' => '-' . strval($val),
-                    'failed' => $transaction['status'],
-                    'extra' => $transaction['extra']
-                    ,
-                ];
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => $transaction['from'],
-                    'sort_in_block' => $in_block_sort++,
-                    'sort_in_transaction' => $in_tx_sort++,
-                    'effect' => strval($val),
-                    'failed' => $transaction['status'],
-                    'extra' => $transaction['extra']
-                    ,
-                ];
-            }
-
             $events[] = [
                 'transaction' => $transaction_hash,
                 'address' => $transaction['from'] ?? 'the-void',
                 'sort_in_block' => $in_block_sort++,
-                'sort_in_transaction' => $in_tx_sort++,
+                'sort_in_transaction' => 2,
                 'effect' => '-' . $val,
                 'failed' => $transaction['status'],
                 'extra' => $transaction['extra'],
@@ -560,35 +535,12 @@ abstract class TVMMainModule extends CoreModule
                 'transaction' => $transaction_hash,
                 'address' => $recipient,
                 'sort_in_block' => $in_block_sort++,
-                'sort_in_transaction' => $in_tx_sort++,
+                'sort_in_transaction' => 3,
                 'effect' => strval($val),
                 'failed' => $transaction['status'],
                 'extra' => $transaction['extra']
                 ,
             ];
-            if ($transaction['extra'] === TVMSpecialTransactions::DelegateResourceContract->value)
-            {
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => $recipient,
-                    'sort_in_block' => $in_block_sort++,
-                    'sort_in_transaction' => $in_tx_sort++,
-                    'effect' => '-' . strval($val),
-                    'failed' => $transaction['status'],
-                    'extra' => $transaction['extra']
-                    ,
-                ];
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => 'the-void',
-                    'sort_in_block' => $in_block_sort++,
-                    'sort_in_transaction' => $in_tx_sort++,
-                    'effect' => strval($val),
-                    'failed' => $transaction['status'],
-                    'extra' => $transaction['extra']
-                    ,
-                ];
-            }
         }
 
         if ($block_id !== MEMPOOL) {
@@ -628,7 +580,7 @@ abstract class TVMMainModule extends CoreModule
                 'transaction' => null,
                 'address' => 'the-void',
                 'sort_in_block' => $in_block_sort++,
-                'sort_in_transaction' => 1,
+                'sort_in_transaction' => 2,
                 'effect' => '-' . $this_to_voters,
                 'failed' => false,
                 'extra' => TVMSpecialTransactions::PartnerReward->value,
@@ -638,7 +590,7 @@ abstract class TVMMainModule extends CoreModule
                 'transaction' => null,
                 'address' => 'treasury',
                 'sort_in_block' => $in_block_sort++,
-                'sort_in_transaction' => 2,
+                'sort_in_transaction' => 3,
                 'effect' => $this_to_voters,
                 'failed' => false,
                 'extra' => TVMSpecialTransactions::PartnerReward->value,
