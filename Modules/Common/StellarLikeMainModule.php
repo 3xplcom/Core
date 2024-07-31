@@ -735,7 +735,8 @@ abstract class StellarLikeMainModule extends CoreModule
 
         $real_currencies = [];
 
-        // Input currencies should be in format like this: `stellar-operations/{name:stellar-like-address}`
+        // Input currencies should be in format like this: `stellar-main/{name:stellar-like-address}`
+        // For native please ff: `stellar-main/{$this->native_currency}`
         foreach ($currencies as $c)
             $real_currencies[] = explode('/', $c)[1];
 
@@ -753,6 +754,10 @@ abstract class StellarLikeMainModule extends CoreModule
             {
                 $account_balances[$currency['asset_code'] . ":" . $currency['asset_issuer']] = $this->to_7($currency['balance']);
             }
+            else
+            {
+                $account_balances[$this->native_currency] = $this->to_7($currency['balance']);
+            }
         }
 
         $return = [];
@@ -768,25 +773,6 @@ abstract class StellarLikeMainModule extends CoreModule
 
         return $return;
     }
-
-    // // Getting balances from the node
-    // final public function api_get_balance(string $address): string
-    // {
-    //     $account_balances = requester_single($this->select_node(),
-    //         endpoint: "accounts/{$address}",
-    //         result_in: 'balances',
-    //         timeout: $this->timeout);
-
-    //     foreach ($account_balances as $balance)
-    //     {
-    //         if ($balance['asset_type'] === 'native')
-    //         {
-    //             return $this->to_7($balance['balance']);
-    //         }
-    //     }
-
-    //     throw new ModuleError('Unknown code flow');
-    // }
 
     final public function api_get_address_specials(string $address): array
     {
