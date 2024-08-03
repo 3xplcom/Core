@@ -105,6 +105,7 @@ echo 'Get latest block number ' . cli_format_reverse('<L>') .
     ', Address extras ' . cli_format_reverse('<AA>') .
     ', Currency supply ' . cli_format_reverse('<CS>') .
     ', Broadcast transaction ' . cli_format_reverse('<BT>') .
+    ', Automatic test generation ' . cli_format_reverse('<AG>') . 
     N;
 
 if (isset($argv[2]))
@@ -119,7 +120,7 @@ else
 
 $input_argv[] = $chosen_option;
 
-if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'AA', 'CS', 'BT']))
+if (!in_array($chosen_option, ['L', 'B', 'PB', 'PR', 'M', 'H', 'T', 'AT', 'AA', 'CS', 'BT', 'AG']))
     die(cli_format_error('Wrong choice for 2nd param') . N);
 
 echo N;
@@ -226,72 +227,7 @@ elseif ($chosen_option === 'B')
     }
     elseif ($filter === 'D')
     {
-        // TSV format: blockchain <tab> module <tab> block <tab> transaction <tab> sort_key <tab> time <tab>
-        //             address <tab> currency <tab> sign <tab> effect <tab> valid <tab> extra <?tab> ?extra_indexed
-
-        $tsv_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'currency', 'sign', 'effect', 'valid', 'extra'];
-
-        $tsv = '';
-
-        foreach ($events as $event)
-        {
-            $this_tsv = [];
-
-            if ($event['address'] === '0x00')
-                $event['address'] = 'the-void';
-
-            if ($module->currency_format === CurrencyFormat::Static)
-                $event['currency'] = $module->currency;
-            else
-                $event['currency'] = ($module->complements ?? $module->module) . '/' . $event['currency'];
-
-            $event['sign'] = (str_contains($event['effect'], '-')) ? '-1' : '1';
-
-            if ($module->privacy_model === PrivacyModel::Transparent)
-            {
-                $event['effect'] = str_replace('-', '', $event['effect']);
-            }
-            elseif ($module->privacy_model === PrivacyModel::Mixed)
-            {
-                if (in_array($event['effect'], ['-?', '+?']))
-                    $event['effect'] = null;
-                else
-                    $event['effect'] = str_replace('-', '', $event['effect']);
-            }
-            else // Shielded
-            {
-                $event['effect'] = null;
-            }
-
-            if (isset($event['failed']))
-                $event['valid'] = ($event['failed'] === true || $event['failed'] === 't') ? '-1' : '1';
-            else
-                $event['valid'] = '1';
-
-            if (isset($event['extra']))
-                $event['extra'] = '\\\\x' . bin2hex($event['extra']);
-
-            $this_tsv[] = $module->blockchain;
-            $this_tsv[] = $module->module;
-
-            foreach ($tsv_fields as $f)
-                $this_tsv[] = (isset($event[$f])) ? $event[$f] : '\N';
-
-            if (in_array('extra_indexed', $module->events_table_fields))
-                $this_tsv[] = (!is_null($event['extra_indexed'])) ? '\\\\x' . bin2hex($event['extra_indexed']) : '\N';
-
-            $tsv .= join(T, $this_tsv) . N;
-        }
-
-        $fname = "Dumps/3xplor3r_{$module->blockchain}_{$module->module}_events_{$chosen_block_id}.tsv";
-
-        if (!file_exists('Dumps'))
-            mkdir('Dumps', 0777);
-
-        $f = fopen($fname, 'w');
-        fwrite($f, $tsv);
-        fclose($f);
-
+        $fname = dump_tsv($module, $chosen_block_id);
         ddd("Dumped to {$fname}");
     }
     elseif ($filter === '10')
@@ -340,9 +276,8 @@ elseif ($chosen_option === 'PB')
         for ($i = $start_block_id; $i != 0; $i--)
         {
             echo "\nProcessing block #{$i} ";
-
+            PB:
             $t0 = microtime(true);
-
             try
             {
                 $module->process_block($i);
@@ -351,6 +286,7 @@ elseif ($chosen_option === 'PB')
             {
                 echo cli_format_error('Requested exception');
                 usleep(250000);
+                goto PB;
             }
 
             $event_count = count($module->get_return_events() ?? []);
@@ -359,6 +295,8 @@ elseif ($chosen_option === 'PB')
             $time = number_format(microtime(true) - $t0, 4);
 
             echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+            if ($event_count > 0)
+                dump_tsv($module,$i);
         }
 }
 elseif ($chosen_option === 'PR')
@@ -399,9 +337,8 @@ elseif ($chosen_option === 'PR')
     for ($i = $start_block_id; $i != $end_block_id; $i = $i + $increment)
     {
         echo "\nProcessing block #{$i} ";
-
+        PR:
         $t0 = microtime(true);
-
         try
         {
             $module->process_block($i);
@@ -410,6 +347,7 @@ elseif ($chosen_option === 'PR')
         {
             echo cli_format_error('Requested exception');
             usleep(250000);
+            goto PR;
         }
 
         $event_count = count($module->get_return_events() ?? []);
@@ -417,6 +355,9 @@ elseif ($chosen_option === 'PR')
         $time = number_format(microtime(true) - $t0, 4);
 
         echo "with {$event_count} events and {$currency_count} currencies in {$time} seconds";
+
+        if ($event_count > 0)
+            dump_tsv($module,$i);
     }
 }
 elseif ($chosen_option === 'M')
@@ -562,4 +503,152 @@ elseif ($chosen_option === 'BT') // Broadcast a transaction
     $input_argv[] = $data;
 
     ddd($module->api_broadcast_transaction($data));
+}
+elseif ($chosen_option === 'AG')
+{
+
+    $block_start = 3;
+    $chosen_module = $input_argv[0];
+    $module_name = '';
+    $tests_by_blocks = [];
+    $tests_by_blocks_processed = [];
+    if (is_numeric($chosen_module)) // Allow both selecting by number or by full module name
+    {
+        if (!isset($i_to_module[$chosen_module]))
+        die(cli_format_error('Wrong choice for the first param') . N);
+        $module_name = module_name_to_class($i_to_module[$chosen_module]);
+    } 
+    else 
+    {
+        if (!in_array($chosen_module, $available_modules))
+        die(cli_format_error('Wrong choice for the 1st param') . N);
+        $module_name = module_name_to_class($chosen_module);
+    }
+
+    $tests_class_name = $module_name . "Test";
+    if (file_exists(__DIR__ . "/Modules/Tests/{$tests_class_name}.php"))
+    {
+        require_once __DIR__ . "/Modules/Tests/{$tests_class_name}.php";
+        $tests_module = new ($tests_class_name)();
+        $tests_by_blocks = $tests_module::$tests;
+    }
+    if (count($tests_by_blocks) > 0) 
+    {
+        echo cli_format_bold('There are some tests. If you choose the same block or transaction it will be rewritten!!!') . N;
+        foreach ($tests_by_blocks as $b => $tests) 
+        {
+            $block_processed = (string)$tests['block'] . (isset($tests['transaction']) ? $tests['transaction'] : '');
+            $tests_by_blocks_processed[$block_processed] = $b;
+            echo cli_format_bold($tests['block'] . ((isset($tests['transaction']) ? ' transaction: ' . $tests['transaction'] : '')) . ' is tested') . N;
+        }
+    }
+
+    do 
+    {
+        echo cli_format_bold('Block number please...') . N;
+
+        if (isset($argv[$block_start])) 
+        {
+            $chosen_block_id = (int)$argv[$block_start];
+            echo ":> {$chosen_block_id}\n";
+        } else 
+        {
+            $chosen_block_id = (int)readline(':> ');
+        }
+        $block_start++;
+        $input_argv[] = $chosen_block_id;
+
+        if ($chosen_block_id !== MEMPOOL)
+            $module->process_block($chosen_block_id);
+        else
+            return;
+
+        echo N;
+
+        $filter = 'T';
+        if ($filter === 'T') 
+        {
+            echo cli_format_bold(
+                cli_format_reverse('<A>') . ' for all events and currencies, ' .
+                cli_format_reverse('<{:transaction}>') . ' for a single transaction\'s events') . N;
+
+            if (isset($argv[$block_start])) 
+            {
+                $transaction = $argv[$block_start];
+                echo ":> {$transaction}\n";
+            } else {
+                $transaction = readline(':> ');
+            }
+            $block_start++;
+            $input_argv[] = $transaction;
+
+            if ($transaction === 'A') 
+            {
+                if (isset($tests_by_blocks_processed[$chosen_block_id])) 
+                {
+                    $tests_by_blocks[$tests_by_blocks_processed[$chosen_block_id]] = [
+                        'block' => $chosen_block_id, 
+                        'result' => serialize(['events' => $module->get_return_events(), 'currencies' => $module->get_return_currencies()]),
+                    ];
+                } else {
+                    $tests_by_blocks[] = [
+                        'block' => $chosen_block_id, 
+                        'result' => serialize(['events' => $module->get_return_events(), 'currencies' => $module->get_return_currencies()]),
+                    ];
+                }
+            } else {
+                $filtered_events = [];
+                $events = $module->get_return_events();
+                foreach ($events as $event)
+                {
+                    if (!is_null($event['transaction']) && str_contains($event['transaction'], $transaction))
+                        $filtered_events[] = $event;
+                }
+
+                $block_transaction_merged = $chosen_block_id . $transaction;
+                if (isset($tests_by_blocks_processed[$block_transaction_merged])) 
+                {
+                    $tests_by_blocks[$tests_by_blocks_processed[$block_transaction_merged]] = [
+                        'block' => $chosen_block_id, 
+                        'transaction' => $transaction,
+                        'events' => serialize(['events' => $filtered_events]),
+                    ];
+                } else {
+                    $tests_by_blocks[] = [
+                        'block' => $chosen_block_id, 
+                        'transaction' => $transaction,
+                        'events' => serialize(['events' => $filtered_events]),
+                    ];
+                }
+            }
+
+        }
+
+        echo cli_format_bold(
+            cli_format_reverse('<S>') . ' for break and generate tests file, ' .
+            cli_format_reverse('<C>') . ' for continue'
+        ) . N;
+
+        if (isset($argv[$block_start])) 
+        {
+            $chosen_block_id = $argv[$block_start];
+            echo ":> {$chosen_block_id}\n";
+        } else 
+        {
+            $chosen_block_id = readline(':> ');
+        }
+        $block_start++;
+        $input_argv[] = $chosen_block_id;
+
+        if ($chosen_block_id === 'S')
+        {
+            autogen_test($tests_by_blocks, $module_name);
+            ddd();
+        }
+        if ($chosen_block_id === 'C')
+        {
+            continue;
+        }
+
+    }while(true);
 }

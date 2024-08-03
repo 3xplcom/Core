@@ -16,5 +16,10 @@ final class TronInternalModule extends TVMInternalModule implements Module
         $this->complements = 'tron-main';
         $this->is_main = false;
         $this->first_block_date = '2018-06-25';
+        if (file_exists(__DIR__ . '/Tests/TronInternalModuleTest.php'))
+        {
+            require_once __DIR__ . '/Tests/TronInternalModuleTest.php';
+            $this->tests = TronInternalModuleTest::$tests;
+        }
     }
 }

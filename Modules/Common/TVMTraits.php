@@ -47,7 +47,7 @@ enum TVMSpecialTransactions: string
     case AccountPermissionUpdateContract = 'apu'; // 51834140s
     case ClearABIContract = 'cabi';
     case UpdateBrokerageContract = 'upb';
-    case ShieldedTransferContract = 'st';
+    case ShieldedTransferContract = 'st'; // https://nile.tronscan.org/#/contract/TPcKtz5TRfP4xUZSos81RmXB9K2DBqj2iu/events
     case MarketSellAssetContract = 'msa';
     case MarketCancelOrderContract = 'mco';
     case FreezeBalanceV2Contract = 'fbv2';
@@ -86,7 +86,7 @@ trait TVMTraits
 {
     public function inquire_latest_block()
     {
-        return to_int64_from_0xhex(requester_single($this->select_node(),
+        return to_int64_from_0xhex(requester_single($this->select_node(), endpoint: "/jsonrpc",
             params: ['jsonrpc' => '2.0', 'method' => 'eth_blockNumber', 'id' => 0], result_in: 'result', timeout: $this->timeout));
     }
 
@@ -103,7 +103,7 @@ trait TVMTraits
 
         foreach ($this->nodes as $node)
         {
-            $multi_curl[] = requester_multi_prepare($node, params: $params, timeout: $this->timeout);
+            $multi_curl[] = requester_multi_prepare($node, endpoint: "/jsonrpc", params: $params, timeout: $this->timeout);
             if ($break_on_first) break;
         }
 
@@ -171,7 +171,7 @@ trait TVMTraits
 
     public function get_exchange_by_id(string|int $id): array|null
     {
-        $exchange = requester_single($this->select_node(),
+        $exchange = requester_single(envm($this->module,"REST"),
             endpoint: "/wallet/getexchangebyid?id=$id", timeout: $this->timeout);
         $exchange['has_trx'] = ($exchange['first_token_id'] === '5f') || ($exchange['second_token_id'] === '5f');
         return $exchange;
@@ -261,6 +261,7 @@ trait TVMTraits
     function ens_get_data($hash, $function, $registry_contract)
     {
         $output = requester_single($this->select_node(),
+            endpoint: "/jsonrpc",
             params: ['jsonrpc' => '2.0',
                 'method'  => 'eth_call',
                 'id'      => 0,
@@ -282,6 +283,7 @@ trait TVMTraits
             return null;
 
         $output = requester_single($this->select_node(),
+            endpoint: "/jsonrpc",
             params: ['jsonrpc' => '2.0',
                 'method'  => 'eth_call',
                 'id'      => 0,
