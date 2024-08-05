@@ -681,7 +681,18 @@ abstract class CoreModule
     final public function test()
     {
         if (!isset($this->tests))
-            throw new DeveloperError('No tests defined for this module');
+        {
+            $class_name = envm($this->module, 'CLASS', new DeveloperError("Nodes are not set in the config for module {$this->module}")) . 'Test';
+            if (file_exists(__DIR__ . "/../Tests/{$class_name}.php"))
+            {
+                
+                require_once __DIR__ . "/../Tests/{$class_name}.php";
+                $test_module = new $class_name();
+                $this->tests = $test_module::$tests;
+            } else {
+                throw new DeveloperError('No tests defined for this module');
+            }
+        }            
 
         $errors = [];
 

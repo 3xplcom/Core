@@ -27,11 +27,5 @@ final class zkSyncEraMainModule extends EVMMainModule implements Module, Balance
         {
             return '0';
         };
-
-        if (file_exists(__DIR__ . '/Tests/zkSyncEraMainModuleTest.php'))
-        {
-            require_once __DIR__ . '/Tests/zkSyncEraMainModuleTest.php';
-            $this->tests = zkSyncEraMainModuleTest::$tests;
-        }
     }
 }
