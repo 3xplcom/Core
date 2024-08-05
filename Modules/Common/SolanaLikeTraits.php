@@ -44,9 +44,6 @@ trait SolanaLikeTraits
         // 2. Try to get Token2022 metadata
         // 3. Try to get MetaPlex token metadata
 
-        // For old version of SPL Token we need to get meta from token-list
-        // Ref: https://github.com/solana-labs/token-list
-        $this->tokens_list = unserialize(file_get_contents(__DIR__ . '/../SPLTokensList/tokens.data'));
         foreach ($currencies as $currency)
         {
             // 1. Try to get the metadata from tokens_list file
