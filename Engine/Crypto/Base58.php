@@ -94,6 +94,16 @@ final class Base58
         return $output;
     }
 
+    public static function base58_nocheck_encode($str)
+    {
+        return self::base58_encode($str);
+    }
+
+    public static function base58_nocheck_decode($base58)
+    {
+        return self::base58_decode($base58);
+    }
+
     public static function base58_check_encode($address)
     {
         $hash0 = hash('sha256', $address);

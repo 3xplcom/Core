@@ -8,7 +8,9 @@
 * [alexqrid](https://github.com/alexqrid)
   - TVM modules
   - BRC-20 module
+  - Solana Token module
 * [Oleg Makaussov](https://github.com/Lorgansar)
     - Cardano Tokens modules
 * [Kirill Kuzminykh](https://github.com/Oskal174)
     - Rootstock modules
+    - Solana Token module
