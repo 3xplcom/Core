@@ -682,7 +682,7 @@ abstract class CoreModule
     {
         if (!isset($this->tests))
         {
-            $class_name = envm($this->module, 'CLASS', new DeveloperError("Nodes are not set in the config for module {$this->module}")) . 'Test';
+            $class_name = envm($this->module, 'CLASS') . 'Test';
             if (file_exists(__DIR__ . "/../Tests/{$class_name}.php"))
             {
                 
