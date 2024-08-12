@@ -16,6 +16,7 @@ enum EVMSpecialTransactions: string
 {
     case Burning = 'b';
     case FeeToMiner = 'f';
+    case L1Fee = 'l1f';
     case BlockReward = 'r';
     case UncleInclusionReward = 'i';
     case UncleReward = 'u';
@@ -38,6 +39,13 @@ enum EVMSpecialFeatures
     case rskEVM; // Rootstock has different traces and deferred validators rewards (in N+4000 block).
     case TraceBlockSupport; // Support for `trace_block` in RPC API
     case EIP4844; // Support of blob transaction
+    
+    /*         Support 4 Optimistic Rollups              */
+    /* Depends on the chain of OpStack                   */
+    /* Some of them has 2 of this params, some -- only 1 */
+    case OPStackL1FeeVault;
+    case OPStackBaseFeeRecipient;
+
 }
 
 trait EVMTraits
