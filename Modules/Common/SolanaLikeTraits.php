@@ -200,7 +200,7 @@ trait SolanaLikeTraits
 
         foreach ($data_chunks as $datai)
         {
-            $result = requester_single($this->select_node(), params: $datai);
+            $result = requester_single($this->select_node(), params: $datai, flags: [RequesterOption::IgnoreAddingQuotesToNumbers]);
 
             foreach ($result as $bit)
             {
