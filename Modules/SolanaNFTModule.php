@@ -27,6 +27,6 @@ final class SolanaNFTModule extends SolanaLikeTokenModule implements Module, Mul
             'TOKEN_PROGRAM_ID' => 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
         ];
 
-        $this->tokens_list = unserialize(file_get_contents(__DIR__ . '/Genesis/tokens.data'));
+        $this->tokens_list = unserialize(file_get_contents(__DIR__ . '/Genesis/SolanaTokenList.data'));
     }
 }
