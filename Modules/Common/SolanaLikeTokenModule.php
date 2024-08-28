@@ -95,7 +95,7 @@ abstract class SolanaLikeTokenModule extends CoreModule
         $currencies = [];
         $currencies_to_process = [];
         $sort_key = 0;
-
+        $potential_burn_currency = [];
         foreach ($block['transactions'] as $tx)
         {
             if (count($tx['meta']['preTokenBalances']) == 0 && count($tx['meta']['postTokenBalances']) == 0)
@@ -153,11 +153,20 @@ abstract class SolanaLikeTokenModule extends CoreModule
             }
         }
 
+        foreach ($events as $event)
+        {
+            if (!isset($potential_burn_currency[$event['currency']]) && $event['effect'] === "-1")
+                $potential_burn_currency[$event['currency']] = true;
+            else
+                $potential_burn_currency[$event['currency']] = false;
+        }
+
         foreach (check_existing_currencies(array_keys($currencies_to_process), $this->currency_format) as $cur)
         {
             $currencies[] = [
                 "id" => $cur,
-                "decimals"=> $currencies_to_process[$cur]
+                "decimals"=> $currencies_to_process[$cur],
+                "burn" => $potential_burn_currency[$cur],
                 ];
         }
 

@@ -33,11 +33,11 @@ trait SolanaLikeTraits
         $tokens_supply = $this->get_token_supply($currencies);
         if ($this->currency_type == CurrencyType::NFT)
             $currencies = array_filter($currencies,
-                function ($currency, $i) use ($tokens_supply) { return $currency["decimals"] == "0" && $tokens_supply[$currency['id']] == "1";},
+                function ($currency, $i) use ($tokens_supply) { return $currency["decimals"] == "0" && ($tokens_supply[$currency['id']] == "1" || ($currency['burn'] && $tokens_supply[$currency['id']] == "0") );},
                 ARRAY_FILTER_USE_BOTH);
         else
             $currencies = array_filter($currencies,
-                function ($currency, $i) use ($tokens_supply) { return $tokens_supply[$currency['id']] != "1";},
+                function ($currency, $i) use ($tokens_supply) { return (!in_array($tokens_supply[$currency['id']],["1","0"]) || ($tokens_supply[$currency['id']] === "0" && !$currency['burn']));},
                 ARRAY_FILTER_USE_BOTH);
 
         // 1. Try to get the metadata from tokens_list file
@@ -151,7 +151,11 @@ trait SolanaLikeTraits
                 continue;
             }
 
-            [$name, $symbol] = $this->metaplex_meta_deserialize(base64_decode($metaplex_meta['value']['data'][0]));
+            $metadata = base64_decode($metaplex_meta['value']['data'][0]);
+            if (strlen($metadata) < 73) // see metaplex_meta_deserialize
+                [$name, $symbol] = ["pda_{$mpl_metadata_pda}", ""];
+            else
+                [$name, $symbol] = $this->metaplex_meta_deserialize($metadata);
 
             $result[] = [
                 'id' => $currency["id"],
@@ -204,6 +208,8 @@ trait SolanaLikeTraits
 
             foreach ($result as $bit)
             {
+                if (!isset($bit['error']))
+                    throw new RequesterException("error while querying getTokenSupply");
                 $tokens_supply[$currencies[$bit['id']]['id']] = $bit['result']['value']['amount'] ?? "0";
             }
         }
