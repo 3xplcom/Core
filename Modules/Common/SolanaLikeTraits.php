@@ -208,8 +208,8 @@ trait SolanaLikeTraits
 
             foreach ($result as $bit)
             {
-                if (!isset($bit['error']))
-                    throw new RequesterException("error while querying getTokenSupply");
+                if (isset($bit['error']))
+                    throw new RequesterException('An error occured within a nested request');
                 $tokens_supply[$currencies[$bit['id']]['id']] = $bit['result']['value']['amount'] ?? "0";
             }
         }
