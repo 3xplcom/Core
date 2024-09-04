@@ -137,7 +137,7 @@ abstract class SolanaLikeMainModule extends CoreModule
                     'address' => $fee_payer,
                     'sort_key' => $sort_key++,
                     'effect' => "-" . $transaction['meta']['fee'],
-                    'failed' => $failed,
+                    'failed' => false,
                     'extra' => 'f',
 
                 ];
@@ -146,7 +146,7 @@ abstract class SolanaLikeMainModule extends CoreModule
                     'address' => 'the-void',
                     'sort_key' => $sort_key++,
                     'effect' => $transaction['meta']['fee'],
-                    'failed' => $failed,
+                    'failed' => false,
                     'extra' => 'f',
                 ];
             }
