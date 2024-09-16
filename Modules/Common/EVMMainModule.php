@@ -52,6 +52,7 @@ abstract class EVMMainModule extends CoreModule
     public ?Closure $reward_function = null;
     public ?string $l1_fee_vault = null;
     public ?string $base_fee_recipient = null;
+
     //
 
     final public function pre_initialize()
@@ -83,11 +84,11 @@ abstract class EVMMainModule extends CoreModule
             $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
         }
 
-        if(in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && is_null($this->l1_fee_vault))
-            throw new DeveloperError("For each OP stack chains should be set L1 fee vault address");
+        if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && is_null($this->l1_fee_vault))
+            throw new DeveloperError('`l1_fee_vault` should be set for `OPStackL1FeeVault` chains');
 
-        if(in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) && is_null($this->base_fee_recipient) )
-            throw new DeveloperError("For each OP stack chains should be set base fee recipient address");
+        if (in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) && is_null($this->base_fee_recipient) )
+            throw new DeveloperError('`base_fee_recipient` should be set for `OPStackBaseFeeRecipient` chains');
     }
 
     final public function pre_process_block($block_id)
@@ -280,7 +281,8 @@ abstract class EVMMainModule extends CoreModule
                     $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
                     $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
                 }
-                if(in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
+
+                if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['l1Fee'] = $receipt_data[$i]['l1Fee'] ?? null;
             }
         }
@@ -445,6 +447,8 @@ abstract class EVMMainModule extends CoreModule
                 $this_to_miner = '0';
             }
 
+            // L1 fees
+
             if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && $this_l1_fee !== '0')
             {
                 $events[] = [
@@ -469,6 +473,7 @@ abstract class EVMMainModule extends CoreModule
             }
 
             // Burning
+
             if ($this_burned !== '0')
             {
                 $events[] = [
@@ -493,6 +498,7 @@ abstract class EVMMainModule extends CoreModule
             }
 
             // Miner fee
+
             if ($this_to_miner !== '0')
             {
                 $events[] = [
