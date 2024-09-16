@@ -6,9 +6,9 @@
 
 /*  This module processes Solana transfers. Note that it's very minimal as it only processes basic transfers between accounts.  */
 
-abstract class SolanaLikeMainModule extends CoreModule
+abstract class SVMMainModule extends CoreModule
 {
-    use SolanaLikeTraits;
+    use SVMTraits;
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::AlphaNumeric;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;

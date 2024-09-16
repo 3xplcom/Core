@@ -6,7 +6,7 @@
 
 /*  This module processes NFT SPL Token Solana transfers.  */
 
-final class SolanaNFTModule extends SolanaLikeTokenModule implements Module, MultipleBalanceSpecial, SupplySpecial
+final class SolanaNFTModule extends SVMTokenModule implements Module, MultipleBalanceSpecial, SupplySpecial
 {
     function initialize()
     {

@@ -9,7 +9,7 @@
 require_once __DIR__ . '/../../Engine/Crypto/Base58.php';
 require_once __DIR__ . '/../../Engine/Crypto/Sodium.php';
 
-trait SolanaLikeTraits
+trait SVMTraits
 {
     public function inquire_latest_block()
     {

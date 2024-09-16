@@ -9,9 +9,9 @@
  * https://spl.solana.com/token
  */
 
-abstract class SolanaLikeTokenModule extends CoreModule
+abstract class SVMTokenModule extends CoreModule
 {
-    use SolanaLikeTraits;
+    use SVMTraits;
 
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::AlphaNumeric;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;

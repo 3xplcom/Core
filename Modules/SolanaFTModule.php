@@ -6,7 +6,7 @@
 
 /*  This module processes FT SPL Token Solana transfers.  */
 
-final class SolanaFTModule extends SolanaLikeTokenModule implements Module
+final class SolanaFTModule extends SVMTokenModule implements Module
 {
     function initialize()
     {
