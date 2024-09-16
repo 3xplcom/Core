@@ -17,7 +17,7 @@ abstract class EVMMainModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBFCaret;
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
@@ -488,12 +488,12 @@ abstract class EVMMainModule extends CoreModule
 
                 $events[] = [
                     'transaction' => $transaction_hash,
-                    'address' => in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? $this->base_fee_recipient : '0x00',
+                    'address' => !in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? '0x00' : $this->base_fee_recipient,
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 1,
                     'effect' => $this_burned,
                     'failed' => false,
-                    'extra' => EVMSpecialTransactions::Burning->value,
+                    'extra' => !in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? EVMSpecialTransactions::Burning->value : EVMSpecialTransactions::Burning->value,
                 ];
             }
 

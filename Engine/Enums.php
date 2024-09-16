@@ -72,8 +72,12 @@ enum FeeRenderModel: string
     case LastEventToTheVoid = 'LastEventToTheVoid'; // The fee is the last event to the special `the-void` address (see `bitcoin-main`)
                                                     // If the fee is 0, there's no event to `the-void`
     case ExtraF = 'ExtraF'; // If transaction has an event with `f` in extra data, this is the fee
+    case ExtraFCaret = 'ExtraF^'; // Same as `ExtraF`, but all events with extras starting with `f` should also be
+                                  // treated as fees (no example usage yet)
     case ExtraBF = 'ExtraBF'; // Same as `ExtraF`, but there can be two events: `f` is the fee paid to the miner, and
-                              // `b` is the part which is being burnt (see `ethereum-main`)
+                              // `b` is the part which is being burnt (see `tron-main`)
+    case ExtraBFCaret = 'ExtraBF^'; // Same as `ExtraBF`, but all events with extras starting with `f` should also be
+                                    // treated as fees (see `ethereum-main`)
 }
 
 // We use virtual block number for processing mempool
