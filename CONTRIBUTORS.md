@@ -12,3 +12,4 @@
     - Cardano Tokens modules
 * [Kirill Kuzminykh](https://github.com/Oskal174)
     - Rootstock modules
+    - Sei modules
