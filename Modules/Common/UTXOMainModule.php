@@ -407,7 +407,7 @@ abstract class UTXOMainModule extends CoreModule
         if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features) && $block_id !== MEMPOOL)
         {
             $delta_pools = [];
-            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0'];
+            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0', 'lockbox' => '0'];
 
             foreach ($block['valuePools'] as $pool)
                 $delta_pools[($pool['id'])] = $pool['valueDeltaZat'];
@@ -444,6 +444,10 @@ abstract class UTXOMainModule extends CoreModule
             {
                 if (!isset($this_pools[$pool]))
                     throw new ModuleError("Unknown shielded pool: {$pool}");
+
+                if ($pool === 'lockbox' && $value !== '0')
+                    throw new ModuleError('No logic for `lockbox` implemented yet');
+                // We don't know how exactly it will work yet, so at the moment it's a quick fix for the upgraded RPC API response
 
                 if ($delta_pools[$pool] !== $this_pools[$pool])
                     throw new ModuleError("Pool delta mismatch for {$pool}: should be {$delta_pools[$pool]}, got {$this_pools[$pool]}");
