@@ -49,39 +49,6 @@ abstract class TONLikeMainModule extends CoreModule
         if (is_null($this->workchain)) throw new DeveloperError('`workchain` is not set');
     }
 
-    public function inquire_latest_block()
-    {
-        $result = requester_single(
-            $this->select_node(),
-            endpoint: 'get_blocks/by_master_height',
-            params: [
-                'args' => [
-                    'latest',
-                    false
-                ]
-            ],
-            timeout: $this->timeout);
-
-        return (int)$result['seqno'];
-    }
-
-    public function ensure_block($block_id, $break_on_first = false)
-    {
-        $block = requester_single(
-            $this->select_node(),
-            endpoint: 'get_blocks/by_master_height',
-            params: [
-                'args' => [
-                    $block_id,
-                    false
-                ]
-            ],
-            timeout: $this->timeout);
-
-        $this->block_hash = strtolower($block['filehash'] . $block['roothash']);
-        $this->block_time = date('Y-m-d H:i:s', (int)$block['timestamp']);
-    }
-
     final public function pre_process_block($block_id)
     {
         if ($block_id === 0) // Block #0 is there, but the node doesn't return data for it
@@ -103,7 +70,6 @@ abstract class TONLikeMainModule extends CoreModule
             timeout: $this->timeout);
 
         $events = [];
-        $inter_tx = 0;
 
         foreach ($block['transactions'] as $transaction)
         {
@@ -116,15 +82,14 @@ abstract class TONLikeMainModule extends CoreModule
                 'the-void',
                 $transaction['fee'],
                 $transaction['lt'],
-                $inter_tx,
                 0,
                 'fee',
                 $transaction['block']
             );
             array_push($events, $sub, $add);
 
-            $is_from_nowhere = $transaction['imsg_src'] == 'NOWHERE';
-            $is_to_nowhere   = $transaction['imsg_dst'] == 'NOWHERE';
+            $is_from_nowhere = $transaction['imsg_src'] === 'NOWHERE';
+            $is_to_nowhere   = $transaction['imsg_dst'] === 'NOWHERE';
 
             [$sub, $add] = $this->generate_event_pair(
                 $transaction['hash'],
@@ -132,19 +97,16 @@ abstract class TONLikeMainModule extends CoreModule
                 ($is_to_nowhere) ? 'the-void' : $transaction['imsg_dst'],
                 $transaction['imsg_grams'],
                 $transaction['lt'],
-                $inter_tx,
                 1,
                 ($is_from_nowhere || $is_to_nowhere) ? 'ext' : null,
                 $transaction['block']
             );
             array_push($events, $sub, $add);
-
-            $inter_tx++;
         }
 
         array_multisort(
             array_column($events, 'lt_sort'), SORT_ASC,  // first, sort by lt - chronological order is most important
-            array_column($events, 'inter_tx'), SORT_ASC, // then, if any tx happened in diff shards, BUT at the same lt - by arbitrary synthetic "transaction-id"
+            array_column($events, 'transaction'), SORT_ASC, // then, if any tx happened in diff shards, BUT at the same lt - arbitrarily, by tx-hash
             array_column($events, 'intra_tx'), SORT_ASC, // lastly, ensure within transaction order: (-fee, +fee, -value, +value)
             $events
         );
@@ -157,7 +119,6 @@ abstract class TONLikeMainModule extends CoreModule
             $event['sort_key'] = $sort_key++;
 
             unset($event['lt_sort']);
-            unset($event['inter_tx']);
             unset($event['intra_tx']);
         }
 
@@ -171,45 +132,17 @@ abstract class TONLikeMainModule extends CoreModule
         $response = requester_single($this->select_node(),
             endpoint: 'get_account_info',
             params: [
-                $address, true
-            ],
+                'args' => [
+                    $address, false
+                    ]
+                ],
             timeout: $this->timeout);
         if (!array_key_exists('balance', $response))
-        {
             return "0";
-        }
 
         if (!array_key_exists('grams', $response['balance']))
-        {
             return "0";
-        }
 
         return (string)$response['balance']['grams'];
-    }
-
-
-    final public function generate_event_pair($tx, $src, $dst, $amt, $lt_sort, $inter_tx, $intra_tx, $extra, $extra_indexed)
-    {
-        $sub = [
-            'transaction' => $tx,
-            'address' => $src,
-            'effect' => '-' . $amt,
-            'lt_sort' => $lt_sort,
-            'inter_tx' => $inter_tx,
-            'intra_tx' => 2 * ($intra_tx),
-            'extra' => $extra,
-            'extra_indexed' => $extra_indexed
-        ];
-        $add = [
-            'transaction' => $tx,
-            'address' => $dst,
-            'effect' => $amt,
-            'lt_sort' => $lt_sort,
-            'inter_tx' => $inter_tx,
-            'intra_tx' => 2 * ($intra_tx) + 1,
-            'extra' => $extra,
-            'extra_indexed' => $extra_indexed
-        ];
-        return [$sub, $add];
     }
 }
