@@ -16,8 +16,8 @@ final class PolygonMainModule extends EVMMainModule implements Module, BalanceSp
         $this->is_main = true;
         $this->first_block_date = '2020-05-30';
         $this->first_block_id = 0;
-        $this->currency = 'matic';
-        $this->currency_details = ['name' => 'MATIC', 'symbol' => 'MATIC', 'decimals' => 18, 'description' => null];
+        $this->currency = 'pol'; // https://polygon.technology/blog/save-the-date-matic-pol-migration-coming-september-4th-everything-you-need-to-know
+        $this->currency_details = ['name' => 'POL', 'symbol' => 'POL', 'decimals' => 18, 'description' => null];
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::Erigon;
