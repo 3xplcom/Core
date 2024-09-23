@@ -17,7 +17,7 @@ abstract class EVMMainModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBFCaret;
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
@@ -34,6 +34,7 @@ abstract class EVMMainModule extends CoreModule
          EVMSpecialTransactions::ContractCreation->value     => 'Contract creation',
          EVMSpecialTransactions::ContractDestruction->value  => 'Contract destruction',
          EVMSpecialTransactions::Withdrawal->value           => 'Withdrawal',
+         EVMSpecialTransactions::L1Fee->value                => 'L1 fee'
         ];
 
     public ?bool $should_return_events = true;
@@ -49,6 +50,8 @@ abstract class EVMMainModule extends CoreModule
     public array $extra_features = [];
     public ?string $staking_contract = null;
     public ?Closure $reward_function = null;
+    public ?string $l1_fee_vault = null;
+    public ?string $base_fee_recipient = null;
 
     //
 
@@ -80,6 +83,12 @@ abstract class EVMMainModule extends CoreModule
             $this->block_entity_name = 'batch'; // We process batches instead of blocks
             $this->mempool_entity_name = 'queue'; // Unfinalized batches are processed as "mempool"
         }
+
+        if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && is_null($this->l1_fee_vault))
+            throw new DeveloperError('`l1_fee_vault` should be set for `OPStackL1FeeVault` chains');
+
+        if (in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) && is_null($this->base_fee_recipient) )
+            throw new DeveloperError('`base_fee_recipient` should be set for `OPStackBaseFeeRecipient` chains');
     }
 
     final public function pre_process_block($block_id)
@@ -272,6 +281,9 @@ abstract class EVMMainModule extends CoreModule
                     $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
                     $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
                 }
+
+                if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
+                    $transaction_data[($general_data[$i]['hash'])]['l1Fee'] = $receipt_data[$i]['l1Fee'] ?? null;
             }
         }
         else // Mempool processing
@@ -399,6 +411,7 @@ abstract class EVMMainModule extends CoreModule
                 $this_gas_used = to_int256_from_0xhex($transaction['gasUsed']);
                 $this_burned = (!is_null($base_fee_per_gas)) ? bcmul($base_fee_per_gas, $this_gas_used) : '0';
                 $this_to_miner = bcsub(bcmul(to_int256_from_0xhex($transaction['effectiveGasPrice']), $this_gas_used), $this_burned);
+                $this_l1_fee = ((isset($transaction['l1Fee']) && !is_null($transaction['l1Fee'])) ? to_int256_from_0xhex($transaction['l1Fee']) : '0');
 
                 if (in_array(EVMSpecialFeatures::EffectiveGasPriceCanBeZero, $this->extra_features))
                     if ($transaction['effectiveGasPrice'] === '0x0')
@@ -435,6 +448,7 @@ abstract class EVMMainModule extends CoreModule
             }
 
             // Burning
+
             if ($this_burned !== '0')
             {
                 $events[] = [
@@ -449,16 +463,17 @@ abstract class EVMMainModule extends CoreModule
 
                 $events[] = [
                     'transaction' => $transaction_hash,
-                    'address' => '0x00',
+                    'address' => !in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? '0x00' : $this->base_fee_recipient,
                     'sort_in_block' => $ijk,
                     'sort_in_transaction' => 1,
                     'effect' => $this_burned,
                     'failed' => false,
-                    'extra' => EVMSpecialTransactions::Burning->value,
+                    'extra' => !in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? EVMSpecialTransactions::Burning->value : EVMSpecialTransactions::BaseFee->value,
                 ];
             }
 
             // Miner fee
+
             if ($this_to_miner !== '0')
             {
                 $events[] = [
@@ -487,13 +502,38 @@ abstract class EVMMainModule extends CoreModule
                 ];
             }
 
+            // L1 fees
+
+            if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && $this_l1_fee !== '0')
+            {
+                $events[] = [
+                    'transaction' => $transaction_hash,
+                    'address' => $transaction['from'],
+                    'sort_in_block' => $ijk,
+                    'sort_in_transaction' => 4,
+                    'effect' => '-' . $this_l1_fee,
+                    'failed' => false,
+                    'extra' => EVMSpecialTransactions::L1Fee->value,
+                ];
+
+                $events[] = [
+                    'transaction' => $transaction_hash,
+                    'address' => $this->l1_fee_vault,
+                    'sort_in_block' => $ijk,
+                    'sort_in_transaction' => 5,
+                    'effect' => $this_l1_fee,
+                    'failed' => false,
+                    'extra' => EVMSpecialTransactions::L1Fee->value,
+                ];
+            }
+
             // The transfer itself
 
             $events[] = [
                 'transaction' => $transaction_hash,
                 'address' => $transaction['from'],
                 'sort_in_block' => $ijk,
-                'sort_in_transaction' => 4,
+                'sort_in_transaction' => 6,
                 'effect' => '-' . to_int256_from_0xhex($transaction['value']),
                 'failed' => ($transaction['status'] === '0x1') ? false : true,
                 'extra' => null,
@@ -525,7 +565,7 @@ abstract class EVMMainModule extends CoreModule
                 'transaction' => $transaction_hash,
                 'address' => $recipient,
                 'sort_in_block' => $ijk++,
-                'sort_in_transaction' => 5,
+                'sort_in_transaction' => 7,
                 'effect' => to_int256_from_0xhex($transaction['value']),
                 'failed' => ($transaction['status'] === '0x1') ? false : true,
                 'extra' => $extra_bit,
