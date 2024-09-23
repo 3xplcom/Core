@@ -22,11 +22,13 @@ final class OptimismMainModule extends EVMMainModule implements Module, BalanceS
 
         // EVMMainModule
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions];
+        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions, EVMSpecialFeatures::OPStackBaseFeeRecipient, EVMSpecialFeatures::OPStackL1FeeVault];
         $this->reward_function = function($block_id)
         {
             return '0';
         };
+        $this->l1_fee_vault = '0x420000000000000000000000000000000000001a';  // https://github.com/ethereum-optimism/op-geth/blob/c6ea6fa09d4e7df6d1ca6b2d32bcb139f021b1e2/params/protocol_params.go#L29
+        $this->base_fee_recipient = '0x4200000000000000000000000000000000000019'; 
 
         // Handles
         $this->handles_implemented = true;
