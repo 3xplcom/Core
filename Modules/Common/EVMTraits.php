@@ -16,7 +16,6 @@ enum EVMSpecialTransactions: string
 {
     case Burning = 'b';
     case FeeToMiner = 'f';
-    case L1Fee = 'l1f';
     case BlockReward = 'r';
     case UncleInclusionReward = 'i';
     case UncleReward = 'u';

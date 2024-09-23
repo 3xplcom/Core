@@ -281,8 +281,7 @@ abstract class EVMMainModule extends CoreModule
                     $transaction_data[($general_data[$i]['hash'])]['blobGasPrice'] = $receipt_data[$i]['blobGasPrice'] ?? null;
                     $transaction_data[($general_data[$i]['hash'])]['blobGasUsed'] = $receipt_data[$i]['blobGasUsed'] ?? null;
                 }
-
-
+                
                 if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features))
                     $transaction_data[($general_data[$i]['hash'])]['l1Fee'] = $receipt_data[$i]['l1Fee'] ?? null;
             }
@@ -446,29 +445,6 @@ abstract class EVMMainModule extends CoreModule
             {
                 $this_burned = '0';
                 $this_to_miner = '0';
-            }
-
-            if (in_array(EVMSpecialFeatures::OPStackL1FeeVault, $this->extra_features) && $this_l1_fee !== '0')
-            {
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => $transaction['from'],
-                    'sort_in_block' => $ijk,
-                    'sort_in_transaction' => -2,
-                    'effect' => '-' . $this_l1_fee,
-                    'failed' => false,
-                    'extra' => EVMSpecialTransactions::L1Fee->value,
-                ];
-
-                $events[] = [
-                    'transaction' => $transaction_hash,
-                    'address' => $this->l1_fee_vault,
-                    'sort_in_block' => $ijk,
-                    'sort_in_transaction' => -1,
-                    'effect' => $this_l1_fee,
-                    'failed' => false,
-                    'extra' => EVMSpecialTransactions::L1Fee->value,
-                ];
             }
 
             // Burning
