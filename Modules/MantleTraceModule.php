@@ -5,7 +5,6 @@
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the Mantle trace module. It requires a geth node to run.  */
-/*  DISABLED */
 
 final class MantleTraceModule extends EVMTraceModule implements Module
 {
