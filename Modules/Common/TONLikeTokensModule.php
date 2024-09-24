@@ -22,6 +22,7 @@ abstract class TONLikeTokensModule extends CoreModule
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra_indexed', 'currency'];
     public ?array $events_table_nullable_fields = ['extra_indexed'];
+    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Other;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::None;
 
