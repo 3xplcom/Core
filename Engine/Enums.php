@@ -119,7 +119,7 @@ enum PrivacyModel
     case Shielded; // The only allowed values are `-?` and `+?`
 }
 
-// This is for modules where `extra_indexed` is specified: here we can chose which entity it directs to
+// This is for modules where `extra_indexed` is specified: here we can choose which entity it directs to
 enum SearchableEntity: string
 {
     case Block = 'block';
@@ -127,4 +127,5 @@ enum SearchableEntity: string
     case Address = 'address';
     case Handle = 'handle';
     case Any = 'any';
+    case Other = 'other'; // Something that can't be found directly (not really indexed)
 }
