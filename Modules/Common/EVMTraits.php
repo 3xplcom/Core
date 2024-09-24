@@ -22,6 +22,8 @@ enum EVMSpecialTransactions: string
     case ContractCreation = 'c';
     case ContractDestruction = 'd';
     case Withdrawal = 'w';
+    case L1Fee = 'f1'; // Optimism
+    case BaseFee = 'fb'; // Optimism
 }
 
 enum EVMSpecialFeatures
@@ -38,6 +40,9 @@ enum EVMSpecialFeatures
     case rskEVM; // Rootstock has different traces and deferred validators rewards (in N+4000 block).
     case TraceBlockSupport; // Support for `trace_block` in RPC API
     case EIP4844; // Support of blob transaction
+    case OPStackL1FeeVault; // Optimistic rollups
+    case OPStackBaseFeeRecipient; // Optimistic rollups
+
 }
 
 trait EVMTraits
@@ -241,6 +246,8 @@ function evm_trace($calls, &$this_calls)
 {
     foreach ($calls as $call)
     {
+        $call['type'] = strtoupper($call['type']); // Some blockchains (e.g. zkSync Era) use `Call` instead of `CALL` for some reason
+
         if (!in_array($call['type'], ['CALL', 'STATICCALL', 'DELEGATECALL', 'CALLCODE', 'CREATE', 'CREATE2', 'SELFDESTRUCT', 'INVALID']))
             throw new ModuleError("Unknown call type: {$call['type']}");
 

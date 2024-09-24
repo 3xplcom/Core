@@ -1,12 +1,12 @@
 <?php declare(strict_types=1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main Tron module. It requires java-tron node to run with the following PR https://github.com/tronprotocol/java-tron/pull/5469 */
 
-final class TronMainModule extends TVMMainModule implements Module
+final class TronMainModule extends TVMMainModule implements Module, BalanceSpecial
 {
     function initialize()
     {

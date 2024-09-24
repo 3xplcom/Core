@@ -228,7 +228,7 @@ abstract class TVMTRC20Module extends CoreModule
     }
 
     // Getting balances from the node
-    function api_get_balance(string $address, array $currencies): array
+    final function api_get_balance(string $address, array $currencies): array
     {
         if (!$currencies)
             return [];
@@ -301,7 +301,7 @@ abstract class TVMTRC20Module extends CoreModule
     }
 
     // Getting the token supply from the node
-    function api_get_currency_supply(string $currency): string
+    final function api_get_currency_supply(string $currency): string
     {
         $data[] = ['jsonrpc' => '2.0',
                    'id'      => 0,

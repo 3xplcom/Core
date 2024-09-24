@@ -15,7 +15,7 @@ final class BOBTraceModule extends EVMTraceModule implements Module
         $this->module = 'bob-trace';
         $this->complements = 'bob-main';
         $this->is_main = false;
-        $this->first_block_date = '2023-10-10';
+        $this->first_block_date = '2024-04-11';
         $this->first_block_id = 0;
 
         // EVMTraceModule

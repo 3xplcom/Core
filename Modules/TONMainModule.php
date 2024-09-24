@@ -6,7 +6,7 @@
 
 /*  This module processes main TON transfers for the BaseChain. Special Node API by Blockchair is needed (see https://github.com/Blockchair).  */
 
-final class TONMainModule extends TONLikeMainModule implements Module
+final class TONMainModule extends TONLikeMainModule implements Module, BalanceSpecial
 {
     function initialize()
     {

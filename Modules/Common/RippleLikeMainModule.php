@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module processes main Ripple transfers. Requires a Ripple node.  */
@@ -642,7 +642,7 @@ abstract class RippleLikeMainModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address)
+    final public function api_get_balance(string $address): string
     {
         $request = requester_single(
             $this->select_node(),

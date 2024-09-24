@@ -1,12 +1,12 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This is the main opBNB module. It requires a geth node to run.  */
 
-final class opBNBMainModule extends EVMMainModule implements Module
+final class opBNBMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
 {
     function initialize()
     {
@@ -22,10 +22,13 @@ final class opBNBMainModule extends EVMMainModule implements Module
         // EVMMainModule
         $this->mempool_implemented = false;
         $this->evm_implementation = EVMImplementation::geth;
-        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions];
+        $this->extra_features = [EVMSpecialFeatures::HasSystemTransactions, EVMSpecialFeatures::OPStackBaseFeeRecipient, EVMSpecialFeatures::OPStackL1FeeVault];
         $this->reward_function = function($block_id)
         {
             return '0';
         };
+
+        $this->l1_fee_vault = '0x420000000000000000000000000000000000001a'; // https://github.com/bnb-chain/op-geth/blob/aead14eeda87794899daed7fbdcca11fb9021fbd/params/protocol_params.go#L29
+        $this->base_fee_recipient = '0x4200000000000000000000000000000000000019';
     }
 }

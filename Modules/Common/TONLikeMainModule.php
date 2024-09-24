@@ -126,7 +126,7 @@ abstract class TONLikeMainModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address)
+    final public function api_get_balance(string $address): string
     {
         $response = requester_single($this->select_node(),
             endpoint: 'get_account_info',

@@ -1,24 +1,27 @@
 <?php declare(strict_types = 1);
 
 /*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
  *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
 
 /*  This module processes Solana transfers. Note that it's very minimal as it only processes basic transfers between accounts.  */
 
-abstract class SolanaLikeMinimalModule extends CoreModule
+abstract class SVMMainModule extends CoreModule
 {
+    use SVMTraits;
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::AlphaNumeric;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::None; // As this module is minimal, we don't process fees
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
+    public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect'];
-    public ?array $events_table_nullable_fields = [];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed','extra'];
+    public ?array $events_table_nullable_fields = ['transaction', 'extra'];
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Type;
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
@@ -27,11 +30,10 @@ abstract class SolanaLikeMinimalModule extends CoreModule
     public ?bool $mempool_implemented = false;
     public ?bool $forking_implemented = false;
 
-    public ?bool $ignore_sum_of_all_effects = true; // As we don't process everything, there can be gaps...
+    public ?bool $ignore_sum_of_all_effects = false;
 
     public string $block_entity_name = 'slot';
-
-    //
+    public ?array $extra_data_details = ['f'];
 
     final public function pre_initialize()
     {
@@ -43,21 +45,6 @@ abstract class SolanaLikeMinimalModule extends CoreModule
         //
     }
 
-    public function inquire_latest_block()
-    {
-        return requester_single($this->select_node(),
-            params: ['method' => 'getSlot', 'params' => [['commitment' => 'finalized']], 'id' => 0, 'jsonrpc' => '2.0'],
-            result_in: 'result',
-            timeout: $this->timeout,
-            flags: [RequesterOption::IgnoreAddingQuotesToNumbers]); // IgnoreAddingQuotesToNumbers is needed as there may be non-standard
-                                                                    // numbers in the output
-    }
-
-    public function ensure_block($block_id, $break_on_first = false)
-    {
-        $this->block_hash = ''; // As we query finalized slots only, we don't expect anything to get "orphaned"
-    }
-
     final public function pre_process_block($block_id)
     {
         try
@@ -66,7 +53,7 @@ abstract class SolanaLikeMinimalModule extends CoreModule
                 params: ['method'  => 'getBlock',
                          'params'  => [$block_id,
                                        ['transactionDetails'             => 'full',
-                                        'rewards'                        => false,
+                                        'rewards'                        => true,
                                         'encoding'                       => 'jsonParsed',
                                         'maxSupportedTransactionVersion' => 0,
                                        ],
@@ -96,24 +83,35 @@ abstract class SolanaLikeMinimalModule extends CoreModule
 
         $events = [];
         $sort_key = 0;
+        $total_validator_fee = '0';
+        $validator = '';
+        foreach ($block['rewards'] as $reward)
+        {
+            if ($reward['rewardType'] != 'Fee')
+                throw new DeveloperError("unprocessed validator reward in block {$block_id}");
+            else
+            {
+                $total_validator_fee = (string)$reward['lamports'];
+                $validator = $reward['pubkey'];
+            }
+        }
 
         foreach ($block['transactions'] as $transaction)
         {
-            if ($transaction['meta']['err'])
-                continue;
+            $failed = !is_null($transaction['meta']['err']);
 
-            if (count($transaction['transaction']['message']['instructions']) === 1 && $transaction['transaction']['message']['instructions'][0]['programId'] === 'Vote111111111111111111111111111111111111111')
-                continue;
+            // These writable signer accounts are serialized first in the list of accounts and
+            // the first of these is always used as the "fee payer".
+            // https://solana.com/docs/core/fees#fee-collection
+            $fee_payer = $transaction['transaction']['message']['accountKeys'][0]['pubkey'];
 
             $transaction['meta']['postBalances']['0'] += $transaction['meta']['fee'];
-
             if (array_diff($transaction['meta']['preBalances'], $transaction['meta']['postBalances']))
             {
                 foreach ($transaction['transaction']['message']['accountKeys'] as $akey => $aval)
                 {
                     $delta = $transaction['meta']['postBalances'][$akey] - $transaction['meta']['preBalances'][$akey];
-
-                    if ($akey === '0' && !$aval['signer'])
+                    if ($akey === 0 && !$aval['signer'])
                         throw new ModuleError('First account is not the signer');
 
                     if ($delta)
@@ -123,11 +121,54 @@ abstract class SolanaLikeMinimalModule extends CoreModule
                             'address' => $aval['pubkey'],
                             'sort_key' => $sort_key++,
                             'effect' => (string)$delta,
+                            'failed' => $failed,
+                            'extra' => null,
                         ];
                     }
                 }
             }
+
+            if ($fee_payer !== '')
+            {
+                $transaction['meta']['fee'] = (string)$transaction['meta']['fee'];
+
+                $events[] = [
+                    'transaction' => $transaction['transaction']['signatures']['0'],
+                    'address' => $fee_payer,
+                    'sort_key' => $sort_key++,
+                    'effect' => "-" . $transaction['meta']['fee'],
+                    'failed' => false,
+                    'extra' => 'f',
+
+                ];
+                $events[] = [
+                    'transaction' => $transaction['transaction']['signatures']['0'],
+                    'address' => 'the-void',
+                    'sort_key' => $sort_key++,
+                    'effect' => $transaction['meta']['fee'],
+                    'failed' => false,
+                    'extra' => 'f',
+                ];
+            }
         }
+
+        $events[] = [
+            'transaction' => null,
+            'address' => 'the-void',
+            'sort_key' => $sort_key++,
+            'effect' => "-" . $total_validator_fee,
+            'failed' => false,
+            'extra' => 'f',
+        ];
+
+        $events[] = [
+            'transaction' => null,
+            'address' => $validator,
+            'sort_key' => $sort_key++,
+            'effect' => $total_validator_fee,
+            'failed' => false,
+            'extra' => 'f',
+        ];
 
         $this->block_time = date('Y-m-d H:i:s', (int)$block['blockTime']);
 
@@ -140,11 +181,8 @@ abstract class SolanaLikeMinimalModule extends CoreModule
         $this->set_return_events($events);
     }
 
-    function api_get_balance($address)
+    final function api_get_balance($address): string
     {
-        if (!preg_match(StandardPatterns::AnySearchable->value, $address))
-            return null;
-
         return requester_single($this->select_node(),
             params: ['method' => 'getBalance',
                      'params' => [$address],

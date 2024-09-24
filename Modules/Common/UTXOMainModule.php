@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module process main UTXO transfers. Requires a Bitcoin Core-like node.  */
@@ -407,7 +407,7 @@ abstract class UTXOMainModule extends CoreModule
         if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features) && $block_id !== MEMPOOL)
         {
             $delta_pools = [];
-            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0'];
+            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0', 'lockbox' => '0'];
 
             foreach ($block['valuePools'] as $pool)
                 $delta_pools[($pool['id'])] = $pool['valueDeltaZat'];
@@ -444,6 +444,10 @@ abstract class UTXOMainModule extends CoreModule
             {
                 if (!isset($this_pools[$pool]))
                     throw new ModuleError("Unknown shielded pool: {$pool}");
+
+                if ($pool === 'lockbox' && $value !== '0')
+                    throw new ModuleError('No logic for `lockbox` implemented yet');
+                // We don't know how exactly it will work yet, so at the moment it's a quick fix for the upgraded RPC API response
 
                 if ($delta_pools[$pool] !== $this_pools[$pool])
                     throw new ModuleError("Pool delta mismatch for {$pool}: should be {$delta_pools[$pool]}, got {$this_pools[$pool]}");
@@ -492,11 +496,85 @@ abstract class UTXOMainModule extends CoreModule
     }
 
     // Getting the token supply from the node. In case of UTXOs, `the-void` holds the negative value of the supply.
-    function api_get_currency_supply(string $currency): string
+    final function api_get_currency_supply(string $currency): string
     {
         if ($currency !== $this->currency)
             return '0';
 
         return bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
+    }
+
+    final public function api_get_transaction_specials(string $transaction): array
+    {
+        $data = requester_single($this->select_node(), params: ['method' => 'getrawtransaction', 'params' => [$transaction, 1]],
+            timeout: $this->timeout)['result'];
+        // A major problem here is that we don't have enough data on inputs... Including their values and script types.
+        // So we can either load transaction data on all inputs (not a very good solution for an API as this takes a (relative) lot of time
+        // or try to get some data from the database. Alas, we don't really store anything useful either. The only thing we can have is
+        // fee data as it's already loaded when we gather transaction data.
+
+        $specials = new Specials();
+
+        $specials->add('size', (int)$data['size'], function ($raw_value) { return "Size: {{$raw_value}} bytes"; });
+
+        $fee = fee($this->blockchain, $this->module, $transaction);
+
+        $specials->add('fee_per_byte',
+            ($fee !== '?') ? (int)bcdiv($fee, $data['size']) : '?',
+            function ($raw_value) { return "Fee rate: {{$raw_value}} sat/byte"; });
+
+        if (isset($data['vsize'])) // SegWit
+        {
+            $specials->add('vsize', (int)$data['vsize'], function ($raw_value) { return "Virtual size: {{$raw_value}} vbytes"; });
+
+            $specials->add('fee_per_vbyte',
+                ($fee !== '?') ? (int)bcdiv($fee, $data['vsize']) : '?',
+                function ($raw_value) { return "Fee rate: {{$raw_value}} sat/vbyte"; });
+        }
+
+        if (isset($data['weight'])) // SegWit
+            $specials->add('weight', (int)$data['weight'], function ($raw_value) { return "Weight: {{$raw_value}} WU"; });
+
+        $specials->add('version', (int)$data['version']);
+        $specials->add('locktime', (int)$data['locktime']);
+
+        $specials->add('is_coinbase',
+            isset($data['vin']['0']['coinbase']),
+            function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
+
+        if (isset($data['instantlock'])) // Dash-like$specials->add('is_coinbase',
+            $specials->add('is_instantsend',
+                $data['instantlock'],
+                function ($raw_value) { if ($raw_value) return "Is InstantSend? {Yes}"; else return "Is InstantSend? {No}"; });
+
+        return $specials->return();
+    }
+
+    final function api_broadcast_transaction(string $data): ?string
+    {
+        if (!preg_match(StandardPatterns::HexWithout0x->value, $data))
+            return null;
+
+        $hash = null;
+
+        foreach ($this->nodes as $node)
+        {
+            // We're fine here with some nodes being down, so we don't use `requester_multi()`
+            // which requires for all nodes to be online.
+            try
+            {
+                $this_hash = requester_single($node, params: ['method' => 'sendrawtransaction', 'params' => [$data]],
+                    timeout: $this->timeout)['result'];
+            }
+            catch (Throwable)
+            {
+                $this_hash = null;
+            }
+
+            if (!is_null($this_hash))
+                $hash = $this_hash;
+        }
+
+        return $hash;
     }
 }
