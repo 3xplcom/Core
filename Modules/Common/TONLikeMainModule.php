@@ -22,7 +22,6 @@ abstract class TONLikeMainModule extends CoreModule
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
     public ?array $events_table_nullable_fields = ['extra', 'extra_indexed'];
-    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Block;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
 
