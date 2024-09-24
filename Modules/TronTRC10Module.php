@@ -17,5 +17,10 @@ final class TronTRC10Module extends TVMTRC10Module implements Module, MultipleBa
         $this->is_main = false;
         $this->first_block_date = '2018-06-25';
         $this->first_block_id = 0;
+        if (file_exists(__DIR__ . '/Tests/TronTRC10ModuleTest.php'))
+        {
+            require_once __DIR__ . '/Tests/TronTRC10ModuleTest.php';
+            $this->tests = TronTRC10ModuleTest::$tests;
+        }
     }
 }
