@@ -83,7 +83,7 @@ abstract class TONLikeMainModule extends CoreModule
                 $transaction['fee'],
                 $transaction['lt'],
                 0,
-                'fee',
+                'f',
                 $transaction['block']
             );
             array_push($events, $sub, $add);
@@ -98,7 +98,7 @@ abstract class TONLikeMainModule extends CoreModule
                 $transaction['imsg_grams'],
                 $transaction['lt'],
                 1,
-                ($is_from_nowhere || $is_to_nowhere) ? 'ext' : null,
+                ($is_from_nowhere || $is_to_nowhere) ? 'e' : null,
                 $transaction['block']
             );
             array_push($events, $sub, $add);
