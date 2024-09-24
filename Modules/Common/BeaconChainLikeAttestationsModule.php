@@ -13,8 +13,8 @@ abstract class BeaconChainLikeAttestationsModule extends CoreModule
 
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWithout0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
-    public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::None;
-    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::None;
+    public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::AlphaNumeric;
+    public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Mixed;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
@@ -186,12 +186,18 @@ abstract class BeaconChainLikeAttestationsModule extends CoreModule
         {
             $events[] = [
                 'block' => $block,
-                'sort_key' => $key_tes++,
                 'time' => $this->block_time,
                 'address' => (string)$validator,
                 'effect' => $reward,
             ];
         }
+
+        usort($events, function ($a, $b) {
+            return (strcmp($a['address'], $b['address']));
+        });
+
+        foreach($events as &$ev)
+            $ev['sort_key'] = $key_tes++;
 
         $this->set_return_events($events);
     }
