@@ -458,7 +458,7 @@ abstract class EVMMainModule extends CoreModule
                     'sort_in_transaction' => 0,
                     'effect' => '-' . $this_burned,
                     'failed' => false,
-                    'extra' => EVMSpecialTransactions::Burning->value,
+                    'extra' => !in_array(EVMSpecialFeatures::OPStackBaseFeeRecipient, $this->extra_features) ? EVMSpecialTransactions::Burning->value : EVMSpecialTransactions::BaseFee->value,
                 ];
 
                 $events[] = [
