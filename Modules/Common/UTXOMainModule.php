@@ -542,10 +542,48 @@ abstract class UTXOMainModule extends CoreModule
             isset($data['vin']['0']['coinbase']),
             function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
 
+        if (isset($data['vin']['0']['coinbase']))
+        {
+            $coinbase_data_hex = $data['vin']['0']['coinbase'];
+            $coinbase_data_text = preg_replace('/[[:^print:]]/', '', hex2bin($coinbase_data_hex));
+
+            $specials->add('coinbase_data_hex', $coinbase_data_hex, function ($raw_value) { return "Coinbase data (hex): {{$raw_value}}"; });
+            $specials->add('coinbase_data_text', $coinbase_data_text, function ($raw_value) { return "Coinbase data (text): {{$raw_value}}"; });
+        }
+
         if (isset($data['instantlock'])) // Dash-like$specials->add('is_coinbase',
             $specials->add('is_instantsend',
                 $data['instantlock'],
                 function ($raw_value) { if ($raw_value) return "Is InstantSend? {Yes}"; else return "Is InstantSend? {No}"; });
+
+        // OP_RETURN (nulldata) outputs
+
+        $op_return_hex = [];
+
+        foreach ($data['vout'] ?? [] as $out)
+            if (($out['scriptPubKey']['type'] ?? '') === 'nulldata')
+                $op_return_hex[] = substr($out['scriptPubKey']['asm'], 10);
+
+        if ($op_return_hex)
+        {
+            $op_return_text = [];
+
+            foreach ($op_return_hex as $e)
+                $op_return_text[] = preg_replace('/[[:^print:]]/', '', hex2bin($e));
+
+            for ($i = 0, $ic = count($op_return_hex); $i < $ic; $i++)
+            {
+                $specials->add('op_return_hex_' . $i,
+                    $op_return_hex[$i],
+                    function ($raw_value) use ($i) { return "OP_RETURN {$i} (hex): {{$raw_value}}"; });
+
+                $specials->add('op_return_text_'  . $i,
+                    $op_return_text[$i],
+                    function ($raw_value) use ($i) { return "OP_RETURN {$i} (text): {{$raw_value}}"; });
+            }
+        }
+
+        //
 
         return $specials->return();
     }
