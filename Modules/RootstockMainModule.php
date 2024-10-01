@@ -24,7 +24,7 @@ final class RootstockMainModule extends EVMMainModule implements Module, Balance
         $this->reward_function = function ($block_id) {
             return '0';
         };
-        $this->feeCollectorAddress = '0x0000000000000000000000000000000001000008';
+        $this->fee_collector_address = '0x0000000000000000000000000000000001000008';
 
         // Handles (RNS)
         // https://dev.rootstock.io/rif/rns/mainnet/
