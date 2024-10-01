@@ -43,6 +43,7 @@ enum EVMSpecialFeatures
     case OPStackL1FeeVault; // Optimistic rollups
     case OPStackBaseFeeRecipient; // Optimistic rollups
 
+    case FeeCollectorAddress;
 }
 
 trait EVMTraits
