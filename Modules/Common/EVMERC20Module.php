@@ -214,11 +214,21 @@ abstract class EVMERC20Module extends CoreModule
                         $bit['result'] = '0x';
                     elseif (str_starts_with($bit['error']['message'], 'invalid opcode'))
                         $bit['result'] = '0x';
+                    elseif (str_starts_with($bit['error']['message'], 'VM Exception while processing transaction')) // Rootstock-specific
+                        $bit['result'] = '0x';
                     elseif ($bit['error']['message'] === 'out of gas')
                         $bit['result'] = '0x';
                     elseif ($bit['error']['message'] === 'invalid jump destination')
                         $bit['result'] = '0x';
                     elseif (str_contains($bit['error']['message'], 'Function does not exist'))
+                        $bit['result'] = '0x';
+                    elseif (str_contains($bit['error']['message'], 'VM execution error.'))
+                        $bit['result'] = '0x';
+                    elseif (str_starts_with($bit['error']['message'], 'EVM error'))
+                        $bit['result'] = '0x';
+                    elseif (str_starts_with($bit['error']['message'], 'failed to execute'))
+                        $bit['result'] = '0x';
+                    elseif (str_starts_with($bit['error']['message'], 'stack limit reached'))
                         $bit['result'] = '0x';
                     else
                         throw new RequesterException("Request to the node errored with `{$bit['error']['message']}` for " . print_r($currencies_to_process, true));
