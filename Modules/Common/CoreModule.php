@@ -407,6 +407,9 @@ abstract class CoreModule
             if (!isset($this->extra_indexed_hint_entity))
                 throw new DeveloperError("`extra_indexed_hint_entity` is not defined");
         }
+
+        if (!$this->is_main && method_exists($this, 'api_broadcast_transaction'))
+            throw new DeveloperError("`api_broadcast_transaction` can't be implemented for non-main modules");
     }
 
     abstract function post_post_initialize(); // This is defined in parent classes
