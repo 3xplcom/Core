@@ -8,7 +8,7 @@
  *  not available on geth for some older transactions when requesting receipts and a special fix is required,
  *  see https://github.com/3xplcom/ethereum-classic  */
 
-final class EthereumClassicMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class EthereumClassicMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

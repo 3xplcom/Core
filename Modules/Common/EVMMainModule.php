@@ -886,4 +886,36 @@ abstract class EVMMainModule extends CoreModule
 
         return $specials->return();
     }
+
+    final function api_broadcast_transaction(string $data): ?string
+    {
+        if (!preg_match(StandardPatterns::HexWith0x->value, $data))
+            return null;
+
+        $hash = null;
+
+        foreach ($this->nodes as $node)
+        {
+            // We're fine here with some nodes being down, so we don't use `requester_multi()`
+            // which requires for all nodes to be online.
+            try
+            {
+                $this_hash = requester_single($node, params: [
+                    'jsonrpc' => '2.0',
+                    'method' => 'eth_sendRawTransaction',
+                    'params' => [$data],
+                    'id' => 0],
+                timeout: $this->timeout)['result'];
+            }
+            catch (Throwable $t)
+            {
+                $this_hash = null;
+            }
+
+            if ($this_hash)
+                $hash = $this_hash;
+        }
+
+        return $hash;
+    }
 }

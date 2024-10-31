@@ -6,7 +6,7 @@
 
 /*  This is the main Linea module. It requires a geth node to run.  */
 
-final class LineaMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class LineaMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {
