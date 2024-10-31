@@ -9,7 +9,7 @@
  *  the created contract address neither in the transaction info, nor in the transaction receipt. That's probably a bug with
  *  Nethermind which is not observed with Erigon. `No address` exception will be thrown for such transactions.  */
 
-final class GnosisChainMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class GnosisChainMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

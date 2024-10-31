@@ -6,7 +6,7 @@
 
 /*  This is the main Arbitrum One module. It requires a geth node to run.  */
 
-final class ArbitrumOneMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class ArbitrumOneMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

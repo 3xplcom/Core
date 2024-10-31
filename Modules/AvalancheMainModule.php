@@ -6,7 +6,7 @@
 
 /*  This is the main Avalanche C-Chain module. It requires a geth node to run.  */
 
-final class AvalancheMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class AvalancheMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

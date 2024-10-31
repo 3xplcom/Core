@@ -6,7 +6,7 @@
 
 /*  This is the main Polygon module. It requires either a geth or an Erigon node to run (but the latter is much faster).  */
 
-final class PolygonMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class PolygonMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

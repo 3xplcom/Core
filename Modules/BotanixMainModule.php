@@ -6,7 +6,7 @@
 
 /*  This is the main Botanix module. It requires either a geth node to run.  */
 
-final class BotanixMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class BotanixMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

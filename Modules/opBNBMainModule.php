@@ -6,7 +6,7 @@
 
 /*  This is the main opBNB module. It requires a geth node to run.  */
 
-final class opBNBMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class opBNBMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {
