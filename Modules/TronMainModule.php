@@ -67,5 +67,10 @@ final class TronMainModule extends TVMMainModule implements Module, BalanceSpeci
             }
             return $res;
         };
+        if (file_exists(__DIR__ . '/Tests/TronMainModuleTest.php'))
+        {
+            require_once __DIR__ . '/Tests/TronMainModuleTest.php';
+            $this->tests = TronMainModuleTest::$tests;
+        }
     }
 }

@@ -58,7 +58,7 @@ abstract class TVMTRC1155Module extends CoreModule
         $multi_curl = [];
 
 
-        $r1 = requester_single($this->select_node(),
+        $r1 = requester_single(envm($this->module,"REST"),
             endpoint: "/wallet/getblockbynum?num={$block_id}", // no visible=true, because asset_name can be
             timeout: $this->timeout);
 
@@ -67,7 +67,7 @@ abstract class TVMTRC1155Module extends CoreModule
         // there can be TRC-10 transfers in internal transactions as well
         try
         {
-            $receipt_data = requester_single($this->select_node(),
+            $receipt_data = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}",
                 timeout: $this->timeout);
         }
@@ -77,6 +77,7 @@ abstract class TVMTRC1155Module extends CoreModule
         }
 
         $multi_curl[] = requester_multi_prepare($this->select_node(),
+            endpoint: "/jsonrpc",
             params: ['jsonrpc' => '2.0',
                 'method' => 'eth_getLogs',
                 'params' =>
@@ -89,6 +90,7 @@ abstract class TVMTRC1155Module extends CoreModule
             timeout: $this->timeout); // TransferSingle
 
         $multi_curl[] = requester_multi_prepare($this->select_node(),
+            endpoint: "/jsonrpc",
             params: ['jsonrpc' => '2.0',
                 'method' => 'eth_getLogs',
                 'params' =>
@@ -204,6 +206,7 @@ abstract class TVMTRC1155Module extends CoreModule
             foreach ($currencies_to_process as $currency_id)
             {
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method' => 'eth_call',
                         'params' => [['to' => $currency_id,
@@ -216,6 +219,7 @@ abstract class TVMTRC1155Module extends CoreModule
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method' => 'eth_call',
                         'params' => [['to' => $currency_id,
@@ -344,7 +348,7 @@ abstract class TVMTRC1155Module extends CoreModule
 
         foreach ($data_chunks as $datai)
         {
-            $result = requester_single($this->select_node(), params: $datai);
+            $result = requester_single($this->select_node(), endpoint: "/jsonrpc", params: $datai);
 
             reorder_by_id($result);
 

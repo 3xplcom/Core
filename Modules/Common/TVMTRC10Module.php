@@ -54,7 +54,7 @@ abstract class TVMTRC10Module extends CoreModule
 
         try
         {
-            $r1 = requester_single($this->select_node(),
+            $r1 = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/getblockbynum?num={$block_id}", // no visible=true, because asset_name can be
                 timeout: $this->timeout);
         }
@@ -68,7 +68,7 @@ abstract class TVMTRC10Module extends CoreModule
         try
         {
             // there can be TRC-10 transfers in internal transactions as well
-            $r2 = requester_single($this->select_node(),
+            $r2 = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}",
                 timeout: $this->timeout);
         }
@@ -369,7 +369,7 @@ abstract class TVMTRC10Module extends CoreModule
 
         if ($currencies_to_process)
         {
-            $assets = requester_single($this->select_node(),
+            $assets = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/getassetissuelist",
                 timeout: $this->timeout);
 
@@ -445,7 +445,7 @@ abstract class TVMTRC10Module extends CoreModule
 
         try
         {
-            $data = requester_single($this->select_node(),
+            $data = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/getaccount?address={$address}",
                 timeout: $this->timeout);
         }
@@ -502,13 +502,13 @@ abstract class TVMTRC10Module extends CoreModule
                     $asset = $asset_name_or_id;
                 try
                 {
-                    $asset_by_id = requester_single($this->select_node(),
+                    $asset_by_id = requester_single(envm($this->module,"REST"),
                         endpoint: "/wallet/getassetissuebyid?value=$asset",
                         timeout: $this->timeout);
                 }
                 catch (RequesterEmptyArrayInResponseException)
                 {
-                    $asset_by_id = requester_single($this->select_node(),
+                    $asset_by_id = requester_single(envm($this->module,"REST"),
                         endpoint: "/wallet/getassetissuebyid?value=$asset_name_or_id",
                         timeout: $this->timeout);
                 }
@@ -528,7 +528,7 @@ abstract class TVMTRC10Module extends CoreModule
             {
                 $asset_by_id = null;
                 try {
-                    $asset_by_name = requester_single($this->select_node(),
+                    $asset_by_name = requester_single(envm($this->module,"REST"),
                         endpoint: "/wallet/getassetissuelistbyname?value=$asset_name_or_id",
                         result_in: 'assetIssue', timeout: $this->timeout);
                 }catch (RequesterEmptyArrayInResponseException){
@@ -537,7 +537,7 @@ abstract class TVMTRC10Module extends CoreModule
                         $asset = hex2bin($asset_name_or_id);
                     else
                         $asset = $asset_name_or_id;
-                    $asset_by_id = requester_single($this->select_node(),
+                    $asset_by_id = requester_single(envm($this->module,"REST"),
                         endpoint: "/wallet/getassetissuebyid?value=" . $asset, timeout: $this->timeout);
                 }
 
@@ -589,7 +589,7 @@ abstract class TVMTRC10Module extends CoreModule
 
         try
         {
-            $asset = requester_single($this->select_node(),
+            $asset = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/getassetissuebyid?value=$currency",
                 timeout: $this->timeout);
             $total_supply = strval($asset["total_supply"] ?? 0);
