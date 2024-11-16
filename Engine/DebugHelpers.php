@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 /*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  These are some functions for 3xpl.php, and a prettier version of var_dump() by ghostff (with some colors changed :)  */
@@ -18,6 +18,77 @@ function ddd(...$input)
     echo "php 3xpl.php " . implode(' ', $input_argv) . N;
     echo cli_format_blue_reverse('   BYE   ') . N;
     die();
+}
+
+function dump_tsv($module, $block_id): string
+{
+    // TSV format: blockchain <tab> module <tab> block <tab> transaction <tab> sort_key <tab> time <tab>
+    //             address <tab> currency <tab> sign <tab> effect <tab> valid <tab> extra <?tab> ?extra_indexed
+
+    $tsv_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'currency', 'sign', 'effect', 'valid', 'extra'];
+
+    $tsv = '';
+    $events = $module->get_return_events();
+
+    foreach ($events as $event)
+    {
+        $this_tsv = [];
+
+        if ($event['address'] === '0x00')
+            $event['address'] = 'the-void';
+
+        if ($module->currency_format === CurrencyFormat::Static)
+            $event['currency'] = $module->currency;
+        else
+            $event['currency'] = ($module->complements ?? $module->module) . '/' . $event['currency'];
+
+        $event['sign'] = (str_contains($event['effect'], '-')) ? '-1' : '1';
+
+        if ($module->privacy_model === PrivacyModel::Transparent)
+        {
+            $event['effect'] = str_replace('-', '', $event['effect']);
+        }
+        elseif ($module->privacy_model === PrivacyModel::Mixed)
+        {
+            if (in_array($event['effect'], ['-?', '+?']))
+                $event['effect'] = null;
+            else
+                $event['effect'] = str_replace('-', '', $event['effect']);
+        }
+        else // Shielded
+        {
+            $event['effect'] = null;
+        }
+
+        if (isset($event['failed']))
+            $event['valid'] = ($event['failed'] === true || $event['failed'] === 't') ? '-1' : '1';
+        else
+            $event['valid'] = '1';
+
+        if (isset($event['extra']))
+            $event['extra'] = '\\\\x' . bin2hex($event['extra']);
+
+        $this_tsv[] = $module->blockchain;
+        $this_tsv[] = $module->module;
+
+        foreach ($tsv_fields as $f)
+            $this_tsv[] = (isset($event[$f])) ? $event[$f] : '\N';
+
+        if (in_array('extra_indexed', $module->events_table_fields))
+            $this_tsv[] = (!is_null($event['extra_indexed'])) ? '\\\\x' . bin2hex($event['extra_indexed']) : '\N';
+
+        $tsv .= join(T, $this_tsv) . N;
+    }
+
+    $fname = "Dumps/3xplor3r_{$module->blockchain}_{$module->module}_events_{$block_id}.tsv";
+
+    if (!file_exists('Dumps'))
+        mkdir('Dumps', 0777);
+
+    $f = fopen($fname, 'w');
+    fwrite($f, $tsv);
+    fclose($f);
+    return $fname;
 }
 
 /*  The 3-Clause BSD License (BSD-3-Clause)
