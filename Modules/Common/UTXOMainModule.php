@@ -45,13 +45,19 @@ abstract class UTXOMainModule extends CoreModule
 
     final public function post_post_initialize()
     {
-        if (is_null($this->p2pk_prefix1)) throw new DeveloperError("`p2pk_prefix1` is not set");
-        if (is_null($this->p2pk_prefix2)) throw new DeveloperError("`p2pk_prefix2` is not set");
+        if (is_null($this->p2pk_prefix1))
+            throw new DeveloperError("`p2pk_prefix1` is not set");
+        if (is_null($this->p2pk_prefix2))
+            throw new DeveloperError("`p2pk_prefix2` is not set");
 
         if (in_array(UTXOSpecialFeatures::HasMWEB, $this->extra_features))
             $this->special_addresses[] = 'hogwarts';
+
         if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features))
+        {
             $this->special_addresses[] = '*-pool';
+            $this->special_addresses[] = 'lockbox';
+        }
     }
 
     final public function pre_process_block($block_id)
@@ -192,6 +198,26 @@ abstract class UTXOMainModule extends CoreModule
                 else
                 {
                     $fees[($transaction['txid'])] = bcsub($fees[($transaction['txid'])], satoshi($output['value'], $this));
+                }
+            }
+
+            if ($this_is_coinbase && in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features))
+            {
+                foreach ($block['valuePools'] as $pool)
+                {
+                    if ($pool['id'] === 'lockbox')
+                    {
+                        $events[] = [
+                            'transaction'         => $transaction['txid'],
+                            'address'             => 'lockbox',
+                            'effect'              => $pool['valueDeltaZat'],
+                            'sort_in_transaction' => count($transaction['vout'])
+                        ];
+
+                        $coinbase_transaction_output = bcsub($coinbase_transaction_output, $pool['valueDeltaZat']);
+
+                        break;
+                    }
                 }
             }
 
@@ -422,11 +448,14 @@ abstract class UTXOMainModule extends CoreModule
                     $this_pools['sapling'] = bcadd($this_pools['sapling'], $event['effect']);
                 if ($event['address'] === 'orchard-pool')
                     $this_pools['orchard'] = bcadd($this_pools['orchard'], $event['effect']);
+                if ($event['address'] === 'lockbox')
+                    $this_pools['lockbox'] = bcadd($this_pools['lockbox'], $event['effect']);
             }
 
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sprout']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sapling']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['orchard']);
+            $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['lockbox']);
 
             // Check if the coinbase value is correct
 
@@ -444,10 +473,6 @@ abstract class UTXOMainModule extends CoreModule
             {
                 if (!isset($this_pools[$pool]))
                     throw new ModuleError("Unknown shielded pool: {$pool}");
-
-                if ($pool === 'lockbox' && $value !== '0')
-                    throw new ModuleError('No logic for `lockbox` implemented yet');
-                // We don't know how exactly it will work yet, so at the moment it's a quick fix for the upgraded RPC API response
 
                 if ($delta_pools[$pool] !== $this_pools[$pool])
                     throw new ModuleError("Pool delta mismatch for {$pool}: should be {$delta_pools[$pool]}, got {$this_pools[$pool]}");
