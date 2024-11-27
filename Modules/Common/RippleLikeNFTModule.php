@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module works with NFT in Ripple. Requires a Ripple node.  */
 
@@ -142,7 +142,7 @@ abstract class RippleLikeNFTModule extends CoreModule
             if (!isset($tx['meta']))
                 throw new ModuleException("Transactions haven't been fully processed by the node yet");
 
-            $tx_result = $tx['meta']['TransactionResult'] === 'tesSUCCESS' ? false : true;
+            $tx_result = !($tx['meta']['TransactionResult'] === 'tesSUCCESS');
 
             switch ($tx['TransactionType']) 
             {
@@ -151,39 +151,41 @@ abstract class RippleLikeNFTModule extends CoreModule
                         $new_owner = null;
                         $prev_owner = null;
                         $nft = null;
-                        $broker = isset($tx['NFTokenBrokerFee']);
+                        $broker_op = isset($tx['NFTokenBrokerFee']); // if set this -> we must have 2 offers
                         if (isset($tx['meta']['AffectedNodes'])) 
                         {
                             $affected_nodes = $tx['meta']['AffectedNodes'];
                             foreach ($affected_nodes as $id => $affection) 
                             {
-                                if (isset($affection['DeletedNode'])) {
-                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'NFTokenOffer') 
+                                if (isset($affection['DeletedNode'])) 
+                                {
+                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'NFTokenOffer' && !$broker_op) 
                                     {
-                                        $prev_owner = $affection['DeletedNode']['FinalFields']['Owner'];
-                                        $new_owner = $tx['Account'];
+                                        $isSell = $affection['DeletedNode']['FinalFields']['Flags'];
+                                        $prev_owner = $isSell ? $affection['DeletedNode']['FinalFields']['Owner'] : $tx['Account']; // seller
+                                        $new_owner = $isSell ? $tx['Account'] : $affection['DeletedNode']['FinalFields']['Owner']; // buyer
                                         $nft = $affection['DeletedNode']['FinalFields']['NFTokenID'];
                                         break;
                                     }
-                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'NFTokenOffer' && $broker) 
+                                    if ($affection['DeletedNode']['LedgerEntryType'] === 'NFTokenOffer' && $broker_op) 
                                     {
-                                        if ($affection['DeletedNode']['FinalFields']['Flags'] == 0)     // it means that it's NFT buy offer https://xrpl.org/nftokencreateoffer.html#nftokencreateoffer-flags
+                                        switch ($affection['DeletedNode']['FinalFields']['Flags'])
                                         {
-                                            $new_owner = $affection['DeletedNode']['FinalFields']['Owner'];
+                                            case 0: // flag = 0 -- buying
+                                                $new_owner = $affection['DeletedNode']['FinalFields']['Owner']; // buyer
+                                                break;
+                                            case 1: // flag = 1 -- selling
+                                                $prev_owner = $affection['DeletedNode']['FinalFields']['Owner']; // seller
+                                                break;
                                         }
-                                        if ($affection['DeletedNode']['FinalFields']['Flags'] == 1)     // it means that it's NFT sell offer https://xrpl.org/nftokencreateoffer.html#nftokencreateoffer-flags
-                                        {
-                                            $prev_owner = $affection['DeletedNode']['FinalFields']['Owner'];
-                                        }
-                                        $nft = $affection['DeletedNode']['FinalFields']['NFTokenID'];
+                                        $nft = $affection['DeletedNode']['FinalFields']['NFTokenID']; 
                                     }
                                 }
                             }
                         }
                         if(is_null($prev_owner) && is_null($new_owner))
-                        {   // this is for situation when the transaction fallen
-                            // mostly in this situations we don't need to pay
-                            // anything in Token module
+                        {   // this is for a fallen transaction
+                            // in this situations we don't need to pay
                             break;
                         }
                         $events[] = [
@@ -234,7 +236,7 @@ abstract class RippleLikeNFTModule extends CoreModule
                     {
                         $events[] = [
                             'transaction' => $tx['hash'],
-                            'address'     => $tx['Account'],
+                            'address'     => $tx['Owner'] ?? $tx['Account'],
                             'sort_key'    => $sort_key++,
                             'effect'      => '-1',
                             'failed'      => $tx_result,
