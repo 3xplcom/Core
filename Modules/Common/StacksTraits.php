@@ -6,8 +6,8 @@
 
 /*  Common Stacks functions and enums  */
 
- trait StacksTraits
- {
+trait StacksTraits
+{
     public function inquire_latest_block()
     {
         return (int)requester_single($this->select_node() . '/api/extended/v2/blocks?limit=1')['results'][0]['height'];
@@ -17,7 +17,7 @@
     {
         $multi_curl = [];
 
-        foreach ($this->nodes as $node)
+        foreach ($this->nodes as $node) 
         {
             $multi_curl[] = requester_multi_prepare($node . "/api/extended/v2/blocks/{$block_id}?limit=1", timeout: $this->timeout);
 
@@ -25,11 +25,11 @@
                 break;
         }
 
-        try
+        try 
         {
             $curl_results = requester_multi($multi_curl, limit: count($this->nodes), timeout: $this->timeout);
-        }
-        catch (RequesterException $e)
+        } 
+        catch (RequesterException $e) 
         {
             throw new RequesterException("ensure_ledger(ledger_index: {$block_id}): no connection, previously: " . $e->getMessage());
         }
@@ -49,4 +49,4 @@
 
         $this->block_hash = $hash;
     }
- }
+}
