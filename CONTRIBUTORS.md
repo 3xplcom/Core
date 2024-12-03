@@ -5,6 +5,7 @@
     - Core, UTXO modules, EVM modules
 * [Yulian Volianskyi](https://github.com/jzethar)
     - Beacon Chain modules
+    - Stacks modules
 * [alexqrid](https://github.com/alexqrid)
   - TVM modules
   - BRC-20 module
