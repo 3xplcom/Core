@@ -92,7 +92,7 @@ abstract class TONLikeTokensModule extends CoreModule
             [$src, $dst] = $this->remap_participants($transaction);
 
             // ignore broken transfers and non-std tokens
-            if ($src == '' || $dst == '' || $transaction['token'] == "Unknown")
+            if ($src == '' || $dst == '' || $transaction['token'] == 'Unknown')
                 continue;
 
             [$sub, $add] = $this->generate_event_pair(
@@ -203,8 +203,8 @@ abstract class TONLikeTokensModule extends CoreModule
         $response = requester_single($this->select_node(),
             endpoint: 'get_account_info',
             params: [
-                "args" => [
-                    $address, true
+                'args' => [
+                    $address, 'tokens', array_keys($real_currencies_map)
                 ]
             ],
             timeout: $this->timeout);
