@@ -18,6 +18,7 @@ final class DashMainModule extends UTXOMainModule implements Module, Transaction
         $this->currency = 'dash';
         $this->currency_details = ['name' => 'Dash', 'symbol' => 'DASH', 'decimals' => 8, 'description' => null];
         $this->first_block_date = '2014-01-19';
+        $this->extra_features = [UTXOSpecialFeatures::OneAddressInScriptPubKey];
 
         // UTXOMainModule
         $this->p2pk_prefix1 = '';
