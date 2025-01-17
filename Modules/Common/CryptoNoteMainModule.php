@@ -265,4 +265,12 @@ abstract class CryptoNoteMainModule extends CoreModule
 
         return $specials->return();
     }
+
+    final public function api_get_currency_supply(string $currency): string
+    {
+        return requester_single($this->select_node(),
+            endpoint: 'api/emission',
+            timeout: $this->timeout,
+            result_in: 'data')['coinbase'];
+    }
 }
