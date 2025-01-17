@@ -6,7 +6,7 @@
 
 /*  This is the main Fantom module. It requires a geth node to run.  */
 
-final class FantomMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class FantomMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

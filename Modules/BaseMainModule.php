@@ -6,7 +6,7 @@
 
 /*  This is the main Base module. It requires a geth node to run.  */
 
-final class BaseMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class BaseMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {

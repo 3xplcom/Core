@@ -6,7 +6,7 @@
 
 /*  This is the main Polygon zkEVM module. It requires a geth node to run.  */
 
-final class PolygonzkEVMMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class PolygonzkEVMMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {
