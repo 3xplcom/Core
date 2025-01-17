@@ -159,12 +159,36 @@ abstract class UTXODIP2Module extends CoreModule
                 ];
             }
 
-            if (isset($transaction['mnHfTx']))
+            if (isset($transaction['mnhfTx']))
             {
                 $found++;
 
                 $events[] = ['transaction' => $transaction['txid'],
                              'address'     => 'mn-hf-tx',
+                             'effect'      => "+?",
+                             'sort_key'    => $sort_key++,
+                ];
+            }
+
+            if (isset($transaction['assetLockTx']))
+            {
+                $found++;
+
+                $events[] = ['transaction' => $transaction['txid'],
+                             'address'     => 'asset-lock-tx',
+                             'effect'      => "+?",
+                             'sort_key'    => $sort_key++,
+                ];
+
+                // There is some additional data for this transaction type, see https://github.com/dashpay/dips/blob/master/dip-0027.md
+            }
+
+            if (isset($transaction['assetUnlockTx']))
+            {
+                $found++;
+
+                $events[] = ['transaction' => $transaction['txid'],
+                             'address'     => 'asset-unlock-tx',
                              'effect'      => "+?",
                              'sort_key'    => $sort_key++,
                 ];
