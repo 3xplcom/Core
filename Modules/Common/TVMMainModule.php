@@ -18,7 +18,7 @@ abstract class TVMMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraBF;
-    public ?array $special_addresses = ['the-void', 'treasury', 'dex'];
+    public ?array $special_addresses = ['the-void', 'treasury', 'dex','delegation'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
@@ -35,8 +35,19 @@ abstract class TVMMainModule extends CoreModule
 
     // TVM-specific
     public array $extra_features = [];
-    public ?Closure $reward_function = null;
 
+    // https://github.com/tronprotocol/java-tron/pull/5469
+    private array $wrong_jsonrpc_value_contracts = [
+        "TriggerSmartContract", // exclude double transfer, as it will be processed in internal module
+        "ParticipateAssetIssueContract",
+        "UnfreezeAssetContract",
+        "VoteWitnessContract",
+        "TransferAssetContract",
+        "ExchangeWithdrawContract",
+        "ExchangeInjectContract",
+        "ExchangeTransactionContract",
+        ];
+    public ?Closure $reward_function = null;
 
     final public function pre_initialize()
     {
@@ -65,12 +76,12 @@ abstract class TVMMainModule extends CoreModule
 
         if ($block_id !== MEMPOOL)
         {
-            $r1 = requester_single($this->select_node(),
+            $r1 = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/getblockbynum?num={$block_id}&visible=true",
                 timeout: $this->timeout);
 
             $r2 = requester_single($this->select_node(),
-                endpoint: "/",
+                endpoint: "/jsonrpc",
                 params: ['method' => 'eth_getBlockByNumber',
                     'params' => [to_0xhex_from_int64($block_id), true],
                     'id' => 0,
@@ -79,7 +90,7 @@ abstract class TVMMainModule extends CoreModule
 
             try
             {
-                $receipt_data = requester_single($this->select_node(),
+                $receipt_data = requester_single(envm($this->module,"REST"),
                     endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}&visible=true",
                     timeout: $this->timeout);
             }
@@ -297,19 +308,19 @@ abstract class TVMMainModule extends CoreModule
                             [
                                 'from' => $data['owner_address'],
                                 'to' => $data['receiver_address'],
-                                'value' => $data['balance'],
+                                'value' => "0",
                                 'contractAddress' => null,
                                 'fee' => $receipt_data[$i]["fee"] ?? 0,
                                 'status' => ($general_data[$i]['ret'][0]['contractRet'] ?? "SUCCESS") != "SUCCESS",
                                 'extra' => TVMSpecialTransactions::fromName($transaction_type)
                             ];
                         break;
-                    case "UndelegateResourceContract":
+                    case "UnDelegateResourceContract":
                         $transaction_data[($general_data[$i]['txID'])] =
                             [
                                 'from' => $data['receiver_address'],
                                 'to' => $data['owner_address'],
-                                'value' => $data['balance'],
+                                'value' => "0",
                                 'contractAddress' => null,
                                 'fee' => $receipt_data[$i]["fee"] ?? 0,
                                 'status' => ($general_data[$i]['ret'][0]['contractRet'] ?? "SUCCESS") != "SUCCESS",
@@ -430,8 +441,8 @@ abstract class TVMMainModule extends CoreModule
                             $from = $this->encode_address_to_base58($evm_transaction_data[$i]['from']);
                             $to = $this->encode_address_to_base58($evm_transaction_data[$i]['to']);
                             $value = to_int256_from_0xhex($evm_transaction_data[$i]['value']);
-                            if ($transaction_type === "TriggerSmartContract")
-                                $value = 0; // exclude double transfer, as it will be processed in internal module
+                            if (in_array($transaction_type, $this->wrong_jsonrpc_value_contracts))
+                                $value = 0;
                             // ShieldedTransferContract has additional fee in `shielded_transaction_fee` key
                             $fee = ($receipt_data[$i]["fee"] ?? 0) + ($receipt_data[$i]['shielded_transaction_fee'] ?? 0);
                             $transaction_data[($general_data[$i]['txID'])] =
@@ -469,9 +480,10 @@ abstract class TVMMainModule extends CoreModule
         //////////////////////
 
         $events = [];
-        $ijk = 0;
+        $in_block_sort = 0;
 
-        foreach ($transaction_data as $transaction_hash => $transaction) {
+        foreach ($transaction_data as $transaction_hash => $transaction)
+        {
             if ($block_id !== MEMPOOL) {
                 // all fees are burned
                 $this_burned = strval($transaction['fee']);
@@ -484,7 +496,7 @@ abstract class TVMMainModule extends CoreModule
                 $events[] = [
                     'transaction' => $transaction_hash,
                     'address' => $transaction['from'] ?? $transaction['to'],
-                    'sort_in_block' => $ijk,
+                    'sort_in_block' => $in_block_sort++,
                     'sort_in_transaction' => 0,
                     'effect' => '-' . $this_burned,
                     'failed' => false,
@@ -494,7 +506,7 @@ abstract class TVMMainModule extends CoreModule
                 $events[] = [
                     'transaction' => $transaction_hash,
                     'address' => 'the-void',
-                    'sort_in_block' => $ijk,
+                    'sort_in_block' => $in_block_sort++,
                     'sort_in_transaction' => 1,
                     'effect' => $this_burned,
                     'failed' => false,
@@ -504,11 +516,12 @@ abstract class TVMMainModule extends CoreModule
 
             // The action itself
             $val = $transaction['value'] < 0 ? (int)(substr($transaction['value'],1)): $transaction['value'];
+
             $events[] = [
                 'transaction' => $transaction_hash,
                 'address' => $transaction['from'] ?? 'the-void',
-                'sort_in_block' => $ijk,
-                'sort_in_transaction' => 4,
+                'sort_in_block' => $in_block_sort++,
+                'sort_in_transaction' => 2,
                 'effect' => '-' . $val,
                 'failed' => $transaction['status'],
                 'extra' => $transaction['extra'],
@@ -521,8 +534,8 @@ abstract class TVMMainModule extends CoreModule
             $events[] = [
                 'transaction' => $transaction_hash,
                 'address' => $recipient,
-                'sort_in_block' => $ijk++,
-                'sort_in_transaction' => 5,
+                'sort_in_block' => $in_block_sort++,
+                'sort_in_transaction' => 3,
                 'effect' => strval($val),
                 'failed' => $transaction['status'],
                 'extra' => $transaction['extra']
@@ -544,7 +557,7 @@ abstract class TVMMainModule extends CoreModule
             $events[] = [
                 'transaction' => null,
                 'address' => 'the-void',
-                'sort_in_block' => $ijk,
+                'sort_in_block' => $in_block_sort++,
                 'sort_in_transaction' => 0,
                 'effect' => '-' . $this_to_miner,
                 'failed' => false,
@@ -554,7 +567,7 @@ abstract class TVMMainModule extends CoreModule
             $events[] = [
                 'transaction' => null,
                 'address' => $miner,
-                'sort_in_block' => $ijk++,
+                'sort_in_block' => $in_block_sort++,
                 'sort_in_transaction' => 1,
                 'effect' => $this_to_miner,
                 'failed' => false,
@@ -566,8 +579,8 @@ abstract class TVMMainModule extends CoreModule
             $events[] = [
                 'transaction' => null,
                 'address' => 'the-void',
-                'sort_in_block' => $ijk++,
-                'sort_in_transaction' => 1,
+                'sort_in_block' => $in_block_sort++,
+                'sort_in_transaction' => 2,
                 'effect' => '-' . $this_to_voters,
                 'failed' => false,
                 'extra' => TVMSpecialTransactions::PartnerReward->value,
@@ -576,8 +589,8 @@ abstract class TVMMainModule extends CoreModule
             $events[] = [
                 'transaction' => null,
                 'address' => 'treasury',
-                'sort_in_block' => $ijk++,
-                'sort_in_transaction' => 1,
+                'sort_in_block' => $in_block_sort++,
+                'sort_in_transaction' => 3,
                 'effect' => $this_to_voters,
                 'failed' => false,
                 'extra' => TVMSpecialTransactions::PartnerReward->value,
@@ -645,7 +658,7 @@ abstract class TVMMainModule extends CoreModule
             return '0';
 
         return to_int256_from_0xhex(requester_single($this->select_node(),
-            endpoint: "/",
+            endpoint: "/jsonrpc",
             params: ['jsonrpc' => '2.0', 'method' => 'eth_getBalance', 'params' => [$address, 'latest'], 'id' => 0],
             result_in: 'result', timeout: $this->timeout));
     }

@@ -56,7 +56,7 @@ abstract class TVMTRC721Module extends CoreModule
         // Get logs
         try
         {
-            $receipt_data = requester_single($this->select_node(),
+            $receipt_data = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}&visible=true",
                 timeout: $this->timeout);
         }
@@ -119,6 +119,7 @@ abstract class TVMTRC721Module extends CoreModule
             {
                 $evm_address = $this->encode_base58_to_evm_hex($currency_id);
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method'  => 'eth_call',
                         'params'  => [['to'   => $evm_address,
@@ -131,6 +132,7 @@ abstract class TVMTRC721Module extends CoreModule
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method'  => 'eth_call',
                         'params'  => [['to'   => $evm_address,
@@ -260,7 +262,7 @@ abstract class TVMTRC721Module extends CoreModule
 
         foreach ($data_chunks as $datai)
         {
-            $result = requester_single($this->select_node(), params: $datai);
+            $result = requester_single($this->select_node(), endpoint: "/jsonrpc", params: $datai);
 
             reorder_by_id($result);
 

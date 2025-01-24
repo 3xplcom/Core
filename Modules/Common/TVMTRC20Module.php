@@ -54,7 +54,7 @@ abstract class TVMTRC20Module extends CoreModule
         // Get logs
         try
         {
-            $receipt_data = requester_single($this->select_node(),
+            $receipt_data = requester_single(envm($this->module,"REST"),
                 endpoint: "/wallet/gettransactioninfobyblocknum?num={$block_id}&visible=true",
                 timeout: $this->timeout);
         }
@@ -118,6 +118,7 @@ abstract class TVMTRC20Module extends CoreModule
             {
                 $evm_address = '0x' . $this->encode_base58_to_evm_hex(strval($currency_id));
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method'  => 'eth_call',
                         'params'  => [['to'   => $evm_address,
@@ -130,6 +131,7 @@ abstract class TVMTRC20Module extends CoreModule
                     timeout: $this->timeout); // Name
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method'  => 'eth_call',
                         'params'  => [['to'   => $evm_address,
@@ -142,6 +144,7 @@ abstract class TVMTRC20Module extends CoreModule
                     timeout: $this->timeout); // Symbol
 
                 $multi_curl[] = requester_multi_prepare($this->select_node(),
+                    endpoint: "/jsonrpc",
                     params: ['jsonrpc' => '2.0',
                         'method'  => 'eth_call',
                         'params'  => [['to'   => $evm_address,
@@ -287,7 +290,7 @@ abstract class TVMTRC20Module extends CoreModule
 
         foreach ($data_chunks as $datai)
         {
-            $result = requester_single($this->select_node(), params: $datai);
+            $result = requester_single($this->select_node(), endpoint: "/jsonrpc", params: $datai);
 
             reorder_by_id($result);
 
@@ -313,6 +316,6 @@ abstract class TVMTRC20Module extends CoreModule
                    ],
         ];
 
-        return to_int256_from_0xhex(requester_single($this->select_node(), params: $data)[0]['result']);
+        return to_int256_from_0xhex(requester_single($this->select_node(), endpoint: "/jsonrpc", params: $data)[0]['result']);
     }
 }
