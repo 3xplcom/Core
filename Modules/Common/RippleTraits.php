@@ -1,8 +1,8 @@
 <?php declare(strict_types = 1);
 
-/*  Copyright (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
- *  Copyright (c) 2023 3xpl developers, 3@3xpl.com
- *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
+ *  Distributed under the MIT software license, see LICENSE.md  */
 
 /*  This module process main Ripple transfers. Requires a Ripple node.  */
 
@@ -90,26 +90,26 @@ enum RippleSpecialTransactions: string
     case NFTokenCancelOffer = 'ntn';    // 83305993
 
     /** This transaction accepts an existing offer to buy or sell an existing  NFT. */
-    case NFTokenAcceptOffer = 'nta';    // 83305991
+    case NFTokenAcceptOffer = 'nta';    // 83305991 // 86727556 -- token module 
 
     // These transactions are not in prod now, will wait for them
     /** This transaction claws back issued tokens. */
-    case Clawback = 'cb';
+    case Clawback = 'cb';           // 86728685
 
     /** This transaction type creates an AMM instance */
-    case AMMCreate = 'ac';
+    case AMMCreate = 'ac';          // 86795329
 
     /** This transaction type deposits into an AMM instance */
-    case AMMDeposit = 'aa';
+    case AMMDeposit = 'aa';         // 86795341
 
     /** This transaction type withdraws from an AMM instance */
-    case AMMWithdraw = 'aw';
+    case AMMWithdraw = 'aw';        // 86795415
 
     /** This transaction type votes for the trading fee */
-    case AMMVote = 'av';
+    case AMMVote = 'av';            // 86795860
 
     /** This transaction type bids for the auction slot */
-    case AMMBid = 'ab';
+    case AMMBid = 'ab';             // 86807643
 
     /** This transaction type deletes AMM in the empty state */
     case AMMDelete = 'ae';
@@ -180,6 +180,8 @@ trait RippleTraits
     //  if amount > y => error
     private function to_96($number)
     {
+        if($number === '0')
+            return $number;
         $decimals = 96;
         $e = strpos($number, 'e');
         $e_num = 0;
@@ -209,5 +211,13 @@ trait RippleTraits
             $num = ltrim($num, '0');
             return $num;
         }
+    }
+
+    private function bcabs(string $number) 
+    {
+        if($number[0] === '-')
+            return substr($number, 1);
+        else
+            return $number;
     }
 }
