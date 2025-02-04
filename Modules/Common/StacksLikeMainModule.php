@@ -8,7 +8,7 @@
 
 abstract class StacksLikeMainModule extends CoreModule
 {
-    use StacksTraits;
+    use StacksLikeTraits;
     public ?BlockHashFormat $block_hash_format = BlockHashFormat::HexWith0x;
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWith0x;

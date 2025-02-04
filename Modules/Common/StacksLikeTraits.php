@@ -6,7 +6,7 @@
 
 /*  Common Stacks functions and enums  */
 
-trait StacksTraits
+trait StacksLikeTraits
 {
     public function inquire_latest_block()
     {
