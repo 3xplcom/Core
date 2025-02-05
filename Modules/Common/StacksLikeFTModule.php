@@ -25,7 +25,7 @@ abstract class StacksLikeFTModule extends CoreModule
     public ?array $currencies_table_nullable_fields = [];
 
 
-    public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
+    public ?ExtraDataModel $extra_data_model = ExtraDataModel::None;
     public ?array $extra_data_details = null;
 
     public ?bool $should_return_events = true;
@@ -85,7 +85,9 @@ abstract class StacksLikeFTModule extends CoreModule
                 $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
                 foreach ($results as $r) 
                     $curl_results = array_merge($curl_results, $r);
-            } else {
+            } 
+            else 
+            {
                 $curl_results = requester_single(
                     $this->select_node(),
                     endpoint: "/api/extended/v1/tx/mempool?limit={$this->limit}",
@@ -93,7 +95,9 @@ abstract class StacksLikeFTModule extends CoreModule
                     result_in: 'results'
                 );
             }
-        } else {
+        } 
+        else 
+        {
             $block = requester_single(
                 $this->select_node(),
                 endpoint: "/api/extended/v2/blocks/{$block_id}",
@@ -131,7 +135,9 @@ abstract class StacksLikeFTModule extends CoreModule
                 $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
                 foreach ($results as $r)
                     $curl_results = array_merge($curl_results, $r);
-            } else {
+            } 
+            else 
+            {
                 $curl_results = requester_single(
                     $this->select_node(),
                     endpoint: "/api/extended/v2/blocks/{$block_id}/transactions?limit={$this->limit}",
@@ -180,7 +186,7 @@ abstract class StacksLikeFTModule extends CoreModule
                                 $currency_id = substr($ev['asset']['asset_id'], 0, $contract_pos);
                                 $events[] = [
                                     'transaction' => $op['tx_id'],
-                                    'address' => $ev['asset']['sender'],
+                                    'address' => $ev['asset']['sender'] ?: 'the-void',
                                     'currency' => $currency_id,
                                     'sort_key' => $sort_key++,
                                     'effect' => '-' . $ev['asset']['amount'],
@@ -188,7 +194,7 @@ abstract class StacksLikeFTModule extends CoreModule
                                 ];
                                 $events[] = [
                                     'transaction' => $op['tx_id'],
-                                    'address' =>  $ev['asset']['recipient'],
+                                    'address' => $ev['asset']['recipient'] ?: 'the-void',
                                     'currency' => $currency_id,
                                     'sort_key' => $sort_key++,
                                     'effect' => $ev['asset']['amount'],
@@ -231,11 +237,23 @@ abstract class StacksLikeFTModule extends CoreModule
                     $multi_curr,
                     limit: envm($this->module, 'REQUESTER_THREADS'),
                     timeout: $this->timeout,
-                    valid_codes: [200, 404]
+                    valid_codes: [200, 404, 422]
                 );
-                $results = requester_multi_process_all($results, reorder: false);
-                foreach ($results as $r) 
+                $output = [];
+
+                foreach ($results as $v)
+                    $output[] = requester_multi_process($v, ignore_errors: true);
+                foreach ($output as $r) 
                 {
+                    if (isset($r['error'])) {
+                        $currencies[] = [
+                            "id" => $currency_id,
+                            "decimals" => 0,
+                            "name" => "",
+                            "symbol" => "",
+                        ];
+                        continue;
+                    }
                     $contract_pos = strpos($r['asset_identifier'], '::');
                     $currency_id = substr($r['asset_identifier'], 0, $contract_pos);
                     $decimals = $r['decimals'] ?? 0;
@@ -248,7 +266,9 @@ abstract class StacksLikeFTModule extends CoreModule
                         "symbol" => $symb,
                     ];
                 }
-            } else {
+            } 
+            else 
+            {
                 $body = [
                     "sender" => "{$this->default_caller}",
                     "arguments" => [],
@@ -282,8 +302,9 @@ abstract class StacksLikeFTModule extends CoreModule
                         catch (MathException) {
                             $decimals = 0;
                         }
-                    } else 
-                        throw new RequesterException("Decimals: {$currency_id}");
+                    } 
+                    else 
+                        $decimals = 0;
 
                     // name
                     $requester_single_name = requester_single(
@@ -299,8 +320,9 @@ abstract class StacksLikeFTModule extends CoreModule
                             throw new DeveloperError("No: {$currency_id}");
                         $name = trim(hex2bin(substr($requester_single_name['result'], 6)));
                         $name = preg_replace('/[^\x20-\x7E]/', '', $name);
-                    } else 
-                        throw new RequesterException("Name: {$currency_id}");
+                    } 
+                    else
+                        $name = "";
 
                     // symbol
                     $requester_single_symb = requester_single(
@@ -316,8 +338,9 @@ abstract class StacksLikeFTModule extends CoreModule
                             throw new DeveloperError("No: {$currency_id}");
                         $symb = trim(hex2bin(substr($requester_single_symb['result'], 6)));
                         $symb = preg_replace('/[^\x20-\x7E]/', '', $symb);
-                    } else 
-                        throw new RequesterException("Symb: {$currency_id}");
+                    } 
+                    else 
+                        $symb = "";
 
                     $currencies[] = [
                         "id" => $currency_id,

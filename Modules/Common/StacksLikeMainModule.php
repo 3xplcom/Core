@@ -16,11 +16,11 @@ abstract class StacksLikeMainModule extends CoreModule
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::ExtraF;
-    public ?array $special_addresses = ['the-void', 'locked'];
+    public ?array $special_addresses = ['the-void', 'locker'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'failed', 'extra'];
-    public ?array $events_table_nullable_fields = [];
+    public ?array $events_table_nullable_fields = ['extra'];
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
     public ?array $extra_data_details = null;
@@ -77,7 +77,9 @@ abstract class StacksLikeMainModule extends CoreModule
                 $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
                 foreach ($results as $r)
                     $curl_results = array_merge($curl_results, $r);
-            } else {
+            } 
+            else 
+            {
                 $curl_results = requester_single(
                     $this->select_node(),
                     endpoint: "/api/extended/v1/tx/mempool?limit={$this->limit}",
@@ -85,7 +87,9 @@ abstract class StacksLikeMainModule extends CoreModule
                     result_in: 'results'
                 );
             }
-        } else {
+        } 
+        else 
+        {
             $block = requester_single(
                 $this->select_node(),
                 endpoint: "/api/extended/v2/blocks/{$block_id}",
@@ -121,7 +125,9 @@ abstract class StacksLikeMainModule extends CoreModule
                 $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
                 foreach ($results as $r)
                     $curl_results = array_merge($curl_results, $r);
-            } else {
+            } 
+            else 
+            {
                 $curl_results = requester_single(
                     $this->select_node(),
                     endpoint: "/api/extended/v2/blocks/{$block_id}/transactions?limit={$this->limit}",
@@ -169,19 +175,19 @@ abstract class StacksLikeMainModule extends CoreModule
                             {
                                 $events[] = [
                                     'transaction' => $op['tx_id'],
-                                    'address' => $ev['asset']['sender'],
+                                    'address' => $ev['asset']['sender'] ?: 'the-void',
                                     'sort_key' => $sort_key++,
                                     'effect' => '-' . $ev['asset']['amount'],
                                     'failed' => !($op['tx_status'] == 'success'),
-                                    'extra' => 't',
+                                    'extra' => null,
                                 ];
                                 $events[] = [
                                     'transaction' => $op['tx_id'],
-                                    'address' => $ev['asset']['recipient'],
+                                    'address' => $ev['asset']['recipient'] ?: 'the-void',
                                     'sort_key' => $sort_key++,
                                     'effect' => $ev['asset']['amount'],
                                     'failed' => !($op['tx_status'] == 'success'),
-                                    'extra' => 't',
+                                    'extra' => null,
                                 ];
                                 break;
                             }
@@ -189,11 +195,11 @@ abstract class StacksLikeMainModule extends CoreModule
                             {
                                 $events[] = [
                                     'transaction' => $op['tx_id'],
-                                    'address' => $ev['stx_lock_event']['locked'],
+                                    'address' => $ev['stx_lock_event']['locked_address'],
                                     'sort_key' => $sort_key++,
                                     'effect' => '-' . $ev['stx_lock_event']['locked_amount'],
                                     'failed' => !($op['tx_status'] == 'success'),
-                                    'extra' => 't',
+                                    'extra' => null,
                                 ];
                                 $events[] = [
                                     'transaction' => $op['tx_id'],
@@ -201,7 +207,7 @@ abstract class StacksLikeMainModule extends CoreModule
                                     'sort_key' => $sort_key++,
                                     'effect' => $ev['stx_lock_event']['locked_amount'],
                                     'failed' => !($op['tx_status'] == 'success'),
-                                    'extra' => 't',
+                                    'extra' => null,
                                 ];
                                 break;
                             }
