@@ -215,6 +215,10 @@ abstract class StacksLikeFTModule extends CoreModule
             }
         }
 
+        foreach ($currencies_to_process as &$c)
+            if ($p = strpos($c, '::'))
+                $c = substr($c, 0, $p);
+
         $currencies_to_process = array_values(array_unique($currencies_to_process)); // Removing duplicates
         $currencies_to_process = check_existing_currencies($currencies_to_process, $this->currency_format);
 
@@ -225,8 +229,6 @@ abstract class StacksLikeFTModule extends CoreModule
                 $multi_curr = [];
                 foreach ($currencies_to_process as $currency_id) 
                 {
-                    $contract_pos = strpos($currency_id, '::');
-                    $currency_id = substr($currency_id, 0, $contract_pos);
                     $multi_curr[] = requester_multi_prepare(
                         $this->select_node(),
                         endpoint: "/token/metadata/v1/ft/{$currency_id}",
@@ -276,8 +278,6 @@ abstract class StacksLikeFTModule extends CoreModule
 
                 foreach ($currencies_to_process as $currency_id) 
                 {
-                    $contract_pos = strpos($currency_id, '::');
-                    $currency_id = substr($currency_id, 0, $contract_pos);
                     $contract_name_pos = strpos($currency_id, '.');
 
                     $cr_contract = substr($currency_id, 0, $contract_name_pos);
