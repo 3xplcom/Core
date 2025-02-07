@@ -13,7 +13,7 @@ abstract class StacksLikeFTModule extends CoreModule
     public ?AddressFormat $address_format = AddressFormat::AlphaNumeric;
     public ?TransactionHashFormat $transaction_hash_format = TransactionHashFormat::HexWith0x;
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::Even;
-    public ?CurrencyFormat $currency_format = CurrencyFormat::UnsafeAlphaNumeric;
+    public ?CurrencyFormat $currency_format = CurrencyFormat::AlphaNumeric;
     public ?CurrencyType $currency_type = CurrencyType::FT;
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::None;
     public ?array $special_addresses = ['the-void'];
