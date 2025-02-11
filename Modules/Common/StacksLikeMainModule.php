@@ -149,9 +149,25 @@ abstract class StacksLikeMainModule extends CoreModule
         $transactions = requester_multi(
             $multi_curl,
             limit: envm($this->module, 'REQUESTER_THREADS'),
-            timeout: $this->timeout
+            timeout: $this->timeout,
+            valid_codes: [200, 500],    # until we are totally sure that `requester_multi_process_all` ignores it
         );
-        $transactions = requester_multi_process_all($transactions, reorder: false);
+
+        if ($block_id == MEMPOOL) 
+        {
+            $output = [];
+            foreach ($transactions as $v)
+            {
+                $out = requester_multi_process($v, ignore_errors: true);
+                if(isset($out['statusCode'])) 
+                    continue;
+                $output[] = $out;
+            }
+            unset($transactions);
+            $transactions = $output;
+        }
+        else 
+            $transactions = requester_multi_process_all($transactions, reorder: false);
 
         // sort according to tx index in the block
         if ($block_id != MEMPOOL)
