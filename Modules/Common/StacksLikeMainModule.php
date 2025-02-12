@@ -181,6 +181,12 @@ abstract class StacksLikeMainModule extends CoreModule
 
         foreach ($transactions as $op)
         {
+            if ($block_id === MEMPOOL)
+                if (isset($this->processed_transactions[$op['tx_id']]))
+                    continue;
+                else
+                    $this->processed_transactions[$op['tx_id']] = true;
+
             if (isset($op['event_count']) && (int)$op['event_count'] > 0) 
             {
                 foreach ($op['events'] as $ev) 
