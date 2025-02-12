@@ -33,7 +33,7 @@ abstract class StacksLikeFTModule extends CoreModule
     public ?bool $allow_empty_return_events = true;
     public ?bool $allow_empty_return_currencies = true;
 
-    public ?bool $mempool_implemented = false;
+    public ?bool $mempool_implemented = true;
     public ?bool $forking_implemented = false;
 
     public string $block_entity_name = 'block';
@@ -58,55 +58,96 @@ abstract class StacksLikeFTModule extends CoreModule
         $currencies_to_process = [];
         $currencies = [];
 
-        $block = requester_single(
-            $this->select_node(),
-            endpoint: "/api/extended/v2/blocks/{$block_id}",
-            timeout: $this->timeout
-        );
-        $true_block_time = date('Y-m-d H:i:s', (int)$block['block_time']);
-
-        $this->block_time = $true_block_time;
-        if ($block['tx_count'] == 0) 
+        if ($block_id == MEMPOOL) 
         {
-            $this->block_time = $true_block_time;
-            $this->set_return_currencies([]);
-            $this->set_return_events([]);
-            return;
-        }
-
-        $curl_results = [];
-        $multi_curl = [];
-        if ($block['tx_count'] > $this->limit) 
-        {
-            for ($offset = 0; $offset <= $block['tx_count']; $offset += $this->limit) 
-            {
-                $multi_curl[] = requester_multi_prepare(
-                    $this->select_node(),
-                    endpoint: "/api/extended/v2/blocks/{$block_id}/transactions?limit={$this->limit}&offset=$offset",
-                    timeout: $this->timeout
-                );
-            }
-
-            $results = requester_multi(
-                $multi_curl,
-                limit: envm($this->module, 'REQUESTER_THREADS'),
+            $mempool = requester_single(
+                $this->select_node(),
+                endpoint: "/api/extended/v1/tx/mempool?limit={$this->limit}",
                 timeout: $this->timeout
             );
-            $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
-            foreach ($results as $r)
-                $curl_results = array_merge($curl_results, $r);
+            $amount = $mempool['total'];
+            $curl_results = array_merge($curl_results, $mempool['results']);
+            if (($amount - $this->limit) > $this->limit) 
+            {
+                for ($offset = $this->limit; $offset <= ($amount); $offset += $this->limit) 
+                {
+                    $multi_curl[] = requester_multi_prepare(
+                        $this->select_node(),
+                        endpoint: "/api/extended/v1/tx/mempool?limit={$this->limit}&offset=$offset",
+                        timeout: $this->timeout
+                    );
+                }
+                $results = requester_multi(
+                    $multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
+                    timeout: $this->timeout
+                );
+                $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
+                foreach ($results as $r) 
+                    $curl_results = array_merge($curl_results, $r);
+            } 
+            else 
+            {
+                $curl_results = requester_single(
+                    $this->select_node(),
+                    endpoint: "/api/extended/v1/tx/mempool?limit={$this->limit}",
+                    timeout: $this->timeout,
+                    result_in: 'results'
+                );
+            }
         } 
         else 
         {
-            $curl_results = requester_single(
+            $block = requester_single(
                 $this->select_node(),
-                endpoint: "/api/extended/v2/blocks/{$block_id}/transactions?limit={$this->limit}",
-                timeout: $this->timeout,
-                result_in: 'results'
+                endpoint: "/api/extended/v2/blocks/{$block_id}",
+                timeout: $this->timeout
             );
+            $true_block_time = date('Y-m-d H:i:s', (int)$block['block_time']);
+
+            $this->block_time = $true_block_time;
+            if ($block['tx_count'] == 0) 
+            {
+                $this->block_time = $true_block_time;
+                $this->set_return_currencies([]);
+                $this->set_return_events([]);
+                return;
+            }
+
+            $curl_results = [];
+            $multi_curl = [];
+            if ($block['tx_count'] > $this->limit) 
+            {
+                for ($offset = 0; $offset <= $block['tx_count']; $offset += $this->limit) 
+                {
+                    $multi_curl[] = requester_multi_prepare(
+                        $this->select_node(),
+                        endpoint: "/api/extended/v2/blocks/{$block_id}/transactions?limit={$this->limit}&offset=$offset",
+                        timeout: $this->timeout
+                    );
+                }
+
+                $results = requester_multi(
+                    $multi_curl,
+                    limit: envm($this->module, 'REQUESTER_THREADS'),
+                    timeout: $this->timeout
+                );
+                $results = requester_multi_process_all($results, reorder: false, result_in: 'results');
+                foreach ($results as $r)
+                    $curl_results = array_merge($curl_results, $r);
+            } 
+            else 
+            {
+                $curl_results = requester_single(
+                    $this->select_node(),
+                    endpoint: "/api/extended/v2/blocks/{$block_id}/transactions?limit={$this->limit}",
+                    timeout: $this->timeout,
+                    result_in: 'results'
+                );
+            }
         }
         
-
+        $transactions = [];
         $multi_curl = [];
         foreach ($curl_results as $tr) 
         {
@@ -119,14 +160,31 @@ abstract class StacksLikeFTModule extends CoreModule
         $transactions = requester_multi(
             $multi_curl,
             limit: envm($this->module, 'REQUESTER_THREADS'),
-            timeout: $this->timeout
+            timeout: $this->timeout,
+            valid_codes: [200, 500],    # until we are totally sure that `requester_multi_process_all` ignores it
         );
-        $transactions = requester_multi_process_all($transactions, reorder: false);
+
+        if ($block_id == MEMPOOL) 
+        {
+            $output = [];
+            foreach ($transactions as $v)
+            {
+                $out = requester_multi_process($v, ignore_errors: true);
+                if(isset($out['statusCode'])) 
+                    continue;
+                $output[] = $out;
+            }
+            unset($transactions);
+            $transactions = $output;
+        }
+        else 
+            $transactions = requester_multi_process_all($transactions, reorder: false);
 
         // sort according to tx index in the block
-        usort($transactions, function ($a, $b) {
-            return [$a['tx_index']] <=> [$b['tx_index']];
-        });
+        if ($block_id != MEMPOOL)
+            usort($transactions, function ($a, $b) {
+                return [$a['tx_index']] <=> [$b['tx_index']];
+            });
         
 
         $events = [];
@@ -173,6 +231,12 @@ abstract class StacksLikeFTModule extends CoreModule
                     }
                 }
             }
+        }
+
+        if ($block_id == MEMPOOL)
+        {
+            $currencies_to_process = [];
+            $currencies = null;
         }
 
         foreach ($currencies_to_process as &$c)
@@ -312,10 +376,11 @@ abstract class StacksLikeFTModule extends CoreModule
             }
         }
 
+        $this_time = date('Y-m-d H:i:s');
         foreach ($events as &$event) 
         {
             $event['block'] = $block_id;
-            $event['time'] = $this->block_time;
+            $event['time'] = ($block_id !== MEMPOOL) ? $this->block_time : $this_time;
         }
 
         $this->set_return_events($events);
