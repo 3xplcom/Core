@@ -1,0 +1,27 @@
+<?php declare(strict_types = 1);
+
+/*  Idea (c) 2023 Nikita Zhavoronkov, nikzh@nikzh.com
+ *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com
+ *  Distributed under the MIT software license, see the accompanying file LICENSE.md  */
+
+ /*  This module processes main Stacks transfers.  */
+final class StacksMainModule extends StacksLikeMainModule implements Module, BalanceSpecial
+{
+    function initialize()
+    {
+        // CoreModule
+        $this->blockchain = 'stacks';
+        $this->module = 'stacks-main';
+        $this->is_main = true;
+        $this->currency = 'stx';
+        $this->currency_details = ['name' => 'STX', 'symbol' => 'STX', 'decimals' => 6, 'description' => null];
+        $this->first_block_date = '2021-01-14';
+        $this->first_block_id = 1;
+        $this->mempool_implemented = true;
+
+        $this->tests = [
+            ['block' => 289575, 'result' => 'a:2:{s:6:"events";a:12:{i:0;a:8:{s:11:"transaction";s:66:"0x853266296f67f718acd8c09ccb56cc8a5a08ea1a0b6d7e22354e8c68019dac08";s:7:"address";s:40:"SPX8T06E8FJQ33CX8YVR9CC6D9DSTF6JE0Y8R7DS";s:8:"sort_key";i:0;s:6:"effect";s:10:"-502300000";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:1;a:8:{s:11:"transaction";s:66:"0x853266296f67f718acd8c09ccb56cc8a5a08ea1a0b6d7e22354e8c68019dac08";s:7:"address";s:41:"SP307BHDXSX759Z2XFAM405REWVFJK05HKG7BWRQB";s:8:"sort_key";i:1;s:6:"effect";s:9:"502300000";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:2;a:8:{s:11:"transaction";s:66:"0x853266296f67f718acd8c09ccb56cc8a5a08ea1a0b6d7e22354e8c68019dac08";s:7:"address";s:40:"SPX8T06E8FJQ33CX8YVR9CC6D9DSTF6JE0Y8R7DS";s:8:"sort_key";i:2;s:6:"effect";s:7:"-700000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:3;a:8:{s:11:"transaction";s:66:"0x853266296f67f718acd8c09ccb56cc8a5a08ea1a0b6d7e22354e8c68019dac08";s:7:"address";s:8:"the-void";s:8:"sort_key";i:3;s:6:"effect";s:6:"700000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:4;a:8:{s:11:"transaction";s:66:"0xe558cb89d9d7a5ddffb597911f0b597e6391b16252fb9743f1a1c8bf851a0d65";s:7:"address";s:41:"SP3AP6DRSQ6P4FETB5M33D082Q2ABGJW60MT6103Q";s:8:"sort_key";i:4;s:6:"effect";s:11:"-1377500000";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:5;a:8:{s:11:"transaction";s:66:"0xe558cb89d9d7a5ddffb597911f0b597e6391b16252fb9743f1a1c8bf851a0d65";s:7:"address";s:41:"SP187Y6HQJQH4CTDS5NRXDNDEWVCDA9BY3B0VMXD7";s:8:"sort_key";i:5;s:6:"effect";s:10:"1377500000";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:6;a:8:{s:11:"transaction";s:66:"0xe558cb89d9d7a5ddffb597911f0b597e6391b16252fb9743f1a1c8bf851a0d65";s:7:"address";s:41:"SP3AP6DRSQ6P4FETB5M33D082Q2ABGJW60MT6103Q";s:8:"sort_key";i:6;s:6:"effect";s:7:"-500000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:7;a:8:{s:11:"transaction";s:66:"0xe558cb89d9d7a5ddffb597911f0b597e6391b16252fb9743f1a1c8bf851a0d65";s:7:"address";s:8:"the-void";s:8:"sort_key";i:7;s:6:"effect";s:6:"500000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:8;a:8:{s:11:"transaction";s:66:"0x92b46aee92a96c8e04f6f3cfefc6a4fb5a28827fbaf3053920964236c4263a06";s:7:"address";s:41:"SP27ANV45PCAG98PGFA2GVN9K7QYY1KWWS1V6RFSX";s:8:"sort_key";i:8;s:6:"effect";s:12:"-19156267000";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:9;a:8:{s:11:"transaction";s:66:"0x92b46aee92a96c8e04f6f3cfefc6a4fb5a28827fbaf3053920964236c4263a06";s:7:"address";s:41:"SP2ADT4TAV92SPBNP3WE9GPJ12F6CKGWMEJ1H1BB9";s:8:"sort_key";i:9;s:6:"effect";s:11:"19156267000";s:6:"failed";s:1:"f";s:5:"extra";N;s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:10;a:8:{s:11:"transaction";s:66:"0x92b46aee92a96c8e04f6f3cfefc6a4fb5a28827fbaf3053920964236c4263a06";s:7:"address";s:41:"SP27ANV45PCAG98PGFA2GVN9K7QYY1KWWS1V6RFSX";s:8:"sort_key";i:10;s:6:"effect";s:7:"-300000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}i:11;a:8:{s:11:"transaction";s:66:"0x92b46aee92a96c8e04f6f3cfefc6a4fb5a28827fbaf3053920964236c4263a06";s:7:"address";s:8:"the-void";s:8:"sort_key";i:11;s:6:"effect";s:6:"300000";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:289575;s:4:"time";s:19:"2024-12-03 16:41:13";}}s:10:"currencies";N;}'],
+            ['block' => 12, 'result' => 'a:2:{s:6:"events";a:2:{i:0;a:8:{s:11:"transaction";s:66:"0x33f4d20bfa55945efb0bafea2299266e4149e95978b7b33ac930d9bdeabb36d2";s:7:"address";s:41:"SP3S9C931DEC0NZWEQBPCW6HGMN8T0TJHED5YDG5S";s:8:"sort_key";i:0;s:6:"effect";s:2:"-0";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:12;s:4:"time";s:19:"2024-07-23 16:47:57";}i:1;a:8:{s:11:"transaction";s:66:"0x33f4d20bfa55945efb0bafea2299266e4149e95978b7b33ac930d9bdeabb36d2";s:7:"address";s:8:"the-void";s:8:"sort_key";i:1;s:6:"effect";s:1:"0";s:6:"failed";s:1:"f";s:5:"extra";s:1:"f";s:5:"block";i:12;s:4:"time";s:19:"2024-07-23 16:47:57";}}s:10:"currencies";N;}'],
+        ];
+    }
+}
