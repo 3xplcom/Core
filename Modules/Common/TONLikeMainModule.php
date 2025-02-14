@@ -22,7 +22,7 @@ abstract class TONLikeMainModule extends CoreModule
 
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
     public ?array $events_table_nullable_fields = ['extra', 'extra_indexed'];
-    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Other;
+    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Transaction;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
 
@@ -76,15 +76,20 @@ abstract class TONLikeMainModule extends CoreModule
             if (explode(',', substr($transaction['block'], 1), 2)[0] != $this->workchain) // ignore any other chain beside specified
                 continue;
 
+            $issued_in = (array_key_exists('issued_in', $transaction)) ? [
+                'hash' => $transaction['issued_in']['hash'],
+                'fee' => $transaction['issued_in']['fee']
+            ] : false;
+
             [$sub, $add] = $this->generate_event_pair(
                 $transaction['hash'],
                 $transaction['account'],
                 'the-void',
-                $transaction['fee'],
+                ($issued_in) ? bcadd($transaction['fee'], $issued_in['fee']) : $transaction['fee'],
                 $transaction['lt'],
                 0,
                 'f',
-                $transaction['block']
+                ($issued_in) ? $issued_in['hash'] : null,
             );
             array_push($events, $sub, $add);
 
@@ -99,7 +104,7 @@ abstract class TONLikeMainModule extends CoreModule
                 $transaction['lt'],
                 1,
                 ($is_from_nowhere || $is_to_nowhere) ? 'e' : null,
-                $transaction['block']
+                ($issued_in) ? $issued_in['hash'] : null
             );
             array_push($events, $sub, $add);
         }

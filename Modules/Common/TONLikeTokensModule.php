@@ -20,9 +20,8 @@ abstract class TONLikeTokensModule extends CoreModule
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra_indexed', 'currency'];
-    public ?array $events_table_nullable_fields = ['extra_indexed'];
-    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Other;
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'currency'];
+    public ?array $events_table_nullable_fields = [];
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::None;
 
@@ -103,10 +102,13 @@ abstract class TONLikeTokensModule extends CoreModule
                 $transaction['lt'],
                 1,
                 null,
-                $transaction['block']
+                null
             );
             $sub['currency'] = $transaction['token'];
             $add['currency'] = $transaction['token'];
+
+            unset($sub['extra_indexed']);
+            unset($add['extra_indexed']);
 
             array_push($events, $sub, $add);
 
@@ -182,7 +184,7 @@ abstract class TONLikeTokensModule extends CoreModule
     }
 
     // Getting balances from the node
-    public function api_get_balance($address, $currencies)
+    public function api_get_balance(string $address, array $currencies): array
     {
         if (!$currencies)
             return [];
