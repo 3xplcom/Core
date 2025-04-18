@@ -20,8 +20,9 @@ abstract class TONLikeMainModule extends CoreModule
     public ?array $special_addresses = ['the-void'];
     public ?PrivacyModel $privacy_model = PrivacyModel::Transparent;
 
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra'];
-    public ?array $events_table_nullable_fields = ['extra'];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra', 'extra_indexed'];
+    public ?array $events_table_nullable_fields = ['extra', 'extra_indexed'];
+    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Transaction;
 
     public ?ExtraDataModel $extra_data_model = ExtraDataModel::Default;
 
@@ -30,11 +31,10 @@ abstract class TONLikeMainModule extends CoreModule
     public ?bool $allow_empty_return_events = true;
 
     public ?bool $mempool_implemented = false;
-    public ?bool $forking_implemented = true;
+    public ?bool $forking_implemented = false;
 
     // Blockchain-specific
 
-    public ?array $shards = [];
     public ?string $workchain = null; // This should be set in the final module
 
     //
@@ -46,7 +46,7 @@ abstract class TONLikeMainModule extends CoreModule
 
     final public function post_post_initialize()
     {
-        if (is_null($this->workchain)) throw new DeveloperError("`workchain` is not set");
+        if (is_null($this->workchain)) throw new DeveloperError('`workchain` is not set');
     }
 
     final public function pre_process_block($block_id)
@@ -58,135 +58,96 @@ abstract class TONLikeMainModule extends CoreModule
             return;
         }
 
-        $block_times = [];
+        $block = requester_single(
+            $this->select_node(),
+            endpoint: 'get_blocks/by_master_height',
+            params: [
+                'args' => [
+                    $block_id,
+                    true
+                ]
+            ],
+            timeout: $this->timeout);
+
         $events = [];
-        $sort_key = 0;
 
-        $rq_blocks = [];
-        $rq_blocks_data = [];
-
-        foreach ($this->shards as $shard => $shard_data) 
+        foreach ($block['transactions'] as $transaction)
         {
-            $this_root_hash = strtoupper($shard_data['roothash']);
-            $this_block_hash = strtoupper($shard_data['filehash']);
+            if (explode(',', substr($transaction['block'], 1), 2)[0] != $this->workchain) // ignore any other chain beside specified
+                continue;
 
-            $rq_blocks[] = requester_multi_prepare(
-                $this->select_node(),
-                endpoint: "blockLite?workchain={$this->workchain}&shard={$shard}&seqno={$block_id}&roothash={$this_root_hash}&filehash={$this_block_hash}",
-                timeout: $this->timeout
+            $issued_in = (array_key_exists('issued_in', $transaction)) ? [
+                'hash' => $transaction['issued_in']['hash'],
+                'fee' => $transaction['issued_in']['fee']
+            ] : false;
+
+            [$sub, $add] = $this->generate_event_pair(
+                $transaction['hash'],
+                $transaction['account'],
+                'the-void',
+                ($issued_in) ? bcadd($transaction['fee'], $issued_in['fee']) : $transaction['fee'],
+                $transaction['lt'],
+                0,
+                'f',
+                ($issued_in) ? $issued_in['hash'] : null,
             );
+            array_push($events, $sub, $add);
+
+            $is_from_nowhere = $transaction['imsg_src'] === 'NOWHERE';
+            $is_to_nowhere   = $transaction['imsg_dst'] === 'NOWHERE';
+
+            [$sub, $add] = $this->generate_event_pair(
+                $transaction['hash'],
+                ($is_from_nowhere) ? 'the-void' : $transaction['imsg_src'],
+                ($is_to_nowhere) ? 'the-void' : $transaction['imsg_dst'],
+                $transaction['imsg_grams'],
+                $transaction['lt'],
+                1,
+                ($is_from_nowhere || $is_to_nowhere) ? 'e' : null,
+                ($issued_in) ? $issued_in['hash'] : null
+            );
+            array_push($events, $sub, $add);
         }
-            
-        $rq_blocks_multi = requester_multi(
-            $rq_blocks,
-            limit: envm($this->module, 'REQUESTER_THREADS'),
-            timeout: $this->timeout,
-            valid_codes: [200]
+
+        array_multisort(
+            array_column($events, 'lt_sort'), SORT_ASC,  // first, sort by lt - chronological order is most important
+            array_column($events, 'transaction'), SORT_ASC, // then, if any tx happened in diff shards, BUT at the same lt - arbitrarily, by tx-hash
+            array_column($events, 'intra_tx'), SORT_ASC, // lastly, ensure within transaction order: (-fee, +fee, -value, +value)
+            $events
         );
 
-        foreach ($rq_blocks_multi as $v)
-            $rq_blocks_data[] = requester_multi_process($v, flags: [RequesterOption::RecheckUTF8]);
-
-        foreach ($rq_blocks_data as $block)
-        {
-            $block_times[] = (int)$block['header']['time'];
-
-            foreach ($block['transactions'] as $transaction)
-            {
-                $transaction['hash'] = strtolower($transaction['hash']);
-
-                if (!isset($transaction['messageIn']))
-                {
-                    if (isset($transaction['fee']))
-                        throw new ModuleError("There's fee, but no messageIn");
-
-                    $events[] = [
-                        'transaction' => $transaction['hash'],
-                        'address' => $transaction['addr'],
-                        'sort_key' => $sort_key++,
-                        'effect' => '-0',
-                        'extra' => 'n',
-                    ];
-
-                    $events[] = [
-                        'transaction' => $transaction['hash'],
-                        'address' => 'the-void',
-                        'sort_key' => $sort_key++,
-                        'effect' => '0',
-                        'extra' => 'n',
-                    ];
-                }
-                else
-                {
-                    if (count($transaction['messageIn']) > 1)
-                        throw new ModuleError('count(messageIn) > 1');
-
-                    $this_message_in = $transaction['messageIn']['0'];
-
-                    // Transaction fee
-
-                    $events[] = [
-                        'transaction' => $transaction['hash'],
-                        'address' => $this_message_in['source'] ?? $transaction['address'],
-                        'sort_key' => $sort_key++,
-                        'effect' => '-' . $transaction['fee'],
-                        'extra' => 'f',
-                    ];
-
-                    $events[] = [
-                        'transaction' => $transaction['hash'],
-                        'address' => 'the-void',
-                        'sort_key' => $sort_key++,
-                        'effect' => $transaction['fee'],
-                        'extra' => 'f',
-                    ];
-
-                    // The transfer itself
-
-                    if (isset($this_message_in['value']))
-                    {
-                        $events[] = [
-                            'transaction' => $transaction['hash'],
-                            'address' => $this_message_in['source'],
-                            'sort_key' => $sort_key++,
-                            'effect' => '-' . $this_message_in['value'],
-                            'extra' => null,
-                        ];
-
-                        $events[] = [
-                            'transaction' => $transaction['hash'],
-                            'address' => $this_message_in['destination'],
-                            'sort_key' => $sort_key++,
-                            'effect' => $this_message_in['value'],
-                            'extra' => null,
-                        ];
-                    }
-                }
-            }
-        }
-
-        ////////////////
-        // Processing //
-        ////////////////
-
-        $max_block_time = date('Y-m-d H:i:s', max($block_times));
-
+        $sort_key = 0;
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;
-            $event['time'] = $max_block_time;
+            $event['time'] = $this->block_time;
+            $event['sort_key'] = $sort_key++;
+
+            unset($event['lt_sort']);
+            unset($event['intra_tx']);
         }
 
-        $this->block_time = $max_block_time;
-
         $this->set_return_events($events);
+
     }
 
     // Getting balances from the node
     final public function api_get_balance(string $address): string
     {
-        return (string)requester_single($this->select_node(),
-            endpoint: "account?account={$address}",
-            timeout: $this->timeout)['balance'];
+        $response = requester_single($this->select_node(),
+            endpoint: 'get_account_info',
+            params: [
+                'args' => [
+                    $address, false
+                    ]
+                ],
+            timeout: $this->timeout);
+        if (!array_key_exists('balance', $response))
+            return "0";
+
+        if (!array_key_exists('grams', $response['balance']))
+            return "0";
+
+        return (string)$response['balance']['grams'];
     }
 }
