@@ -123,6 +123,7 @@ abstract class BeaconChainLikeProposalsModule extends CoreModule
         }
 
         $key_tes = 0;
+        ksort($rewards_slots);
 
         foreach ($rewards_slots as $slot => [$validator, $reward])
         {
