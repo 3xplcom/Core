@@ -6,7 +6,7 @@
 
 /*  This is the main BOB module. It requires a geth node to run.  */
 
-final class BOBMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials
+final class BOBMainModule extends EVMMainModule implements Module, BalanceSpecial, TransactionSpecials, AddressSpecials, BroadcastTransactionSpecial
 {
     function initialize()
     {
