@@ -27,8 +27,9 @@ abstract class ZanoLikeMainModule extends CoreModule
     public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid; // TODO check
     public ?array $special_addresses = ['the-void', 'shielded-pool'];
 
-    public ?PrivacyModel $privacy_model = PrivacyModel::Mixed; // Fees and coinbase rewards are visible for v2 transactions, the rest is not
+    public ?PrivacyModel $privacy_model = PrivacyModel::Mixed; // Fees and coinbase rewards are visible the rest is not
     public ?bool $ignore_sum_of_all_effects = true; // In mixed transactions we know fee values, but don't know input and output values
+    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Any;
 
     //
 
@@ -50,7 +51,7 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     final public function inquire_latest_block()
     {
-        return (int)requester_single($this->select_node(), 'getheight')['height']; // For some reason,
+        return (int)requester_single($this->select_node(), '/getheight')['height']; // For some reason,
         // `height` returns a +1 value.
     }
 
@@ -60,7 +61,7 @@ abstract class ZanoLikeMainModule extends CoreModule
 
         foreach ($this->nodes as $node)
         {
-            $multi_curl[] = requester_multi_prepare($node, params: $params, timeout: $this->timeout);
+            $multi_curl[] = requester_multi_prepare($node, params: $params, endpoint: '/json_rpc', timeout: $this->timeout);
             if ($break_on_first) break;
         }
 
@@ -100,20 +101,18 @@ abstract class ZanoLikeMainModule extends CoreModule
                      'id'      => 0,
                      'params'  => [ 'id' => "{$this->block_hash}" ],
             ],
-            endpoint: 'json_rpc',
+            endpoint: '/json_rpc',
             result_in: 'result',
             timeout: $this->timeout);
             $this->block_data['txs'] = $output['result']['transactions_details'];
         }
         else // Processing mempool
         {
-            // $this->block_data = requester_single($this->select_node(),
-            //     endpoint: 'api/mempool',
-            //     timeout: $this->timeout,
-            //     result_in: 'data');
+
         }
 
         $multi_curl = [];
+        $is_PoW = $this->block_data['block_details']['type'] ?? 1; // 1 is PoW, 0 is PoS
 
         foreach ($this->block_data['txs'] as $tx)
         {
@@ -125,7 +124,7 @@ abstract class ZanoLikeMainModule extends CoreModule
                     'id'      => 0,
                     'params'  => ['tx_hash' => $tx['id']],
                 ],
-                endpoint: "json_rpc",
+                endpoint: "/json_rpc",
                 timeout: $this->timeout
             );
         }
@@ -165,34 +164,34 @@ abstract class ZanoLikeMainModule extends CoreModule
 
             if ($transaction['coinbase'])
             {
-                // $coinbase_transactions++;
+                // there is something to do with such transactions
+                // we can't trace to whom they are sent
+                // But each block has a 1 ZANO reward 
+                // Also there is a transaction in each block, but I don't sure what is it for
+                // So for PoW blocks we would have 2 outputs and no inputs
+                // https://explorer.zano.org/transaction/71e54a7fc1f92e9005b3a8d5ac5c92fa6d60cdd38d552c9637824f33d3c9b8df
+                // For PoS blocks we have 1 input and 1 output
+                // https://explorer.zano.org/transaction/a4a3ab82fb5d2d5454b45a3c7914d7326f2f9ac3dea9861d3f20c81a68073af4
 
-                // if ($transaction['tx_fee'] !== '0')
-                //     throw new ModuleError('The coinbase transaction fee is not 0');
+                 $events[] = ['transaction' => $hash,
+                                 'address'     => 'the-void',
+                                 'effect'      => '1000000000000',
+                                 'sort_key'    => $sort_key++,
+                                //  'extra_indexed' => $input['global_indexes'], // should be nullable
+                    ];
+                    $events[] = ['transaction' => $hash,
+                                 'address'     => 'miner',
+                                 'effect'      => '1000000000000',
+                                 'sort_key'    => $sort_key++,
+                                //  'extra_indexed' => $input['global_indexes'], // should be nullable
+                    ];
+                // We can do this (up) and show a synthetic transaction of transferring 
+                // OR we can skip it and show the real transaction (down)
+                // if ($is_PoW) {
+                   
+                // } else {
 
-                // $total_coinbase = '0';
-
-                // foreach ($transaction_details[$hash]['outputs'] as $output)
-                // {
-                //     if ($output['amount'] === '0')
-                //         throw new ModuleError('Zero coinbase output'); // That'd cause undefined behaviour as
-                //     // `tx_version` can be both `1` and `2` for transparent coinbase transactions, and we won't have
-                //     // a way to differ +0 from +?
-
-                //     $events[] = ['transaction' => $hash,
-                //                  'address'     => 'shielded-pool',
-                //                  'effect'      => $output['amount'],
-                //                  'sort_key'    => $sort_key++,
-                //     ];
-
-                //     $total_coinbase = bcadd($total_coinbase, $output['amount']);
                 // }
-
-                // $events[] = ['transaction' => $hash,
-                //              'address'     => 'the-void',
-                //              'effect'      => '-' . $total_coinbase,
-                //              'sort_key'    => 0,
-                // ];
             }
             else
             {
@@ -222,6 +221,10 @@ abstract class ZanoLikeMainModule extends CoreModule
                     ];
                 }
 
+                // On Zano, all network fees are being burned, meaning that with enough network usage, 
+                // the daily fee burning could surpass the emission from block rewards, 
+                // resulting in supply becoming deflationary over time.
+                // https://docs.zano.org/docs/learn/emission/#emission-motivation
                 $events[] = ['transaction' => $hash,
                              'address'     => 'the-void',
                              'effect'      => $transaction['tx_info']['fee'],
