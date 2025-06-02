@@ -112,7 +112,6 @@ abstract class ZanoLikeMainModule extends CoreModule
         }
 
         $multi_curl = [];
-        $is_PoW = $this->block_data['block_details']['type'] ?? 1; // 1 is PoW, 0 is PoS
 
         foreach ($this->block_data['txs'] as $tx)
         {
@@ -144,7 +143,6 @@ abstract class ZanoLikeMainModule extends CoreModule
 
         $events = []; // This is an array for the results
         $sort_key = 0;
-        $coinbase_transactions = 0;
 
         // if ($block_id !== MEMPOOL && !$this->block_data['txs'][0]['coinbase'])
         //     throw new ModuleError('The first transaction is not coinbase');
@@ -154,12 +152,6 @@ abstract class ZanoLikeMainModule extends CoreModule
 
         foreach ($this->block_data['txs'] as $transaction)
         {
-            // if (isset($this->processed_transactions[$transaction['tx_hash']]))
-            //     continue;
-
-            // if (!in_array($transaction['tx_version'], ['1', '2']))
-            //     throw new ModuleError('Unknown transaction version');
-
             $hash = $transaction['id'];
 
             // if ($transaction['coinbase'])
@@ -228,21 +220,62 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     final public function api_get_transaction_specials(string $transaction): array
     {
-        $transaction = requester_single($this->select_node(),
-            endpoint: 'api/transaction/' . $transaction,
-            timeout: $this->timeout,
-            result_in: 'data');
+        $transaction = requester_single(
+                $this->select_node(),
+                params: [
+                    'jsonrpc' => '2.0',
+                    'method'  => 'get_tx_details',
+                    'id'      => 0,
+                    'params'  => ['tx_hash' => $transaction],
+                ],
+                endpoint: "/json_rpc",
+                timeout: $this->timeout
+            )['result'];
 
         $specials = new Specials();
 
-        $specials->add('version', (int)$transaction['tx_version']);
-        $specials->add('ringct_type', (int)$transaction['rct_type'], function ($raw_value) { return "RingCT type: {{$raw_value}}"; });
-        $specials->add('size', (int)$transaction['tx_size'], function ($raw_value) { return "Size: {{$raw_value}} bytes"; });
-        $specials->add('is_coinbase', $transaction['coinbase'], function ($raw_value) { if ($raw_value) return "Is coinbase? {Yes}"; else return "Is coinbase? {No}"; });
-        $specials->add('extra', $transaction['extra']);
-        $specials->add('fee_per_byte', (int)$transaction['tx_fee'] / (int)$transaction['tx_size'],
-            function ($raw_value) { $currency = ' ' . $this->currency_details['smallest'] ?? ''; $value = round($raw_value); return "Fee per byte: {{$value}}{$currency}"; });
+        $specials->add('blob_size', (int)$transaction['tx_info']['blob_size'], function ($raw_value) { return "Blob size: {{$raw_value}} bytes"; });
+
+        $outs = $transaction['tx_info']['outs'];
+        $ins = $transaction['tx_info']['ins'];
+
+        for ($i = 1; $i < count($ins); $i++) 
+        {
+            $specials->add(
+                'index_' . $i,
+                $ins[$i-1]['global_indexes'],
+                function () use ($ins, $i) {
+                    return "Global Indexes {$ins[$i-1]['global_indexes']}";
+                }
+            );
+        }
+
+        foreach ($outs as $out) 
+        {
+            $specials->add(
+                'spent_global_index' . $out['global_index'],
+                $out['is_spent'],
+                function ($spent) use ($out) {
+                    return "Global Index {$out['global_index']} is" + $out['is_spent'] ? "spent" : "not spent";
+                }
+            );
+        }
 
         return $specials->return();
+    }
+
+    function alias_get_data($handle)
+    {
+        $output = requester_single($this->select_node(),
+            params: ['jsonrpc' => '2.0',
+                     'method'  => 'get_alias_details',
+                     'id'      => 0,
+                     'params'  => ['id'   => $handle ],
+            ],
+            result_in: 'result',
+            timeout: $this->timeout);
+        
+
+        return $output['alias_details']['address'];
     }
 }

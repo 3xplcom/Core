@@ -19,5 +19,17 @@ final class ZanoMainModule extends ZanoLikeMainModule implements Module, Transac
         $this->first_block_id = 0;
         $this->first_block_date = '2019-05-08'; // TODO there is a genesis block, it has 0 timestamp
 
+        $this->api_get_handle = function($handle)
+        {
+            // there are no credentials 
+            
+            $address = $this->alias_get_data($handle);
+
+            if ($address)
+                return $address;
+            else
+                return null;
+        };
+
     }
 }
