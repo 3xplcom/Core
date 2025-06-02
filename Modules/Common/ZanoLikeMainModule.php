@@ -9,7 +9,7 @@
 abstract class ZanoLikeMainModule extends CoreModule
 {
     public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra_indexed'];
-    public ?array $events_table_nullable_fields = [];
+    public ?array $events_table_nullable_fields = ['extra_indexed'];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
@@ -76,14 +76,14 @@ abstract class ZanoLikeMainModule extends CoreModule
 
         $result0 = requester_multi_process($curl_results[0], result_in: 'result');
 
-        $this->block_hash = $result0['hash'];
-        $this->block_time = date('Y-m-d H:i:s', to_int64_from_0xhex($result0['block_details']['actual_timestamp']));
+        $this->block_hash = $result0['block_header']['hash'];
+        $this->block_time = date('Y-m-d H:i:s', $result0['block_header']['timestamp']);
 
         if (count($curl_results) > 1)
         {
             foreach ($curl_results as $result)
             {
-                if (requester_multi_process($result, result_in: 'result')['hash'] !== $this->block_hash)
+                if (requester_multi_process($result, result_in: 'result')['block_header']['hash'] !== $this->block_hash)
                 {
                     throw new ConsensusException("ensure_block(block_id: {$block_id}): no consensus");
                 }
@@ -104,7 +104,7 @@ abstract class ZanoLikeMainModule extends CoreModule
             endpoint: '/json_rpc',
             result_in: 'result',
             timeout: $this->timeout);
-            $this->block_data['txs'] = $output['result']['transactions_details'];
+            $this->block_data['txs'] = $output['block_details']['transactions_details'];
         }
         else // Processing mempool
         {
@@ -120,7 +120,7 @@ abstract class ZanoLikeMainModule extends CoreModule
                 $this->select_node(),
                 params: [
                     'jsonrpc' => '2.0',
-                    'method'  => 'get_main_block_details',
+                    'method'  => 'get_tx_details',
                     'id'      => 0,
                     'params'  => ['tx_hash' => $tx['id']],
                 ],
@@ -143,7 +143,7 @@ abstract class ZanoLikeMainModule extends CoreModule
         }
 
         $events = []; // This is an array for the results
-        $sort_key = 1;
+        $sort_key = 0;
         $coinbase_transactions = 0;
 
         // if ($block_id !== MEMPOOL && !$this->block_data['txs'][0]['coinbase'])
@@ -162,79 +162,56 @@ abstract class ZanoLikeMainModule extends CoreModule
 
             $hash = $transaction['id'];
 
-            if ($transaction['coinbase'])
+            // if ($transaction['coinbase'])
+            // {
+            //     // there is something to do with such transactions
+            //     // we can't trace to whom they are sent
+            //     // But each block has a 1 ZANO reward 
+            //     // Also there is a transaction in each block, but I don't sure what is it for
+            //     // So for PoW blocks we would have 2 outputs and no inputs
+            //     // https://explorer.zano.org/transaction/71e54a7fc1f92e9005b3a8d5ac5c92fa6d60cdd38d552c9637824f33d3c9b8df
+            //     // For PoS blocks we have 1 input and 1 output
+            //     // https://explorer.zano.org/transaction/a4a3ab82fb5d2d5454b45a3c7914d7326f2f9ac3dea9861d3f20c81a68073af4
+            foreach ($transaction_details[$hash]['tx_info']['ins'] as $input) 
             {
-                // there is something to do with such transactions
-                // we can't trace to whom they are sent
-                // But each block has a 1 ZANO reward 
-                // Also there is a transaction in each block, but I don't sure what is it for
-                // So for PoW blocks we would have 2 outputs and no inputs
-                // https://explorer.zano.org/transaction/71e54a7fc1f92e9005b3a8d5ac5c92fa6d60cdd38d552c9637824f33d3c9b8df
-                // For PoS blocks we have 1 input and 1 output
-                // https://explorer.zano.org/transaction/a4a3ab82fb5d2d5454b45a3c7914d7326f2f9ac3dea9861d3f20c81a68073af4
+                $amount = $input['amount'];
 
-                 $events[] = ['transaction' => $hash,
-                                 'address'     => 'the-void',
-                                 'effect'      => '1000000000000',
-                                 'sort_key'    => $sort_key++,
-                                //  'extra_indexed' => $input['global_indexes'], // should be nullable
-                    ];
-                    $events[] = ['transaction' => $hash,
-                                 'address'     => 'miner',
-                                 'effect'      => '1000000000000',
-                                 'sort_key'    => $sort_key++,
-                                //  'extra_indexed' => $input['global_indexes'], // should be nullable
-                    ];
-                // We can do this (up) and show a synthetic transaction of transferring 
-                // OR we can skip it and show the real transaction (down)
-                // if ($is_PoW) {
-                   
-                // } else {
-
-                // }
-            }
-            else
-            {
-                foreach ($transaction_details[$hash]['tx_info']['ins'] as $input)
-                {
-                    $amount = $input['amount'];
-
-                    $events[] = ['transaction' => $hash,
-                                 'address'     => 'shielded-pool',
-                                 'effect'      => $amount,
-                                 'sort_key'    => $sort_key++,
-                                //  'extra_indexed' => $input['global_indexes'], // should be nullable
-                    ];
-                }
-
-                foreach ($transaction_details[$hash]['tx_info']['outs'] ?? [] as $output)
-                {
-                    // Some transactions don't have outputs, thus `?? []` (the entire input amount goes to the fee pool in that case)
-
-                    $amount = $output['amount'];
-
-                    $events[] = ['transaction' => $hash,
-                                 'address'     => 'shielded-pool',
-                                 'effect'      => $amount,
-                                 'sort_key'    => $sort_key++,
-                                 'extra_indexed' => $output['global_index'],
-                    ];
-                }
-
-                // On Zano, all network fees are being burned, meaning that with enough network usage, 
-                // the daily fee burning could surpass the emission from block rewards, 
-                // resulting in supply becoming deflationary over time.
-                // https://docs.zano.org/docs/learn/emission/#emission-motivation
-                $events[] = ['transaction' => $hash,
-                             'address'     => 'the-void',
-                             'effect'      => $transaction['tx_info']['fee'],
-                             'sort_key'    => $sort_key++,
+                $events[] = [
+                    'transaction' => $hash,
+                    'address'     => 'shielded-pool',
+                    'effect'      => "{$amount}",
+                    'sort_key'    => $sort_key++,
+                    'extra_indexed' => null, // should be nullable
                 ];
             }
-        }
 
-        if ($coinbase_transactions !== 1 && $block_id !== MEMPOOL)
-            throw new ModuleError('Wrong number of coinbase transactions');
+            foreach ($transaction_details[$hash]['tx_info']['outs'] ?? [] as $output) 
+            {
+                // Some transactions don't have outputs, thus `?? []` (the entire input amount goes to the fee pool in that case)
+
+                $amount = $output['amount'];
+
+                $events[] = [
+                    'transaction' => $hash,
+                    'address'     => 'shielded-pool',
+                    'effect'      => "{$amount}",
+                    'sort_key'    => $sort_key++,
+                    'extra_indexed' => $output['global_index'],
+                ];
+            }
+
+            // On Zano, all network fees are being burned, meaning that with enough network usage, 
+            // the daily fee burning could surpass the emission from block rewards, 
+            // resulting in supply becoming deflationary over time.
+            // https://docs.zano.org/docs/learn/emission/#emission-motivation
+            $events[] = [
+                'transaction' => $hash,
+                'address'     => 'the-void',
+                'effect'      => "{$transaction['fee']}",
+                'sort_key'    => $sort_key++,
+                'extra_indexed' => null,
+            ];
+        }
 
         foreach ($events as &$event)
         {
