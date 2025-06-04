@@ -239,13 +239,14 @@ abstract class ZanoLikeMainModule extends CoreModule
         $outs = $transaction['tx_info']['outs'];
         $ins = $transaction['tx_info']['ins'];
 
-        for ($i = 1; $i < count($ins); $i++) 
+        for ($i = 0; $i < count($ins); $i++) 
         {
+            $global_indexes = implode(",", $ins[$i]['global_indexes']);
             $specials->add(
-                'index_' . $i,
-                $ins[$i-1]['global_indexes'],
-                function () use ($ins, $i) {
-                    return "Global Indexes {$ins[$i-1]['global_indexes']}";
+                'ins_' . $i+1,
+                $ins[$i]['global_indexes'],
+                function () use ($global_indexes) {
+                    return "Global Indexes: {[{$global_indexes}]}";
                 }
             );
         }
@@ -253,13 +254,21 @@ abstract class ZanoLikeMainModule extends CoreModule
         foreach ($outs as $out) 
         {
             $specials->add(
-                'spent_global_index' . $out['global_index'],
+                'spent_global_index_' . $out['global_index'],
                 $out['is_spent'],
-                function ($spent) use ($out) {
-                    return "Global Index {$out['global_index']} is" + $out['is_spent'] ? "spent" : "not spent";
+                function () use ($out) {
+                    return "Global Index {{$out['global_index']}} is " . ($out['is_spent'] ? "{spent}" : "{not spent}");
                 }
             );
         }
+
+        $specials->add(
+                'pub_key',
+                $transaction['tx_info']['pub_key'],
+                function ($pubkey) {
+                    return "Tx pubkey {{$pubkey}}";
+                }
+            );
 
         return $specials->return();
     }
