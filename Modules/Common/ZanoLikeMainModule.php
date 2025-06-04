@@ -93,6 +93,7 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     final public function pre_process_block($block_id)
     {
+        $transactions = null;
         if ($block_id !== MEMPOOL)
         {
             $output = requester_single($this->select_node(),
@@ -104,16 +105,25 @@ abstract class ZanoLikeMainModule extends CoreModule
             endpoint: '/json_rpc',
             result_in: 'result',
             timeout: $this->timeout);
-            $this->block_data['txs'] = $output['block_details']['transactions_details'];
+            $transactions['txs'] = $output['block_details']['transactions_details'];   
         }
         else // Processing mempool
         {
-
+            $output = requester_single($this->select_node(),
+            params: ['jsonrpc' => '2.0',
+                     'method'  => 'get_all_pool_tx_list',
+                     'id'      => 0,
+                     'params'  => [ 'id' => "{$this->block_hash}" ],
+            ],
+            endpoint: '/json_rpc',
+            result_in: 'result',
+            timeout: $this->timeout);
+            $mp = array_map(fn($id) => ['id' => $id], $output['ids']);
+            $transactions['txs'] = $mp;
         }
 
         $multi_curl = [];
-
-        foreach ($this->block_data['txs'] as $tx)
+        foreach ($transactions['txs'] as $tx) 
         {
             $multi_curl[] = requester_multi_prepare(
                 $this->select_node(),
@@ -127,16 +137,18 @@ abstract class ZanoLikeMainModule extends CoreModule
                 timeout: $this->timeout
             );
         }
-
-        $multi_results = requester_multi_process_all(requester_multi($multi_curl,
-            limit: envm($this->module, 'REQUESTER_THREADS'),
-            timeout: $this->timeout),
+        $multi_results = requester_multi_process_all(
+            requester_multi(
+                $multi_curl,
+                limit: envm($this->module, 'REQUESTER_THREADS'),
+                timeout: $this->timeout
+            ),
             result_in: 'result',
-            reorder: false);
-
+            reorder: false
+        );
         $transaction_details = [];
 
-        foreach ($multi_results as $transaction)
+        foreach ($multi_results as $transaction) 
         {
             $transaction_details[($transaction['tx_info']['id'])] = $transaction;
         }
@@ -150,7 +162,7 @@ abstract class ZanoLikeMainModule extends CoreModule
         // if (count($this->block_data['txs']) !== count($transaction_details) && $block_id !== MEMPOOL)
         //     throw new ModuleError('Transaction count mismatch');
 
-        foreach ($this->block_data['txs'] as $transaction)
+        foreach ($transactions['txs'] as $transaction)
         {
             $hash = $transaction['id'];
 
@@ -199,7 +211,7 @@ abstract class ZanoLikeMainModule extends CoreModule
             $events[] = [
                 'transaction' => $hash,
                 'address'     => 'the-void',
-                'effect'      => "{$transaction['fee']}",
+                'effect'      => "{$transaction_details[$hash]['tx_info']['fee'] }",
                 'sort_key'    => $sort_key++,
                 'extra_indexed' => null,
             ];
