@@ -13,7 +13,7 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
-    public ?bool $allow_empty_return_events = false;
+    public ?bool $allow_empty_return_events = false; // we always have even a coinbase tx
 
     public ?bool $mempool_implemented = true;
     public ?bool $forking_implemented = true;
@@ -24,16 +24,12 @@ abstract class ZanoLikeMainModule extends CoreModule
     public ?TransactionRenderModel $transaction_render_model = TransactionRenderModel::UTXO;
     public ?CurrencyFormat $currency_format = CurrencyFormat::Static;
     public ?CurrencyType $currency_type = CurrencyType::FT;
-    public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid; // TODO check
+    public ?FeeRenderModel $fee_render_model = FeeRenderModel::LastEventToTheVoid;
     public ?array $special_addresses = ['the-void', 'shielded-pool'];
 
-    public ?PrivacyModel $privacy_model = PrivacyModel::Mixed; // Fees and coinbase rewards are visible the rest is not
+    public ?PrivacyModel $privacy_model = PrivacyModel::Mixed; // Fees, coinbase rewards & some amounts are visible
     public ?bool $ignore_sum_of_all_effects = true; // In mixed transactions we know fee values, but don't know input and output values
     public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Any;
-
-    //
-
-    private ?array $block_data = null;
 
     //
 
@@ -44,15 +40,14 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     final public function post_post_initialize()
     {
-
+        //
     }
 
     //
 
     final public function inquire_latest_block()
     {
-        return (int)requester_single($this->select_node(), '/getheight')['height']; // For some reason,
-        // `height` returns a +1 value.
+        return (int)requester_single($this->select_node(), '/getheight')['height']; 
     }
 
     final public function ensure_block($block_id, $break_on_first = false)
@@ -156,22 +151,14 @@ abstract class ZanoLikeMainModule extends CoreModule
         $events = []; // This is an array for the results
         $sort_key = 0;
 
-        // if ($block_id !== MEMPOOL && !$this->block_data['txs'][0]['coinbase'])
-        //     throw new ModuleError('The first transaction is not coinbase');
-
-        // if (count($this->block_data['txs']) !== count($transaction_details) && $block_id !== MEMPOOL)
-        //     throw new ModuleError('Transaction count mismatch');
-
         foreach ($transactions['txs'] as $transaction)
         {
             $hash = $transaction['id'];
 
             // if ($transaction['coinbase'])
-            // {
             //     // there is something to do with such transactions
             //     // we can't trace to whom they are sent
             //     // But each block has a 1 ZANO reward 
-            //     // Also there is a transaction in each block, but I don't sure what is it for
             //     // So for PoW blocks we would have 2 outputs and no inputs
             //     // https://explorer.zano.org/transaction/71e54a7fc1f92e9005b3a8d5ac5c92fa6d60cdd38d552c9637824f33d3c9b8df
             //     // For PoS blocks we have 1 input and 1 output
@@ -191,8 +178,6 @@ abstract class ZanoLikeMainModule extends CoreModule
 
             foreach ($transaction_details[$hash]['tx_info']['outs'] ?? [] as $output) 
             {
-                // Some transactions don't have outputs, thus `?? []` (the entire input amount goes to the fee pool in that case)
-
                 $amount = $output['amount'];
 
                 $events[] = [
