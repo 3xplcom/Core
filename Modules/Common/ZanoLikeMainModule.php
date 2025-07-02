@@ -8,8 +8,8 @@
 
 abstract class ZanoLikeMainModule extends CoreModule
 {
-    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect', 'extra_indexed'];
-    public ?array $events_table_nullable_fields = ['extra_indexed'];
+    public ?array $events_table_fields = ['block', 'transaction', 'sort_key', 'time', 'address', 'effect'];
+    public ?array $events_table_nullable_fields = [];
 
     public ?bool $should_return_events = true;
     public ?bool $should_return_currencies = false;
@@ -29,7 +29,6 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     public ?PrivacyModel $privacy_model = PrivacyModel::Mixed; // Fees, coinbase rewards & some amounts are visible
     public ?bool $ignore_sum_of_all_effects = true; // In mixed transactions we know fee values, but don't know input and output values
-    public ?SearchableEntity $extra_indexed_hint_entity = SearchableEntity::Any;
 
     //
 
@@ -47,7 +46,7 @@ abstract class ZanoLikeMainModule extends CoreModule
 
     final public function inquire_latest_block()
     {
-        return (int)requester_single($this->select_node(), '/getheight')['height']; 
+        return (int)requester_single($this->select_node(), '/getheight')['height'];
     }
 
     final public function ensure_block($block_id, $break_on_first = false)
@@ -100,7 +99,7 @@ abstract class ZanoLikeMainModule extends CoreModule
             endpoint: '/json_rpc',
             result_in: 'result',
             timeout: $this->timeout);
-            $transactions['txs'] = $output['block_details']['transactions_details'];   
+            $transactions['txs'] = $output['block_details']['transactions_details'];
         }
         else // Processing mempool
         {
@@ -172,7 +171,6 @@ abstract class ZanoLikeMainModule extends CoreModule
                     'address'     => 'shielded-pool',
                     'effect'      => "{$amount}",
                     'sort_key'    => $sort_key++,
-                    'extra_indexed' => null, // should be nullable
                 ];
             }
 
@@ -185,7 +183,6 @@ abstract class ZanoLikeMainModule extends CoreModule
                     'address'     => 'shielded-pool',
                     'effect'      => "{$amount}",
                     'sort_key'    => $sort_key++,
-                    'extra_indexed' => $output['global_index'],
                 ];
             }
 
@@ -196,16 +193,15 @@ abstract class ZanoLikeMainModule extends CoreModule
             $events[] = [
                 'transaction' => $hash,
                 'address'     => 'the-void',
-                'effect'      => "{$transaction_details[$hash]['tx_info']['fee'] }",
+                'effect'      => "{$transaction_details[$hash]['tx_info']['fee']}",
                 'sort_key'    => $sort_key++,
-                'extra_indexed' => null,
             ];
         }
 
         foreach ($events as &$event)
         {
             $event['block'] = $block_id;
-            $event['time'] = ($this->block_id !== MEMPOOL) ? $this->block_time : date('Y-m-d H:i:s', time());
+            $event['time'] = ($block_id !== MEMPOOL) ? $this->block_time : date('Y-m-d H:i:s', time());
         }
 
         usort($events, function($a, $b) {
@@ -240,7 +236,7 @@ abstract class ZanoLikeMainModule extends CoreModule
         {
             $global_indexes = implode(",", $ins[$i]['global_indexes']);
             $specials->add(
-                'ins_' . $i+1,
+                'ins_' . ($i+1),
                 $ins[$i]['global_indexes'],
                 function () use ($global_indexes) {
                     return "Global Indexes: {[{$global_indexes}]}";
@@ -270,18 +266,4 @@ abstract class ZanoLikeMainModule extends CoreModule
         return $specials->return();
     }
 
-    function alias_get_data($handle)
-    {
-        $output = requester_single($this->select_node(),
-            params: ['jsonrpc' => '2.0',
-                     'method'  => 'get_alias_details',
-                     'id'      => 0,
-                     'params'  => ['id'   => $handle ],
-            ],
-            result_in: 'result',
-            timeout: $this->timeout);
-        
-
-        return $output['alias_details']['address'];
-    }
 }
