@@ -233,7 +233,8 @@ abstract class UTXOMainModule extends CoreModule
                         count($transaction['vout']) +
                         (int)(isset($transaction['vjoinsplit']) && $transaction['vjoinsplit']) +
                         (int)((isset($transaction['vShieldedSpend']) && $transaction['vShieldedSpend']) || (isset($transaction['vShieldedOutput']) && $transaction['vShieldedOutput'])) +
-                        (int)(isset($transaction['orchard']) && $transaction['orchard'] && $transaction['orchard']['actions'])
+                        (int)(isset($transaction['orchard']) && $transaction['orchard'] && $transaction['orchard']['actions']) +
+                        (int)(isset($transaction['ironwood']) && $transaction['ironwood'] && $transaction['ironwood']['actions'])
                     ) === 0
                 )
                     throw new ModuleError("No events for transaction {$transaction['txid']}");
@@ -280,6 +281,19 @@ abstract class UTXOMainModule extends CoreModule
                     ];
 
                     $fees[($transaction['txid'])] = bcadd($fees[($transaction['txid'])], $transaction['orchard']['valueBalanceZat']);
+                }
+
+                // Ironwood (NU6.3 successor to Orchard, built on revised Orchard code)
+
+                if (isset($transaction['ironwood']) && $transaction['ironwood'] && $transaction['ironwood']['actions'])
+                {
+                    $events[] = ['transaction' => $transaction['txid'],
+                                 'address'     => 'ironwood-pool',
+                                 'effect'      => bcmul('-1', $transaction['ironwood']['valueBalanceZat']),
+                                 'sort_in_transaction' => PHP_INT_MAX - 1,
+                    ];
+
+                    $fees[($transaction['txid'])] = bcadd($fees[($transaction['txid'])], $transaction['ironwood']['valueBalanceZat']);
                 }
             }
 
@@ -433,7 +447,7 @@ abstract class UTXOMainModule extends CoreModule
         if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features) && $block_id !== MEMPOOL)
         {
             $delta_pools = [];
-            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0', 'lockbox' => '0'];
+            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0', 'ironwood' => '0', 'lockbox' => '0'];
 
             foreach ($block['valuePools'] as $pool)
                 $delta_pools[($pool['id'])] = $pool['valueDeltaZat'];
@@ -448,6 +462,8 @@ abstract class UTXOMainModule extends CoreModule
                     $this_pools['sapling'] = bcadd($this_pools['sapling'], $event['effect']);
                 if ($event['address'] === 'orchard-pool')
                     $this_pools['orchard'] = bcadd($this_pools['orchard'], $event['effect']);
+                if ($event['address'] === 'ironwood-pool')
+                    $this_pools['ironwood'] = bcadd($this_pools['ironwood'], $event['effect']);
                 if ($event['address'] === 'lockbox')
                     $this_pools['lockbox'] = bcadd($this_pools['lockbox'], $event['effect']);
             }
@@ -455,6 +471,7 @@ abstract class UTXOMainModule extends CoreModule
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sprout']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sapling']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['orchard']);
+            $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['ironwood']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['lockbox']);
 
             // Check if the coinbase value is correct
