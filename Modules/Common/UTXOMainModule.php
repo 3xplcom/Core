@@ -35,6 +35,11 @@ abstract class UTXOMainModule extends CoreModule
     public array $extra_features = [];
     public ?string $p2pk_prefix1 = null;
     public ?string $p2pk_prefix2 = null;
+    public ?int $nsm_activation_height = null;
+    public ?string $nsm_initial_balance = null;
+    public ?int $nsm_reissuance_height = null;
+    public ?string $nsm_reissuance_numerator = null;
+    public ?string $nsm_reissuance_denominator = null;
 
     //
 
@@ -57,6 +62,16 @@ abstract class UTXOMainModule extends CoreModule
         {
             $this->special_addresses[] = '*-pool';
             $this->special_addresses[] = 'lockbox';
+        }
+
+        if (in_array(UTXOSpecialFeatures::HasNetworkSustainabilityMechanism, $this->extra_features))
+        {
+            foreach (['nsm_activation_height', 'nsm_initial_balance', 'nsm_reissuance_height',
+                         'nsm_reissuance_numerator', 'nsm_reissuance_denominator'] as $property)
+                if (is_null($this->{$property}))
+                    throw new DeveloperError("`{$property}` is not set");
+
+            $this->special_addresses[] = 'nsm-pool';
         }
     }
 
@@ -118,6 +133,7 @@ abstract class UTXOMainModule extends CoreModule
         $block_n = 0;
 
         $coinbase_transaction_output = '0';
+        $coinbase_transaction = null;
 
         $this_is_coinbase = true; // Coinbase transaction is always the first one
         if ($this->block_id === MEMPOOL) $this_is_coinbase = false;
@@ -132,6 +148,9 @@ abstract class UTXOMainModule extends CoreModule
 
         foreach ($block['tx'] as $transaction)
         {
+            if ($this_is_coinbase)
+                $coinbase_transaction = $transaction['txid'];
+
             $previous_outputs_lib[($transaction['txid'])] = $transaction['vout'];
             $fees[($transaction['txid'])] = '0';
 
@@ -442,12 +461,57 @@ abstract class UTXOMainModule extends CoreModule
             }
         }
 
+        // NU7 removes floor(60% of the total block fees) from circulation. The
+        // rounding is deliberately performed once per block, not per transaction.
+        // NSM reissuance is debited from the balance starting at its deployment
+        // height. Moving the delta from the-void to nsm-pool keeps every coinbase
+        // event balanced while making the consensus-tracked reserve observable.
+        if (in_array(UTXOSpecialFeatures::HasNetworkSustainabilityMechanism, $this->extra_features)
+            && $block_id !== MEMPOOL && $block_id >= $this->nsm_activation_height)
+        {
+            $total_fees = '0';
+            foreach ($fees as $fee)
+                $total_fees = bcadd($total_fees, $fee);
+
+            $fee_contribution = bcdiv(bcmul($total_fees, '6'), '10', 0);
+            $previous_nsm_balance = ($block_id === $this->nsm_activation_height)
+                ? $this->nsm_initial_balance
+                : balance($this->blockchain, $this->module, 'nsm-pool', $this->currency);
+
+            $reissuance = '0';
+            if ($block_id >= $this->nsm_reissuance_height && $previous_nsm_balance !== '0')
+            {
+                $scaled_balance = bcmul($previous_nsm_balance, $this->nsm_reissuance_numerator);
+                $reissuance = bcdiv(
+                    bcadd($scaled_balance, bcsub($this->nsm_reissuance_denominator, '1')),
+                    $this->nsm_reissuance_denominator,
+                    0
+                );
+            }
+
+            $nsm_delta = bcsub($fee_contribution, $reissuance);
+            if ($block_id === $this->nsm_activation_height)
+                $nsm_delta = bcadd($nsm_delta, $this->nsm_initial_balance);
+
+            if ($nsm_delta !== '0')
+            {
+                $events[] = ['transaction' => $coinbase_transaction,
+                             'address' => 'the-void',
+                             'effect' => bcmul('-1', $nsm_delta),
+                             'sort_in_transaction' => PHP_INT_MAX - 1];
+                $events[] = ['transaction' => $coinbase_transaction,
+                             'address' => 'nsm-pool',
+                             'effect' => $nsm_delta,
+                             'sort_in_transaction' => PHP_INT_MAX];
+            }
+        }
+
         // Extra checks for the shielded pools
 
         if (in_array(UTXOSpecialFeatures::HasShieldedPools, $this->extra_features) && $block_id !== MEMPOOL)
         {
             $delta_pools = [];
-            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0', 'ironwood' => '0', 'lockbox' => '0'];
+            $this_pools = ['transparent' => '0', 'sprout' => '0', 'sapling' => '0', 'orchard' => '0', 'ironwood' => '0', 'lockbox' => '0', 'nsm' => '0'];
 
             foreach ($block['valuePools'] as $pool)
                 $delta_pools[($pool['id'])] = $pool['valueDeltaZat'];
@@ -466,6 +530,8 @@ abstract class UTXOMainModule extends CoreModule
                     $this_pools['ironwood'] = bcadd($this_pools['ironwood'], $event['effect']);
                 if ($event['address'] === 'lockbox')
                     $this_pools['lockbox'] = bcadd($this_pools['lockbox'], $event['effect']);
+                if ($event['address'] === 'nsm-pool')
+                    $this_pools['nsm'] = bcadd($this_pools['nsm'], $event['effect']);
             }
 
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['sprout']);
@@ -473,6 +539,7 @@ abstract class UTXOMainModule extends CoreModule
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['orchard']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['ironwood']);
             $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['lockbox']);
+            $this_pools['transparent'] = bcsub($this_pools['transparent'], $this_pools['nsm']);
 
             // Check if the coinbase value is correct
 
@@ -543,7 +610,12 @@ abstract class UTXOMainModule extends CoreModule
         if ($currency !== $this->currency)
             return '0';
 
-        return bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
+        $supply = bcmul(balance($this->blockchain, $this->module, 'the-void', $this->currency), '-1');
+
+        if (in_array(UTXOSpecialFeatures::HasNetworkSustainabilityMechanism, $this->extra_features))
+            $supply = bcsub($supply, balance($this->blockchain, $this->module, 'nsm-pool', $this->currency));
+
+        return $supply;
     }
 
     final public function api_get_transaction_specials(string $transaction): array

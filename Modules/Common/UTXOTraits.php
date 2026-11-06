@@ -68,6 +68,7 @@ enum UTXOSpecialFeatures
     case HasAddressPrefixes; // Bitcoin Cash node uses `bitcoincash:` prefix for all standard addresses
     case HasMWEB; // Litecoin Core has some additional MWEB data
     case HasShieldedPools; // Shielded pool processing in Zcash
+    case HasNetworkSustainabilityMechanism; // Zcash NU7 fee burning and NSM reissuance
     case Not8Decimals; // There's a "non-standard" number of decimals, i.e. not 8; e.g. Peercoin
     case OneAddressInScriptPubKey; // There's no "addresses" array in scriptPubKey
     case ManualCashAddress; // eCash doesn't output CashAddress format addresses for P2PK scripts
