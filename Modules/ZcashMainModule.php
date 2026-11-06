@@ -4,10 +4,11 @@
  *  Copyright (c) 2023-2024 3xpl developers, 3@3xpl.com, see CONTRIBUTORS.md
  *  Distributed under the MIT software license, see LICENSE.md  */
 
-/*  This module processes both transparent and shielded transfers. There are three special addresses for the shielded
- *  pools: `sprout-pool`, `sapling-pool`, `orchard-pool`. If all events for these addresses are summed up, one will get
- *  the amount of coins in these pools. This module requires the latest Zcash node version. If one was upgrading from
- *  some previous version, they'd need to use `reindex`.  */
+/*  This module processes both transparent and shielded transfers. There are special addresses for the shielded pools
+ *  (`sprout-pool`, `sapling-pool`, `orchard-pool`, `ironwood-pool`) and for the NU7 Network Sustainability Mechanism
+ *  (`nsm-pool`). If all events for one of these addresses are summed up, one gets the amount of coins in that pool.
+ *  This module requires the latest Zcash node version. If one was upgrading from some previous version, they'd need
+ *  to use `reindex`.  */
 
 final class ZcashMainModule extends UTXOMainModule implements Module, TransactionSpecials, SupplySpecial, BroadcastTransactionSpecial
 {
@@ -22,8 +23,13 @@ final class ZcashMainModule extends UTXOMainModule implements Module, Transactio
         $this->first_block_date = '2016-10-28';
 
         // UTXOMainModule
-        $this->extra_features = [UTXOSpecialFeatures::HasShieldedPools];
+        $this->extra_features = [UTXOSpecialFeatures::HasShieldedPools, UTXOSpecialFeatures::HasNetworkSustainabilityMechanism];
         $this->p2pk_prefix1 = '';
         $this->p2pk_prefix2 = '1CB8';
+        $this->nsm_activation_height = 3_543_405;
+        $this->nsm_initial_balance = '36858445520';
+        $this->nsm_reissuance_height = 8_939_664;
+        $this->nsm_reissuance_numerator = '1375';
+        $this->nsm_reissuance_denominator = '10000000000';
     }
 }
